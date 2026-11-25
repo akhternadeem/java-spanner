@@ -27,11 +27,14 @@ import com.google.api.gax.longrunning.OperationFuture;
 import com.google.api.gax.longrunning.OperationTimedPollAlgorithm;
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.cloud.NoCredentials;
+import com.google.cloud.spanner.AsyncTransactionManager.CommitTimestampFuture;
+import com.google.cloud.spanner.AsyncTransactionManager.TransactionContextFuture;
 import com.google.cloud.spanner.MockSpannerServiceImpl.SimulatedExecutionTime;
 import com.google.cloud.spanner.MockSpannerServiceImpl.StatementResult;
 import com.google.cloud.spanner.SpannerOptions.SpannerEnvironment;
 import com.google.cloud.spanner.connection.RandomResultSetGenerator;
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import io.grpc.Status;
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -47,6 +50,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.EventData;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -58,7 +62,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.threeten.bp.Duration;
 
 @RunWith(JUnit4.class)
 public class OpenTelemetryApiTracerTest extends AbstractMockServerTest {
@@ -121,10 +124,10 @@ public class OpenTelemetryApiTracerTest extends AbstractMockServerTest {
         .setPollingAlgorithm(
             OperationTimedPollAlgorithm.create(
                 RetrySettings.newBuilder()
-                    .setInitialRetryDelay(Duration.ofNanos(1L))
-                    .setMaxRetryDelay(Duration.ofNanos(1L))
+                    .setInitialRetryDelayDuration(Duration.ofNanos(1L))
+                    .setMaxRetryDelayDuration(Duration.ofNanos(1L))
                     .setRetryDelayMultiplier(1.0)
-                    .setTotalTimeout(Duration.ofMinutes(10L))
+                    .setTotalTimeoutDuration(Duration.ofMinutes(10L))
                     .build()));
     spanner =
         builder
@@ -133,8 +136,9 @@ public class OpenTelemetryApiTracerTest extends AbstractMockServerTest {
             .setCredentials(NoCredentials.getInstance())
             .setSessionPoolOption(
                 SessionPoolOptions.newBuilder()
-                    .setWaitForMinSessions(Duration.ofSeconds(5L))
+                    .setWaitForMinSessionsDuration(Duration.ofSeconds(5L))
                     .setFailOnSessionLeak()
+                    .setSkipVerifyingBeginTransactionForMuxRW(true)
                     .build())
             .setEnableApiTracing(true)
             .build()
@@ -426,8 +430,9 @@ public class OpenTelemetryApiTracerTest extends AbstractMockServerTest {
             .setCredentials(NoCredentials.getInstance())
             .setSessionPoolOption(
                 SessionPoolOptions.newBuilder()
-                    .setWaitForMinSessions(Duration.ofSeconds(5L))
+                    .setWaitForMinSessionsDuration(Duration.ofSeconds(5L))
                     .setFailOnSessionLeak()
+                    .setSkipVerifyingBeginTransactionForMuxRW(true)
                     .build())
             .build()
             .getService();
@@ -447,6 +452,58 @@ public class OpenTelemetryApiTracerTest extends AbstractMockServerTest {
         "CloudSpanner.ReadOnlyTransaction", "CloudSpannerOperation.ExecuteStreamingQuery", spans);
     assertParent(
         "CloudSpannerOperation.ExecuteStreamingQuery", "Spanner.ExecuteStreamingSql", spans);
+  }
+
+  @Test
+  public void testAsyncTransactionManagerCommit() throws Exception {
+    try (AsyncTransactionManager manager = client.transactionManagerAsync()) {
+      TransactionContextFuture transactionFuture = manager.beginAsync();
+      CommitTimestampFuture commitTimestamp =
+          transactionFuture
+              .then(
+                  (transaction, __) -> transaction.executeUpdateAsync(UPDATE_RANDOM),
+                  MoreExecutors.directExecutor())
+              .commitAsync();
+      commitTimestamp.get();
+    }
+
+    assertEquals(CompletableResultCode.ofSuccess(), spanExporter.flush());
+    List<SpanData> spans = spanExporter.getFinishedSpanItems();
+    assertContains("CloudSpanner.ReadWriteTransaction", spans);
+    assertContains("CloudSpannerOperation.ExecuteUpdate", spans);
+    assertContains("CloudSpannerOperation.Commit", spans);
+    assertContains("Spanner.ExecuteSql", spans);
+    assertContains("Spanner.Commit", spans);
+
+    assertParent("CloudSpanner.ReadWriteTransaction", "CloudSpannerOperation.ExecuteUpdate", spans);
+    assertParent("CloudSpanner.ReadWriteTransaction", "CloudSpannerOperation.Commit", spans);
+    assertParent("CloudSpannerOperation.ExecuteUpdate", "Spanner.ExecuteSql", spans);
+  }
+
+  @Test
+  public void testAsyncTransactionManagerRollback() throws Exception {
+    try (AsyncTransactionManager manager = client.transactionManagerAsync()) {
+      TransactionContextFuture transactionFuture = manager.beginAsync();
+      transactionFuture
+          .then(
+              (transaction, __) -> transaction.executeUpdateAsync(UPDATE_RANDOM),
+              MoreExecutors.directExecutor())
+          .get();
+      manager.rollbackAsync().get();
+    }
+
+    assertEquals(CompletableResultCode.ofSuccess(), spanExporter.flush());
+    List<SpanData> spans = spanExporter.getFinishedSpanItems();
+    assertContains("CloudSpanner.ReadWriteTransaction", spans);
+    assertContains("CloudSpannerOperation.ExecuteUpdate", spans);
+    assertContains("Spanner.ExecuteSql", spans);
+    assertContains("Spanner.Rollback", spans);
+
+    assertParent("CloudSpanner.ReadWriteTransaction", "CloudSpannerOperation.ExecuteUpdate", spans);
+    assertParent("CloudSpannerOperation.ExecuteUpdate", "Spanner.ExecuteSql", spans);
+    SpanData transactionSpan = getSpan("CloudSpanner.ReadWriteTransaction", spans);
+    assertNotNull(transactionSpan);
+    assertContainsEvent("Transaction rolled back", transactionSpan.getEvents());
   }
 
   void assertContains(String expected, List<SpanData> spans) {

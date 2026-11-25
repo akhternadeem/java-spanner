@@ -29,6 +29,7 @@ import static com.google.cloud.spanner.connection.StatementResult.ClientSideStat
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_AUTO_BATCH_DML_UPDATE_COUNT;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_AUTO_BATCH_DML_UPDATE_COUNT_VERIFICATION;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_AUTO_PARTITION_MODE;
+import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_BATCH_DML_UPDATE_COUNT;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_DATA_BOOST_ENABLED;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_DEFAULT_TRANSACTION_ISOLATION;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_DELAY_TRANSACTION_START_UNTIL_FIRST_WRITE;
@@ -43,6 +44,7 @@ import static com.google.cloud.spanner.connection.StatementResult.ClientSideStat
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_PROTO_DESCRIPTORS;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_PROTO_DESCRIPTORS_FILE_PATH;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_READONLY;
+import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_READ_LOCK_MODE;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_READ_ONLY_STALENESS;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_RETRY_ABORTS_INTERNALLY;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_RETURN_COMMIT_STATS;
@@ -52,6 +54,7 @@ import static com.google.cloud.spanner.connection.StatementResult.ClientSideStat
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_STATEMENT_TIMEOUT;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_TRANSACTION_MODE;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_TRANSACTION_TAG;
+import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SET_TRANSACTION_TIMEOUT;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_AUTOCOMMIT;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_AUTOCOMMIT_DML_MODE;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_AUTO_BATCH_DML;
@@ -61,6 +64,7 @@ import static com.google.cloud.spanner.connection.StatementResult.ClientSideStat
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_COMMIT_RESPONSE;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_COMMIT_TIMESTAMP;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_DATA_BOOST_ENABLED;
+import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_DEFAULT_TRANSACTION_ISOLATION;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_DELAY_TRANSACTION_START_UNTIL_FIRST_WRITE;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_DIRECTED_READ;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_EXCLUDE_TXN_FROM_CHANGE_STREAMS;
@@ -73,6 +77,7 @@ import static com.google.cloud.spanner.connection.StatementResult.ClientSideStat
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_PROTO_DESCRIPTORS;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_PROTO_DESCRIPTORS_FILE_PATH;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_READONLY;
+import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_READ_LOCK_MODE;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_READ_ONLY_STALENESS;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_READ_TIMESTAMP;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_RETRY_ABORTS_INTERNALLY;
@@ -83,6 +88,7 @@ import static com.google.cloud.spanner.connection.StatementResult.ClientSideStat
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_STATEMENT_TIMEOUT;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_TRANSACTION_ISOLATION_LEVEL;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_TRANSACTION_TAG;
+import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.SHOW_TRANSACTION_TIMEOUT;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.START_BATCH_DDL;
 import static com.google.cloud.spanner.connection.StatementResult.ClientSideStatementType.START_BATCH_DML;
 import static com.google.cloud.spanner.connection.StatementResultImpl.noResult;
@@ -112,6 +118,8 @@ import com.google.spanner.v1.DirectedReadOptions;
 import com.google.spanner.v1.PlanNode;
 import com.google.spanner.v1.QueryPlan;
 import com.google.spanner.v1.RequestOptions;
+import com.google.spanner.v1.TransactionOptions;
+import com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -154,6 +162,11 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
   }
 
   @Override
+  public Dialect getDialect() {
+    return getConnection().getDialect();
+  }
+
+  @Override
   public StatementResult statementSetAutocommit(Boolean autocommit) {
     Preconditions.checkNotNull(autocommit);
     getConnection().setAutocommit(autocommit);
@@ -181,9 +194,10 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
   }
 
   @Override
-  public StatementResult statementSetRetryAbortsInternally(Boolean retryAbortsInternally) {
+  public StatementResult statementSetRetryAbortsInternally(
+      Boolean retryAbortsInternally, Boolean local) {
     Preconditions.checkNotNull(retryAbortsInternally);
-    getConnection().setRetryAbortsInternally(retryAbortsInternally);
+    getConnection().setRetryAbortsInternally(retryAbortsInternally, local);
     return noResult(SET_RETRY_ABORTS_INTERNALLY);
   }
 
@@ -236,6 +250,24 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
             ? ReadOnlyStalenessUtil.durationToString(new StatementTimeoutGetter(getConnection()))
             : connection.getDialect() == Dialect.POSTGRESQL ? "0" : null,
         SHOW_STATEMENT_TIMEOUT);
+  }
+
+  @Override
+  public StatementResult statementSetTransactionTimeout(Duration duration) {
+    if (duration == null || duration.isZero()) {
+      getConnection().setTransactionTimeout(null);
+    } else {
+      getConnection().setTransactionTimeout(duration);
+    }
+    return noResult(SET_TRANSACTION_TIMEOUT);
+  }
+
+  @Override
+  public StatementResult statementShowTransactionTimeout() {
+    return resultSet(
+        String.format("%sTRANSACTION_TIMEOUT", getNamespace(connection.getDialect())),
+        String.valueOf(getConnection().getTransactionTimeout()),
+        SHOW_TRANSACTION_TIMEOUT);
   }
 
   @Override
@@ -354,7 +386,7 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
 
   @Override
   public StatementResult statementSetMaxCommitDelay(Duration duration) {
-    getConnection().setMaxCommitDelay(duration == null || duration.isZero() ? null : duration);
+    getConnection().setMaxCommitDelay(duration);
     return noResult(SET_MAX_COMMIT_DELAY);
   }
 
@@ -442,14 +474,26 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
   }
 
   @Override
-  public StatementResult statementBeginTransaction() {
-    getConnection().beginTransaction();
+  public StatementResult statementBeginTransaction(
+      TransactionOptions.IsolationLevel isolationLevel) {
+    if (isolationLevel != null) {
+      getConnection().beginTransaction(isolationLevel);
+    } else {
+      getConnection().beginTransaction();
+    }
     return noResult(BEGIN);
   }
 
   @Override
   public StatementResult statementBeginPgTransaction(@Nullable PgTransactionMode transactionMode) {
-    getConnection().beginTransaction();
+    if (transactionMode == null
+        || transactionMode.getIsolationLevel() == null
+        || transactionMode.getIsolationLevel() == IsolationLevel.ISOLATION_LEVEL_DEFAULT) {
+      getConnection().beginTransaction();
+    } else {
+      getConnection()
+          .beginTransaction(transactionMode.getIsolationLevel().getSpannerIsolationLevel());
+    }
     if (transactionMode != null) {
       statementSetPgTransactionMode(transactionMode);
     }
@@ -476,6 +520,11 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
 
   @Override
   public StatementResult statementSetPgTransactionMode(PgTransactionMode transactionMode) {
+    if (transactionMode.getIsolationLevel() != null) {
+      getConnection()
+          .setTransactionIsolationLevel(
+              transactionMode.getIsolationLevel().getSpannerIsolationLevel());
+    }
     if (transactionMode.getAccessMode() != null) {
       switch (transactionMode.getAccessMode()) {
         case READ_ONLY_TRANSACTION:
@@ -494,6 +543,10 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
   @Override
   public StatementResult statementSetPgSessionCharacteristicsTransactionMode(
       PgTransactionMode transactionMode) {
+    if (transactionMode.getIsolationLevel() != null) {
+      getConnection()
+          .setDefaultIsolationLevel(transactionMode.getIsolationLevel().getSpannerIsolationLevel());
+    }
     if (transactionMode.getAccessMode() != null) {
       switch (transactionMode.getAccessMode()) {
         case READ_ONLY_TRANSACTION:
@@ -511,7 +564,11 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
 
   @Override
   public StatementResult statementSetPgDefaultTransactionIsolation(IsolationLevel isolationLevel) {
-    // no-op
+    getConnection()
+        .setDefaultIsolationLevel(
+            isolationLevel == null
+                ? TransactionOptions.IsolationLevel.ISOLATION_LEVEL_UNSPECIFIED
+                : isolationLevel.getSpannerIsolationLevel());
     return noResult(SET_DEFAULT_TRANSACTION_ISOLATION);
   }
 
@@ -576,8 +633,34 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
   }
 
   @Override
+  public StatementResult statementSetReadLockMode(ReadLockMode readLockMode) {
+    getConnection().setReadLockMode(readLockMode);
+    return noResult(SET_READ_LOCK_MODE);
+  }
+
+  @Override
+  public StatementResult statementShowReadLockMode() {
+    return resultSet(
+        String.format("%sREAD_LOCK_MODE", getNamespace(connection.getDialect())),
+        getConnection().getReadLockMode(),
+        SHOW_READ_LOCK_MODE);
+  }
+
+  @Override
   public StatementResult statementShowTransactionIsolationLevel() {
-    return resultSet("transaction_isolation", "serializable", SHOW_TRANSACTION_ISOLATION_LEVEL);
+    TransactionOptions.IsolationLevel isolationLevel =
+        getConnection().isInTransaction()
+            ? getConnection().getTransactionIsolationLevel()
+            : getConnection().getDefaultIsolationLevel();
+    return resultSet("transaction_isolation", isolationLevel, SHOW_TRANSACTION_ISOLATION_LEVEL);
+  }
+
+  @Override
+  public StatementResult statementShowDefaultTransactionIsolation() {
+    return resultSet(
+        "default_transaction_isolation",
+        getConnection().getDefaultIsolationLevel(),
+        SHOW_DEFAULT_TRANSACTION_ISOLATION);
   }
 
   @Override
@@ -655,6 +738,12 @@ class ConnectionStatementExecutorImpl implements ConnectionStatementExecutor {
     return StatementResultImpl.of(
         getConnection().runPartitionedQuery(statement, PartitionOptions.getDefaultInstance()),
         ClientSideStatementType.RUN_PARTITIONED_QUERY);
+  }
+
+  @Override
+  public StatementResult statementSetBatchDmlUpdateCount(Long updateCount, Boolean local) {
+    getConnection().setBatchDmlUpdateCount(updateCount, local);
+    return noResult(SET_BATCH_DML_UPDATE_COUNT);
   }
 
   @Override

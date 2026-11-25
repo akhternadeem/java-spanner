@@ -16,8 +16,12 @@
 
 package com.google.cloud.spanner;
 
+import static com.google.cloud.spanner.MissingDefaultSequenceKindException.isMissingDefaultSequenceKindException;
+import static com.google.cloud.spanner.TransactionMutationLimitExceededException.isTransactionMutationLimitException;
+
 import com.google.api.gax.grpc.GrpcStatusCode;
 import com.google.api.gax.rpc.ApiException;
+import com.google.api.gax.rpc.ErrorDetails;
 import com.google.api.gax.rpc.WatchdogTimeoutException;
 import com.google.cloud.spanner.SpannerException.DoNotConstructDirectly;
 import com.google.common.base.MoreObjects;
@@ -59,7 +63,7 @@ public final class SpannerExceptionFactory {
 
   public static SpannerException newSpannerException(
       ErrorCode code, @Nullable String message, @Nullable Throwable cause) {
-    return newSpannerExceptionPreformatted(code, formatMessage(code, message), cause);
+    return newSpannerExceptionPreformatted(code, formatMessage(code, message), cause, null);
   }
 
   public static SpannerException propagateInterrupt(InterruptedException e) {
@@ -114,7 +118,11 @@ public final class SpannerExceptionFactory {
   public static SpannerBatchUpdateException newSpannerBatchUpdateException(
       ErrorCode code, String message, long[] updateCounts) {
     DoNotConstructDirectly token = DoNotConstructDirectly.ALLOWED;
-    return new SpannerBatchUpdateException(token, code, message, updateCounts);
+    SpannerException cause = null;
+    if (isTransactionMutationLimitException(code, message)) {
+      cause = new TransactionMutationLimitExceededException(token, code, message, null, null);
+    }
+    return new SpannerBatchUpdateException(token, code, message, updateCounts, cause);
   }
 
   /** Constructs a specific error that */
@@ -146,7 +154,8 @@ public final class SpannerExceptionFactory {
           AbortedException cause, SpannerException databaseError) {
     return new AbortedDueToConcurrentModificationException(
         DoNotConstructDirectly.ALLOWED,
-        "The transaction was aborted and could not be retried due to a database error during the retry",
+        "The transaction was aborted and could not be retried due to a database error during the"
+            + " retry",
         cause,
         databaseError);
   }
@@ -161,7 +170,8 @@ public final class SpannerExceptionFactory {
           AbortedDueToConcurrentModificationException cause) {
     return new AbortedDueToConcurrentModificationException(
         DoNotConstructDirectly.ALLOWED,
-        "This transaction has already been aborted and could not be retried due to a concurrent modification. Rollback this transaction to start a new one.",
+        "This transaction has already been aborted and could not be retried due to a concurrent"
+            + " modification. Rollback this transaction to start a new one.",
         cause);
   }
 
@@ -175,7 +185,7 @@ public final class SpannerExceptionFactory {
   public static SpannerException newSpannerException(@Nullable Context context, Throwable cause) {
     if (cause instanceof SpannerException) {
       SpannerException e = (SpannerException) cause;
-      return newSpannerExceptionPreformatted(e.getErrorCode(), e.getMessage(), e);
+      return newSpannerExceptionPreformatted(e.getErrorCode(), e.getMessage(), e, null);
     } else if (cause instanceof CancellationException) {
       return newSpannerExceptionForCancellation(context, cause);
     } else if (cause instanceof ApiException) {
@@ -246,12 +256,34 @@ public final class SpannerExceptionFactory {
     return null;
   }
 
-  private static ErrorInfo extractErrorInfo(Throwable cause) {
+  private static ErrorInfo extractErrorInfo(Throwable cause, ApiException apiException) {
+    if (apiException != null && apiException.getErrorDetails() != null) {
+      return apiException.getErrorDetails().getErrorInfo();
+    }
     if (cause != null) {
       Metadata trailers = Status.trailersFromThrowable(cause);
       if (trailers != null) {
         return trailers.get(KEY_ERROR_INFO);
       }
+    }
+    return null;
+  }
+
+  static ErrorDetails extractErrorDetails(Throwable cause, ApiException apiException) {
+    if (apiException != null && apiException.getErrorDetails() != null) {
+      return apiException.getErrorDetails();
+    }
+
+    Throwable prevCause = null;
+    while (cause != null && cause != prevCause) {
+      if (cause instanceof ApiException) {
+        return ((ApiException) cause).getErrorDetails();
+      }
+      if (cause instanceof SpannerException) {
+        return ((SpannerException) cause).getErrorDetails();
+      }
+      prevCause = cause;
+      cause = cause.getCause();
     }
     return null;
   }
@@ -289,7 +321,7 @@ public final class SpannerExceptionFactory {
       case ABORTED:
         return new AbortedException(token, message, cause, apiException);
       case RESOURCE_EXHAUSTED:
-        ErrorInfo info = extractErrorInfo(cause);
+        ErrorInfo info = extractErrorInfo(cause, apiException);
         if (info != null
             && info.getMetadataMap()
                 .containsKey(AdminRequestsPerMinuteExceededException.ADMIN_REQUESTS_LIMIT_KEY)
@@ -313,7 +345,15 @@ public final class SpannerExceptionFactory {
                   token, message, resourceInfo, cause, apiException);
           }
         }
-        // Fall through to the default.
+      case INVALID_ARGUMENT:
+        if (isTransactionMutationLimitException(cause, apiException)) {
+          return new TransactionMutationLimitExceededException(
+              token, code, message, cause, apiException);
+        }
+        if (isMissingDefaultSequenceKindException(apiException)) {
+          return new MissingDefaultSequenceKindException(token, code, message, cause, apiException);
+        }
+      // Fall through to the default.
       default:
         return new SpannerException(
             token, code, isRetryable(code, cause), message, cause, apiException);

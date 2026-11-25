@@ -48,6 +48,15 @@
       "exampleStatements": ["show statement_timeout","show variable statement_timeout"]
     },
     {
+      "name": "SHOW [VARIABLE] SPANNER.TRANSACTION_TIMEOUT",
+      "executorName": "ClientSideStatementNoParamExecutor",
+      "resultType": "RESULT_SET",
+      "statementType": "SHOW_TRANSACTION_TIMEOUT",
+      "regex": "(?is)\\A\\s*show\\s+(?:variable\\s+)?spanner\\.transaction_timeout\\s*\\z",
+      "method": "statementShowTransactionTimeout",
+      "exampleStatements": ["show spanner.transaction_timeout","show variable spanner.transaction_timeout"]
+    },
+    {
       "name": "SHOW [VARIABLE] SPANNER.READ_TIMESTAMP",
       "executorName": "ClientSideStatementNoParamExecutor",
       "resultType": "RESULT_SET",
@@ -177,6 +186,15 @@
       "exampleStatements": ["show spanner.savepoint_support","show variable spanner.savepoint_support"]
     },
     {
+      "name": "SHOW [VARIABLE] SPANNER.READ_LOCK_MODE",
+      "executorName": "ClientSideStatementNoParamExecutor",
+      "resultType": "RESULT_SET",
+      "statementType": "SHOW_READ_LOCK_MODE",
+      "regex": "(?is)\\A\\s*show\\s+(?:variable\\s+)?spanner\\.read_lock_mode\\s*\\z",
+      "method": "statementShowReadLockMode",
+      "exampleStatements": ["show spanner.read_lock_mode","show variable spanner.read_lock_mode"]
+    },
+    {
       "name": "SHOW [VARIABLE] SPANNER.DELAY_TRANSACTION_START_UNTIL_FIRST_WRITE",
       "executorName": "ClientSideStatementNoParamExecutor",
       "resultType": "RESULT_SET",
@@ -231,6 +249,15 @@
       "exampleStatements": ["show transaction isolation level","show variable transaction isolation level"]
     },
     {
+      "name": "SHOW [VARIABLE] DEFAULT_TRANSACTION_ISOLATION",
+      "executorName": "ClientSideStatementNoParamExecutor",
+      "resultType": "RESULT_SET",
+      "statementType": "SHOW_DEFAULT_TRANSACTION_ISOLATION",
+      "regex": "(?is)\\A\\s*show\\s+(?:variable\\s+)?default_transaction_isolation\\s*\\z",
+      "method": "statementShowDefaultTransactionIsolation",
+      "exampleStatements": ["show default_transaction_isolation","show variable default_transaction_isolation"]
+    },
+    {
       "name": "EXPLAIN <sql>",
       "executorName": "ClientSideStatementExplainExecutor",
       "resultType": "RESULT_SET",
@@ -267,11 +294,11 @@
       "exampleStatements": []
     },
     {
-      "name": "{START | BEGIN} [TRANSACTION | WORK] [{ (READ ONLY|READ WRITE) [[,] (ISOLATION LEVEL (DEFAULT|SERIALIZABLE))] [[,] NOT DEFERRABLE]}]",
+      "name": "{START | BEGIN} [TRANSACTION | WORK] [{ (READ ONLY|READ WRITE) [[,] (ISOLATION LEVEL (DEFAULT|SERIALIZABLE|REPEATABLE READ))] [[,] NOT DEFERRABLE]}]",
       "executorName": "ClientSideStatementPgBeginExecutor",
       "resultType": "NO_RESULT",
       "statementType": "BEGIN",
-      "regex": "(?is)\\A\\s*(?:begin|start)(?:\\s+transaction|\\s+work)?((?:(?:\\s+|\\s*,\\s*)read\\s+only|(?:\\s+|\\s*,\\s*)read\\s+write|(?:\\s+|\\s*,\\s*)isolation\\s+level\\s+default|(?:\\s+|\\s*,\\s*)isolation\\s+level\\s+serializable|(?:\\s+|\\s*,\\s*)not\\s+deferrable)*)?\\s*\\z",
+      "regex": "(?is)\\A\\s*(?:begin|start)(?:\\s+transaction|\\s+work)?((?:(?:\\s+|\\s*,\\s*)read\\s+only|(?:\\s+|\\s*,\\s*)read\\s+write|(?:\\s+|\\s*,\\s*)isolation\\s+level\\s+default|(?:\\s+|\\s*,\\s*)isolation\\s+level\\s+serializable|(?:\\s+|\\s*,\\s*)isolation\\s+level\\s+repeatable\\s+read|(?:\\s+|\\s*,\\s*)not\\s+deferrable)*)?\\s*\\z",
       "method": "statementBeginPgTransaction",
       "exampleStatements": [
         "begin", "start", "begin transaction", "start transaction", "begin work", "start work",
@@ -279,9 +306,12 @@
         "begin read write", "start read write", "begin transaction read write", "start transaction read write", "begin work read write", "start work read write",
         "begin isolation level default", "start isolation level default", "begin transaction isolation level default", "start transaction isolation level default", "begin work isolation level default", "start work isolation level default",
         "begin isolation level serializable", "start isolation level serializable", "begin transaction isolation level serializable", "start transaction isolation level serializable", "begin work isolation level serializable", "start work isolation level serializable",
+        "begin isolation level repeatable read", "start isolation level repeatable read", "begin transaction isolation level repeatable read", "start transaction isolation level repeatable read", "begin work isolation level repeatable read", "start work isolation level repeatable read",
         "begin isolation level default read write", "start isolation level default read only", "begin transaction isolation level default read only", "start transaction isolation level default read write", "begin work isolation level default read write", "start work isolation level default read only",
         "begin isolation level serializable read write", "start isolation level serializable read write", "begin transaction isolation level serializable read only", "start transaction isolation level serializable read write", "begin work isolation level serializable read write", "start work isolation level serializable read only",
+        "begin isolation level repeatable read read write", "start isolation level repeatable read read write", "begin transaction isolation level repeatable read read only", "start transaction isolation level repeatable read read write", "begin work isolation level repeatable read read write", "start work isolation level repeatable read read only",
         "begin isolation level serializable, read write", "start isolation level serializable, read write", "begin transaction isolation level serializable, read only", "start transaction isolation level serializable, read write", "begin work isolation level serializable, read write", "start work isolation level serializable, read only",
+        "begin isolation level repeatable read, read write", "start isolation level repeatable read, read write", "begin transaction isolation level repeatable read, read only", "start transaction isolation level repeatable read, read write", "begin work isolation level repeatable read, read write", "start work isolation level repeatable read, read only",
         "begin not deferrable", "start not deferrable", "begin transaction not deferrable", "start transaction not deferrable", "begin work not deferrable", "start work not deferrable",
         "begin read only not deferrable", "start read only not deferrable", "begin transaction read only not deferrable", "start transaction read only not deferrable", "begin work read only not deferrable", "start work read only not deferrable",
         "begin read write not deferrable", "start read write not deferrable", "begin transaction read write not deferrable", "start transaction read write not deferrable", "begin work read write not deferrable", "start work read write not deferrable",
@@ -297,7 +327,8 @@
         "begin not deferrable isolation level serializable", "start isolation level serializable", "begin transaction not deferrable isolation level serializable", "start transaction isolation level serializable", "begin work not deferrable isolation level serializable", "start work isolation level serializable",
         "begin not deferrable isolation level default read write", "start isolation level default read only", "begin transaction not deferrable isolation level default read only", "start transaction isolation level default read write", "begin work not deferrable isolation level default read write", "start work isolation level default read only",
         "begin not deferrable isolation level serializable read write", "start isolation level serializable read write", "begin transaction not deferrable isolation level serializable read only", "start transaction isolation level serializable read write", "begin work not deferrable isolation level serializable read write", "start work isolation level serializable read only",
-        "begin not deferrable isolation level serializable, read write", "start isolation level serializable, read write", "begin transaction not deferrable isolation level serializable, read only", "start transaction isolation level serializable, read write", "begin work not deferrable isolation level serializable, read write", "start work isolation level serializable, read only"
+        "begin not deferrable isolation level serializable, read write", "start isolation level serializable, read write", "begin transaction not deferrable isolation level serializable, read only", "start transaction isolation level serializable, read write", "begin work not deferrable isolation level serializable, read write", "start work isolation level serializable, read only",
+        "begin not deferrable isolation level repeatable read, read write", "start isolation level repeatable read, read write", "begin transaction not deferrable isolation level repeatable read, read only", "start transaction isolation level repeatable read, read write", "begin work not deferrable isolation level repeatable read, read write", "start work isolation level repeatable read, read only"
       ]
     },
     {
@@ -404,13 +435,26 @@
       }
     },
     {
-      "name": "SET SPANNER.RETRY_ABORTS_INTERNALLY =|TO TRUE|FALSE",
+      "name": "SET [SESSION|LOCAL] SPANNER.RETRY_ABORTS_INTERNALLY =|TO TRUE|FALSE",
       "executorName": "ClientSideStatementSetExecutor",
       "resultType": "NO_RESULT",
       "statementType": "SET_RETRY_ABORTS_INTERNALLY",
-      "regex": "(?is)\\A\\s*set\\s+spanner\\.retry_aborts_internally(?:\\s*=\\s*|\\s+to\\s+)(.*)\\z",
+      "regex": "(?is)\\A\\s*set\\s+((?:session|local)\\s+)?spanner\\.retry_aborts_internally(?:\\s*=\\s*|\\s+to\\s+)(.*)\\z",
       "method": "statementSetRetryAbortsInternally",
-      "exampleStatements": ["set spanner.retry_aborts_internally = true", "set spanner.retry_aborts_internally = false", "set spanner.retry_aborts_internally to true", "set spanner.retry_aborts_internally to false"],
+      "exampleStatements": [
+        "set spanner.retry_aborts_internally = true",
+        "set spanner.retry_aborts_internally = false",
+        "set spanner.retry_aborts_internally to true",
+        "set spanner.retry_aborts_internally to false",
+        "set local spanner.retry_aborts_internally = true",
+        "set local spanner.retry_aborts_internally = false",
+        "set local spanner.retry_aborts_internally to true",
+        "set local spanner.retry_aborts_internally to false",
+        "set session spanner.retry_aborts_internally = true",
+        "set session spanner.retry_aborts_internally = false",
+        "set session spanner.retry_aborts_internally to true",
+        "set session spanner.retry_aborts_internally to false"
+      ],
       "examplePrerequisiteStatements": ["set spanner.readonly = false", "set autocommit = false"],
       "setStatement": {
         "propertyName": "SPANNER.RETRY_ABORTS_INTERNALLY",
@@ -420,7 +464,7 @@
       }
     },
     {
-      "name": "SET SPANNER.AUTOCOMMIT_DML_MODE =|TO 'PARTITIONED_NON_ATOMIC'|'TRANSACTIONAL'",
+      "name": "SET SPANNER.AUTOCOMMIT_DML_MODE =|TO 'PARTITIONED_NON_ATOMIC'|'TRANSACTIONAL'|'TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'",
       "executorName": "ClientSideStatementSetExecutor",
       "resultType": "NO_RESULT",
       "statementType": "SET_AUTOCOMMIT_DML_MODE",
@@ -429,13 +473,15 @@
       "exampleStatements": [
         "set spanner.autocommit_dml_mode='PARTITIONED_NON_ATOMIC'",
         "set spanner.autocommit_dml_mode='TRANSACTIONAL'",
+        "set spanner.autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'",
         "set spanner.autocommit_dml_mode to 'PARTITIONED_NON_ATOMIC'",
-        "set spanner.autocommit_dml_mode to 'TRANSACTIONAL'"
+        "set spanner.autocommit_dml_mode to 'TRANSACTIONAL'",
+        "set spanner.autocommit_dml_mode to 'TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'"
       ],
       "setStatement": {
         "propertyName": "SPANNER.AUTOCOMMIT_DML_MODE",
         "separator": "(?:=|\\s+TO\\s+)",
-        "allowedValues": "'(PARTITIONED_NON_ATOMIC|TRANSACTIONAL)'",
+        "allowedValues": "'(PARTITIONED_NON_ATOMIC|TRANSACTIONAL|TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC)'",
         "converterName": "ClientSideStatementValueConverters$AutocommitDmlModeConverter"
       }
     },
@@ -472,38 +518,70 @@
       }
     },
     {
-      "name": "SET TRANSACTION { (READ ONLY|READ WRITE) [[,] (ISOLATION LEVEL (DEFAULT|SERIALIZABLE))] }",
+      "name": "SET SPANNER.TRANSACTION_TIMEOUT =|TO '<duration>'|INT8|DEFAULT",
+      "executorName": "ClientSideStatementSetExecutor",
+      "resultType": "NO_RESULT",
+      "statementType": "SET_TRANSACTION_TIMEOUT",
+      "regex": "(?is)\\A\\s*set\\s+spanner\\.transaction_timeout(?:\\s*=\\s*|\\s+to\\s+)(.*)\\z",
+      "method": "statementSetTransactionTimeout",
+      "exampleStatements": [
+        "set spanner.transaction_timeout=default",
+        "set spanner.transaction_timeout = default ",
+        "set spanner.transaction_timeout = DEFAULT ",
+        "set spanner.transaction_timeout='1s'",
+        "set spanner.transaction_timeout = '1s' ",
+        "set spanner.transaction_timeout='100ms'",
+        "set spanner.transaction_timeout=100",
+        "set spanner.transaction_timeout = 100 ",
+        "set spanner.transaction_timeout='10000us'",
+        "set spanner.transaction_timeout='9223372036854775807ns'",
+        "set spanner.transaction_timeout to default",
+        "set spanner.transaction_timeout to '1s'",
+        "set spanner.transaction_timeout to '100ms'",
+        "set spanner.transaction_timeout to 100",
+        "set spanner.transaction_timeout to '10000us'",
+        "set spanner.transaction_timeout to '9223372036854775807ns'"
+      ],
+      "setStatement": {
+        "propertyName": "SPANNER.TRANSACTION_TIMEOUT",
+        "separator": "(?:=|\\s+TO\\s+)",
+        "allowedValues": "('(\\d{1,19})(s|ms|us|ns)'|\\d{1,19}|DEFAULT)",
+        "converterName": "ClientSideStatementValueConverters$PgDurationConverter"
+      }
+    },
+    {
+      "name": "SET TRANSACTION { (READ ONLY|READ WRITE) [[,] (ISOLATION LEVEL (DEFAULT|SERIALIZABLE|REPEATABLE READ))] }",
       "executorName": "ClientSideStatementSetExecutor",
       "resultType": "NO_RESULT",
       "statementType": "SET_TRANSACTION_MODE",
       "regex": "(?is)\\A\\s*set\\s+transaction\\s*(?:\\s+)\\s*(.*)\\z",
       "method": "statementSetPgTransactionMode",
-      "exampleStatements": ["set transaction read only", "set transaction read write", "set transaction isolation level default", "set transaction isolation level serializable"],
+      "exampleStatements": ["set transaction read only", "set transaction read write", "set transaction isolation level default", "set transaction isolation level serializable", "set transaction isolation level repeatable read"],
       "examplePrerequisiteStatements": ["set autocommit = false"],
       "setStatement": {
         "propertyName": "TRANSACTION",
         "separator": "\\s+",
-        "allowedValues": "(((?:\\s*|\\s*,\\s*)READ\\s+ONLY|(?:\\s*|\\s*,\\s*)READ\\s+WRITE|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+DEFAULT|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+SERIALIZABLE)+)",
+        "allowedValues": "(((?:\\s*|\\s*,\\s*)READ\\s+ONLY|(?:\\s*|\\s*,\\s*)READ\\s+WRITE|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+DEFAULT|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+SERIALIZABLE|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+REPEATABLE\\s+READ)+)",
         "converterName": "ClientSideStatementValueConverters$PgTransactionModeConverter"
       }
     },
     {
-      "name": "SET SESSION CHARACTERISTICS AS TRANSACTION { (READ ONLY|READ WRITE) [[,] (ISOLATION LEVEL (DEFAULT|SERIALIZABLE))] }",
+      "name": "SET SESSION CHARACTERISTICS AS TRANSACTION { (READ ONLY|READ WRITE) [[,] (ISOLATION LEVEL (DEFAULT|SERIALIZABLE|REPEATABLE READ))] }",
       "executorName": "ClientSideStatementSetExecutor",
       "resultType": "NO_RESULT",
       "statementType": "SET_READONLY",
       "regex": "(?is)\\A\\s*set\\s+session\\s+characteristics\\s+as\\s+transaction\\s*(?:\\s+)\\s*(.*)\\z",
       "method": "statementSetPgSessionCharacteristicsTransactionMode",
-      "exampleStatements": ["set session characteristics as transaction read only", "set session characteristics as transaction read write", "set session characteristics as transaction isolation level default", "set session characteristics as transaction isolation level serializable"],
+      "exampleStatements": ["set session characteristics as transaction read only", "set session characteristics as transaction read write", "set session characteristics as transaction isolation level default", "set session characteristics as transaction isolation level serializable", "set session characteristics as transaction isolation level repeatable read"],
       "setStatement": {
         "propertyName": "SESSION\\s+CHARACTERISTICS\\s+AS\\s+TRANSACTION",
         "separator": "\\s+",
-        "allowedValues": "(((?:\\s*|\\s*,\\s*)READ\\s+ONLY|(?:\\s*|\\s*,\\s*)READ\\s+WRITE|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+DEFAULT|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+SERIALIZABLE)+)",
+        "allowedValues": "(((?:\\s*|\\s*,\\s*)READ\\s+ONLY|(?:\\s*|\\s*,\\s*)READ\\s+WRITE|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+DEFAULT|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+SERIALIZABLE|(?:\\s*|\\s*,\\s*)ISOLATION\\s+LEVEL\\s+REPEATABLE\\s+READ)+)",
         "converterName": "ClientSideStatementValueConverters$PgTransactionModeConverter"
       }
     },
     {
-      "name": "SET DEFAULT_TRANSACTION_ISOLATION =|TO 'SERIALIZABLE'|SERIALIZABLE|DEFAULT",
+      "name": "SET DEFAULT_TRANSACTION_ISOLATION =|TO 'SERIALIZABLE'|SERIALIZABLE|'REPEATABLE READ'|REPEATABLE READ|DEFAULT",
       "executorName": "ClientSideStatementSetExecutor",
       "resultType": "NO_RESULT",
       "statementType": "SET_READONLY",
@@ -515,13 +593,18 @@
         "set default_transaction_isolation to 'serializable'",
         "set default_transaction_isolation = 'serializable'",
         "set default_transaction_isolation = \"SERIALIZABLE\"",
+        "set default_transaction_isolation=repeatable read",
+        "set default_transaction_isolation to repeatable read",
+        "set default_transaction_isolation to 'repeatable read'",
+        "set default_transaction_isolation = 'repeatable read'",
+        "set default_transaction_isolation = \"REPEATABLE READ\"",
         "set default_transaction_isolation = DEFAULT",
         "set default_transaction_isolation to DEFAULT"
       ],
       "setStatement": {
         "propertyName": "default_transaction_isolation",
         "separator": "(?:=|\\s+TO\\s+)",
-        "allowedValues": "(SERIALIZABLE|'SERIALIZABLE'|\"SERIALIZABLE\"|DEFAULT)",
+        "allowedValues": "(SERIALIZABLE|'SERIALIZABLE'|\"SERIALIZABLE\"|REPEATABLE\\s+READ|'REPEATABLE\\s+READ'|\"REPEATABLE\\s+READ\"|DEFAULT)",
         "converterName": "ClientSideStatementValueConverters$PgTransactionIsolationConverter"
       }
     },
@@ -811,6 +894,28 @@
       }
     },
     {
+      "name": "SET SPANNER.READ_LOCK_MODE =|TO 'OPTIMISTIC'|'PESSIMISTIC'|'UNSPECIFIED'",
+      "executorName": "ClientSideStatementSetExecutor",
+      "resultType": "NO_RESULT",
+      "statementType": "SET_READ_LOCK_MODE",
+      "regex": "(?is)\\A\\s*set\\s+spanner\\.read_lock_mode(?:\\s*=\\s*|\\s+to\\s+)(.*)\\z",
+      "method": "statementSetReadLockMode",
+      "exampleStatements": [
+        "set spanner.read_lock_mode='OPTIMISTIC'",
+        "set spanner.read_lock_mode='PESSIMISTIC'",
+        "set spanner.read_lock_mode='UNSPECIFIED'",
+        "set spanner.read_lock_mode to 'OPTIMISTIC'",
+        "set spanner.read_lock_mode to 'PESSIMISTIC'",
+        "set spanner.read_lock_mode to 'UNSPECIFIED'"
+      ],
+      "setStatement": {
+        "propertyName": "SPANNER.READ_LOCK_MODE",
+        "separator": "(?:=|\\s+TO\\s+)",
+        "allowedValues": "'(OPTIMISTIC|PESSIMISTIC|UNSPECIFIED|READ_LOCK_MODE_UNSPECIFIED)'",
+        "converterName": "ClientSideStatementValueConverters$ReadLockModeConverter"
+      }
+    },
+    {
       "name": "SET SPANNER.DELAY_TRANSACTION_START_UNTIL_FIRST_WRITE = TRUE|FALSE",
       "executorName": "ClientSideStatementSetExecutor",
       "resultType": "NO_RESULT",
@@ -865,6 +970,28 @@
       "exampleStatements": ["set spanner.auto_batch_dml_update_count = 0", "set spanner.auto_batch_dml_update_count = 100", "set spanner.auto_batch_dml_update_count to 1"],
       "setStatement": {
         "propertyName": "SPANNER.AUTO_BATCH_DML_UPDATE_COUNT",
+        "separator": "(?:=|\\s+TO\\s+)",
+        "allowedValues": "(\\d{1,19})",
+        "converterName": "ClientSideStatementValueConverters$LongConverter"
+      }
+    },
+    {
+      "name": "SET [LOCAL] SPANNER.BATCH_DML_UPDATE_COUNT =|TO <bigint>",
+      "executorName": "ClientSideStatementSetExecutor",
+      "resultType": "NO_RESULT",
+      "statementType": "SET_BATCH_DML_UPDATE_COUNT",
+      "regex": "(?is)\\A\\s*set\\s+((?:session|local)\\s+)?spanner\\.batch_dml_update_count(?:\\s*=\\s*|\\s+to\\s+)(.*)\\z",
+      "method": "statementSetBatchDmlUpdateCount",
+      "exampleStatements": [
+        "set local spanner.batch_dml_update_count = 0",
+        "set local spanner.batch_dml_update_count = 100",
+        "set local spanner.batch_dml_update_count to 1",
+        "set spanner.batch_dml_update_count to 1",
+        "set spanner.batch_dml_update_count = 1"
+      ],
+      "examplePrerequisiteStatements": ["set spanner.readonly = false", "set autocommit = false"],
+      "setStatement": {
+        "propertyName": "SPANNER.BATCH_DML_UPDATE_COUNT",
         "separator": "(?:=|\\s+TO\\s+)",
         "allowedValues": "(\\d{1,19})",
         "converterName": "ClientSideStatementValueConverters$LongConverter"

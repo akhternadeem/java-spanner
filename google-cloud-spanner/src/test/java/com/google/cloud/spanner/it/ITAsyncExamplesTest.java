@@ -253,6 +253,12 @@ public class ITAsyncExamplesTest {
             },
             executor);
     assertThat(insertCount.get()).isEqualTo(1L);
+    if (env.getTestHelper().getOptions().getSessionPoolOptions().getUseMultiplexedSessionForRW()) {
+      // The runAsync() method should only be called once on the runner.
+      // However, due to a bug in regular sessions, it can be executed multiple times on the same
+      // runner.
+      runner = client.runAsync();
+    }
     ApiFuture<Long> deleteCount =
         runner.runAsync(
             txn ->
@@ -299,6 +305,12 @@ public class ITAsyncExamplesTest {
             },
             executor);
     assertThat(insertCount.get()).asList().containsExactly(1L, 1L, 1L);
+    if (env.getTestHelper().getOptions().getSessionPoolOptions().getUseMultiplexedSessionForRW()) {
+      // The runAsync() method should only be called once on the runner.
+      // However, due to a bug in regular sessions, it can be executed multiple times on the same
+      // runner.
+      runner = client.runAsync();
+    }
     ApiFuture<long[]> deleteCount =
         runner.runAsync(
             txn ->
@@ -361,10 +373,12 @@ public class ITAsyncExamplesTest {
   public void pauseResume() throws Exception {
     Statement unevenStatement =
         Statement.of(
-            "SELECT * FROM TestTable WHERE MOD(CAST(SUBSTR(Key, 2) AS INT64), 2) = 1 ORDER BY CAST(SUBSTR(Key, 2) AS INT64)");
+            "SELECT * FROM TestTable WHERE MOD(CAST(SUBSTR(Key, 2) AS INT64), 2) = 1 ORDER BY"
+                + " CAST(SUBSTR(Key, 2) AS INT64)");
     Statement evenStatement =
         Statement.of(
-            "SELECT * FROM TestTable WHERE MOD(CAST(SUBSTR(Key, 2) AS INT64), 2) = 0 ORDER BY CAST(SUBSTR(Key, 2) AS INT64)");
+            "SELECT * FROM TestTable WHERE MOD(CAST(SUBSTR(Key, 2) AS INT64), 2) = 0 ORDER BY"
+                + " CAST(SUBSTR(Key, 2) AS INT64)");
 
     final Object lock = new Object();
     final SettableApiFuture<Boolean> evenFinished = SettableApiFuture.create();

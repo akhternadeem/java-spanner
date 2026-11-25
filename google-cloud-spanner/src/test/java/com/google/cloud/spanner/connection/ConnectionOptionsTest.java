@@ -16,6 +16,7 @@
 
 package com.google.cloud.spanner.connection;
 
+import static com.google.cloud.spanner.connection.ConnectionOptions.Builder.EXTERNAL_HOST_PATTERN;
 import static com.google.cloud.spanner.connection.ConnectionOptions.Builder.SPANNER_URI_PATTERN;
 import static com.google.cloud.spanner.connection.ConnectionOptions.DEFAULT_ENDPOINT;
 import static com.google.cloud.spanner.connection.ConnectionOptions.determineHost;
@@ -25,6 +26,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.NoCredentialsProvider;
@@ -35,6 +37,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.NoCredentials;
 import com.google.cloud.spanner.ErrorCode;
+import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.common.collect.ImmutableMap;
@@ -46,6 +49,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
@@ -56,7 +60,7 @@ import org.junit.runners.JUnit4;
 public class ConnectionOptionsTest {
   private static final String FILE_TEST_PATH =
       Objects.requireNonNull(ConnectionOptionsTest.class.getResource("test-key.json")).getFile();
-  private static final String DEFAULT_HOST = "https://spanner.googleapis.com";
+  private static final String DEFAULT_HOST = null;
   private static final String TEST_PROJECT = "test-project-123";
   private static final String TEST_INSTANCE = "test-instance-123";
   private static final String TEST_DATABASE = "test-database-123";
@@ -432,6 +436,8 @@ public class ConnectionOptionsTest {
         "cloudspanner://spanner.googleapis.com/projects/test-project-123/instances/test-instance?autocommit=true;readonly=false");
     builder.setUri(
         "cloudspanner://spanner.googleapis.com/projects/test-project-123?autocommit=true;readonly=false");
+    builder.setUri(
+        "cloudspanner://spanner.googleapis.com/projects/test-project-123?statement_timeout='10s';transaction_timeout='60s'");
 
     // set invalid uri's
     setInvalidUri(
@@ -592,7 +598,8 @@ public class ConnectionOptionsTest {
         exception
             .getMessage()
             .contains(
-                "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider and OAuth token"));
+                "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider and"
+                    + " OAuth token"));
 
     // Now try to use only an OAuth token.
     builder =
@@ -637,7 +644,8 @@ public class ConnectionOptionsTest {
         exception
             .getMessage()
             .contains(
-                "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider and OAuth token"));
+                "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider and"
+                    + " OAuth token"));
   }
 
   @Test
@@ -942,7 +950,8 @@ public class ConnectionOptionsTest {
           assertEquals(ErrorCode.INVALID_ARGUMENT, e.getErrorCode());
           assertThat(e.getMessage())
               .contains(
-                  "The encoded credentials do not contain a valid Google Cloud credentials JSON string.");
+                  "The encoded credentials do not contain a valid Google Cloud credentials JSON"
+                      + " string.");
         });
   }
 
@@ -999,7 +1008,8 @@ public class ConnectionOptionsTest {
               e.getMessage(),
               e.getMessage()
                   .contains(
-                      "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider and OAuth token"));
+                      "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider"
+                          + " and OAuth token"));
         });
   }
 
@@ -1051,8 +1061,9 @@ public class ConnectionOptionsTest {
             SpannerException.class, () -> ConnectionOptions.newBuilder().setUri(uri).build());
     assertEquals(ErrorCode.FAILED_PRECONDITION, exception.getErrorCode());
     assertEquals(
-        "FAILED_PRECONDITION: credentialsProvider can only be used if the system property ENABLE_CREDENTIALS_PROVIDER has been set to true. "
-            + "Start the application with the JVM command line option -DENABLE_CREDENTIALS_PROVIDER=true",
+        "FAILED_PRECONDITION: credentialsProvider can only be used if the system property"
+            + " ENABLE_CREDENTIALS_PROVIDER has been set to true. Start the application with the"
+            + " JVM command line option -DENABLE_CREDENTIALS_PROVIDER=true",
         exception.getMessage());
   }
 
@@ -1074,7 +1085,8 @@ public class ConnectionOptionsTest {
               e.getMessage(),
               e.getMessage()
                   .contains(
-                      "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider and OAuth token"));
+                      "Specify only one of credentialsUrl, encodedCredentials, credentialsProvider"
+                          + " and OAuth token"));
         });
   }
 
@@ -1210,5 +1222,309 @@ public class ConnectionOptionsTest {
             .setCredentials(NoCredentials.getInstance())
             .build()
             .isEnableApiTracing());
+  }
+
+  @Test
+  public void testExternalHostPatterns() {
+    Matcher matcherWithoutInstance =
+        EXTERNAL_HOST_PATTERN.matcher("cloudspanner://localhost:15000/databases/test-db");
+    assertTrue(matcherWithoutInstance.matches());
+    assertNull(matcherWithoutInstance.group("INSTANCEGROUP"));
+    assertEquals("test-db", matcherWithoutInstance.group("DATABASEGROUP"));
+    Matcher matcherWithProperty =
+        EXTERNAL_HOST_PATTERN.matcher(
+            "cloudspanner://localhost:15000/instances/default/databases/singers-db?usePlainText=true");
+    assertTrue(matcherWithProperty.matches());
+    assertEquals("default", matcherWithProperty.group("INSTANCEGROUP"));
+    assertEquals("singers-db", matcherWithProperty.group("DATABASEGROUP"));
+    Matcher matcherWithoutPort =
+        EXTERNAL_HOST_PATTERN.matcher(
+            "cloudspanner://localhost/instances/default/databases/test-db");
+    assertTrue(matcherWithoutPort.matches());
+    assertEquals("default", matcherWithoutPort.group("INSTANCEGROUP"));
+    assertEquals("test-db", matcherWithoutPort.group("DATABASEGROUP"));
+    assertEquals(
+        "http://localhost:15000",
+        determineHost(
+            matcherWithoutPort,
+            DEFAULT_ENDPOINT,
+            /* autoConfigEmulator= */ true,
+            /* usePlainText= */ true,
+            ImmutableMap.of()));
+    Matcher matcherWithProject =
+        EXTERNAL_HOST_PATTERN.matcher(
+            "cloudspanner://localhost:15000/projects/default/instances/default/databases/singers-db");
+    assertFalse(matcherWithProject.matches());
+    Matcher matcherWithoutHost =
+        EXTERNAL_HOST_PATTERN.matcher("cloudspanner:/instances/default/databases/singers-db");
+    assertFalse(matcherWithoutHost.matches());
+    Matcher matcherWithPrefixSpanner =
+        EXTERNAL_HOST_PATTERN.matcher("spanner://localhost:15000/databases/test-db");
+    assertTrue(matcherWithPrefixSpanner.matches());
+    assertNull(matcherWithPrefixSpanner.group("INSTANCEGROUP"));
+    assertEquals("test-db", matcherWithPrefixSpanner.group("DATABASEGROUP"));
+  }
+
+  @Test
+  public void testBuildWithValidURIWithPrefixSpanner() {
+    ConnectionOptions.Builder builder = ConnectionOptions.newBuilder();
+    builder.setUri(
+        "spanner:/projects/test-project-123/instances/test-instance-123/databases/test-database-123?autocommit=false;readonly=true");
+    builder.setCredentialsUrl(FILE_TEST_PATH);
+    ConnectionOptions options = builder.build();
+    assertThat(options.getHost()).isEqualTo(DEFAULT_HOST);
+    assertThat(options.getProjectId()).isEqualTo("test-project-123");
+    assertThat(options.getInstanceId()).isEqualTo("test-instance-123");
+    assertThat(options.getDatabaseName()).isEqualTo("test-database-123");
+    assertThat(options.getCredentials())
+        .isEqualTo(new CredentialsService().createCredentials(FILE_TEST_PATH));
+    assertThat(options.isAutocommit()).isEqualTo(false);
+    assertThat(options.isReadOnly()).isEqualTo(true);
+  }
+
+  @Test
+  public void testExperimentalHost() {
+    ConnectionOptions.Builder builderWithoutExperimentalHostParam = ConnectionOptions.newBuilder();
+    builderWithoutExperimentalHostParam.setUri(
+        "spanner://localhost:15000/instances/default/databases/singers-db;usePlainText=true");
+    ConnectionOptions optionsWithoutExperimentalHostParam =
+        builderWithoutExperimentalHostParam.build();
+    assertFalse(optionsWithoutExperimentalHostParam.isExperimentalHost());
+    assertEquals(0, optionsWithoutExperimentalHostParam.getSessionPoolOptions().getMinSessions());
+    assertTrue(
+        optionsWithoutExperimentalHostParam.getSessionPoolOptions().getUseMultiplexedSession());
+    assertTrue(
+        optionsWithoutExperimentalHostParam
+            .getSessionPoolOptions()
+            .getUseMultiplexedSessionForRW());
+    assertTrue(
+        optionsWithoutExperimentalHostParam
+            .getSessionPoolOptions()
+            .getUseMultiplexedSessionPartitionedOps());
+
+    ConnectionOptions.Builder builderWithExperimentalHostParam = ConnectionOptions.newBuilder();
+    builderWithExperimentalHostParam.setUri(
+        "spanner://localhost:15000/projects/default/instances/default/databases/singers-db;usePlainText=true;isExperimentalHost=true");
+    ConnectionOptions optionsWithExperimentalHostParam = builderWithExperimentalHostParam.build();
+    assertTrue(optionsWithExperimentalHostParam.isExperimentalHost());
+    assertEquals(0, optionsWithExperimentalHostParam.getSessionPoolOptions().getMinSessions());
+    assertTrue(optionsWithExperimentalHostParam.getSessionPoolOptions().getUseMultiplexedSession());
+    assertTrue(
+        optionsWithExperimentalHostParam.getSessionPoolOptions().getUseMultiplexedSessionForRW());
+    assertTrue(
+        optionsWithExperimentalHostParam
+            .getSessionPoolOptions()
+            .getUseMultiplexedSessionPartitionedOps());
+  }
+
+  @Test
+  public void testEnableDirectAccess() {
+    ConnectionOptions.Builder builderWithoutDirectPathParam = ConnectionOptions.newBuilder();
+    builderWithoutDirectPathParam.setUri(
+        "spanner://localhost:15000/instances/default/databases/singers-db;usePlainText=true");
+    assertNull(builderWithoutDirectPathParam.build().isEnableDirectAccess());
+
+    ConnectionOptions.Builder builderWithDirectPathParamFalse = ConnectionOptions.newBuilder();
+    builderWithDirectPathParamFalse.setUri(
+        "spanner://localhost:15000/instances/default/databases/singers-db;usePlainText=true;enableDirectAccess=false");
+    assertFalse(builderWithDirectPathParamFalse.build().isEnableDirectAccess());
+
+    ConnectionOptions.Builder builderWithDirectPathParam = ConnectionOptions.newBuilder();
+    builderWithDirectPathParam.setUri(
+        "spanner://localhost:15000/projects/default/instances/default/databases/singers-db;usePlainText=true;enableDirectAccess=true");
+    assertTrue(builderWithDirectPathParam.build().isEnableDirectAccess());
+  }
+
+  @Test
+  public void testUniverseDomain() {
+    ConnectionImpl connection = mock(ConnectionImpl.class);
+
+    // No universeDomain
+    AtomicBoolean executedConfigurator = new AtomicBoolean(false);
+    ConnectionOptions optionsWithNoUniverseDomainParam =
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/default/instances/default/databases/singers-db?usePlainText=true")
+            .setConfigurator(
+                optionsBuilder -> {
+                  executedConfigurator.set(true);
+                  SpannerOptions spannerOptions = optionsBuilder.build();
+                  assertEquals("googleapis.com", spannerOptions.getUniverseDomain());
+                  assertEquals("https://spanner.googleapis.com", spannerOptions.getHost());
+                })
+            .build();
+    Spanner spanner = SpannerPool.INSTANCE.getSpanner(optionsWithNoUniverseDomainParam, connection);
+    spanner.close();
+    SpannerPool.INSTANCE.removeConnection(optionsWithNoUniverseDomainParam, connection);
+    assertTrue(executedConfigurator.get());
+
+    // only configuring universal domain
+    executedConfigurator.set(false);
+    ConnectionOptions optionsWithUniverseDomainParam =
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/default/instances/default/databases/singers-db;universeDomain=abc.goog;usePlainText=true")
+            .setConfigurator(
+                optionsBuilder -> {
+                  executedConfigurator.set(true);
+                  SpannerOptions spannerOptions = optionsBuilder.build();
+                  assertEquals("abc.goog", spannerOptions.getUniverseDomain());
+                  assertEquals("https://spanner.abc.goog", spannerOptions.getHost());
+                })
+            .build();
+    spanner = SpannerPool.INSTANCE.getSpanner(optionsWithUniverseDomainParam, connection);
+    spanner.close();
+    SpannerPool.INSTANCE.removeConnection(optionsWithUniverseDomainParam, connection);
+    assertTrue(executedConfigurator.get());
+
+    // configuring both universal domain and host
+    executedConfigurator.set(false);
+    ConnectionOptions optionsWithHostAndUniverseDomainParam =
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner://spanner.abc.goog/projects/default/instances/default/databases/singers-db;universeDomain=abc.goog;usePlainText=true")
+            .setConfigurator(
+                optionsBuilder -> {
+                  executedConfigurator.set(true);
+                  SpannerOptions spannerOptions = optionsBuilder.build();
+                  assertEquals("abc.goog", spannerOptions.getUniverseDomain());
+                  assertEquals("http://spanner.abc.goog", spannerOptions.getHost());
+                })
+            .build();
+    spanner = SpannerPool.INSTANCE.getSpanner(optionsWithHostAndUniverseDomainParam, connection);
+    spanner.close();
+    SpannerPool.INSTANCE.removeConnection(optionsWithHostAndUniverseDomainParam, connection);
+    assertTrue(executedConfigurator.get());
+
+    // configuring both universal domain and host(localhost)
+    executedConfigurator.set(false);
+    ConnectionOptions optionsWithLocalHostAndUniverseDomainParam =
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner://localhost:15000/projects/default/instances/default/databases/singers-db;usePlainText=true;universeDomain=abc.goog")
+            .setConfigurator(
+                optionsBuilder -> {
+                  executedConfigurator.set(true);
+                  SpannerOptions spannerOptions = optionsBuilder.build();
+                  assertEquals("abc.goog", spannerOptions.getUniverseDomain());
+                  assertEquals("http://localhost:15000", spannerOptions.getHost());
+                })
+            .build();
+    spanner =
+        SpannerPool.INSTANCE.getSpanner(optionsWithLocalHostAndUniverseDomainParam, connection);
+    spanner.close();
+    SpannerPool.INSTANCE.removeConnection(optionsWithLocalHostAndUniverseDomainParam, connection);
+    assertTrue(executedConfigurator.get());
+
+    connection.close();
+  }
+
+  @Test
+  public void testEnableDynamicChannelPool() {
+    // Default value
+    assertNull(
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .isEnableDynamicChannelPool());
+    // Enabled
+    assertTrue(
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database?enableDynamicChannelPool=true")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .isEnableDynamicChannelPool());
+  }
+
+  @Test
+  public void testDisableDynamicChannelPool() {
+    assertFalse(
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database?enableDynamicChannelPool=false")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .isEnableDynamicChannelPool());
+  }
+
+  @Test
+  public void testDcpMinChannels() {
+    // Default value
+    assertNull(
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getDcpMinChannels());
+    // Custom value
+    assertEquals(
+        Integer.valueOf(3),
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database?dcpMinChannels=3")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getDcpMinChannels());
+  }
+
+  @Test
+  public void testDcpMaxChannels() {
+    // Default value
+    assertNull(
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getDcpMaxChannels());
+    // Custom value
+    assertEquals(
+        Integer.valueOf(15),
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database?dcpMaxChannels=15")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getDcpMaxChannels());
+  }
+
+  @Test
+  public void testDcpInitialChannels() {
+    // Default value
+    assertNull(
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getDcpInitialChannels());
+    // Custom value
+    assertEquals(
+        Integer.valueOf(5),
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database?dcpInitialChannels=5")
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getDcpInitialChannels());
+  }
+
+  @Test
+  public void testDcpWithAllOptions() {
+    ConnectionOptions options =
+        ConnectionOptions.newBuilder()
+            .setUri(
+                "cloudspanner:/projects/test-project-123/instances/test-instance/databases/test-database"
+                    + "?enableDynamicChannelPool=true;dcpMinChannels=3;dcpMaxChannels=15;dcpInitialChannels=5")
+            .setCredentials(NoCredentials.getInstance())
+            .build();
+    assertTrue(options.isEnableDynamicChannelPool());
+    assertEquals(Integer.valueOf(3), options.getDcpMinChannels());
+    assertEquals(Integer.valueOf(15), options.getDcpMaxChannels());
+    assertEquals(Integer.valueOf(5), options.getDcpInitialChannels());
   }
 }

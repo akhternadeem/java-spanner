@@ -17,7 +17,6 @@
 package com.google.cloud.spanner;
 
 import static com.google.cloud.spanner.BenchmarkingUtilityScripts.collectResults;
-import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -95,7 +94,7 @@ public class MultiplexedSessionsBenchmark extends AbstractLatencyBenchmark {
                   SessionPoolOptions.newBuilder()
                       .setMinSessions(minSessions)
                       .setMaxSessions(maxSessions)
-                      .setWaitForMinSessions(org.threeten.bp.Duration.ofSeconds(20))
+                      .setWaitForMinSessionsDuration(Duration.ofSeconds(20))
                       .setUseMultiplexedSession(true)
                       .build())
               .setHost(SERVER_URL)
@@ -118,9 +117,6 @@ public class MultiplexedSessionsBenchmark extends AbstractLatencyBenchmark {
   @Benchmark
   public void burstQueries(final BenchmarkState server) throws Exception {
     final DatabaseClientImpl client = server.client;
-    SessionPool pool = client.pool;
-    assertThat(pool.totalSessions())
-        .isEqualTo(server.spanner.getOptions().getSessionPoolOptions().getMinSessions());
 
     ListeningScheduledExecutorService service =
         MoreExecutors.listeningDecorator(Executors.newScheduledThreadPool(PARALLEL_THREADS));
@@ -132,7 +128,7 @@ public class MultiplexedSessionsBenchmark extends AbstractLatencyBenchmark {
     collectResultsAndPrint(service, results, TOTAL_READS_PER_RUN);
   }
 
-  private List<java.time.Duration> runBenchmarksForSingleUseQueries(
+  private List<Duration> runBenchmarksForSingleUseQueries(
       final BenchmarkState server, int numberOfOperations) {
     List<Duration> results = new ArrayList<>(numberOfOperations);
     // Execute one query to make sure everything has been warmed up.
@@ -150,7 +146,7 @@ public class MultiplexedSessionsBenchmark extends AbstractLatencyBenchmark {
     }
   }
 
-  private java.time.Duration executeSingleUseQuery(final BenchmarkState server) {
+  private Duration executeSingleUseQuery(final BenchmarkState server) {
     Stopwatch watch = Stopwatch.createStarted();
 
     try (ResultSet rs = server.client.singleUse().executeQuery(getRandomisedReadStatement())) {
@@ -175,7 +171,7 @@ public class MultiplexedSessionsBenchmark extends AbstractLatencyBenchmark {
       List<ListenableFuture<List<Duration>>> results,
       int numOperationsPerThread)
       throws Exception {
-    final List<java.time.Duration> collectResults =
+    final List<Duration> collectResults =
         collectResults(
             service, results, numOperationsPerThread * PARALLEL_THREADS, Duration.ofMinutes(60));
     printResults(collectResults);

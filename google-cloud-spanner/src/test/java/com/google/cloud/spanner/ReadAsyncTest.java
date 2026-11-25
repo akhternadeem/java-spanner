@@ -201,9 +201,9 @@ public class ReadAsyncTest {
   }
 
   @Test
-  public void tableNotFound() throws Exception {
+  public void tableNotFound() {
     mockSpanner.setStreamingReadExecutionTime(
-        SimulatedExecutionTime.ofException(
+        SimulatedExecutionTime.ofStickyException(
             Status.NOT_FOUND
                 .withDescription("Table not found: BadTableName")
                 .asRuntimeException()));
@@ -228,9 +228,6 @@ public class ReadAsyncTest {
     final SettableApiFuture<Boolean> finished = SettableApiFuture.create();
     ApiFuture<Void> closed;
     DatabaseClientImpl clientImpl = (DatabaseClientImpl) client;
-
-    // There should currently not be any sessions checked out of the pool.
-    assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(0);
 
     final CountDownLatch dataReceived = new CountDownLatch(1);
     try (ReadOnlyTransaction tx = client.readOnlyTransaction()) {
@@ -262,22 +259,6 @@ public class ReadAsyncTest {
       // Wait until at least one row has been fetched. At that moment there should be one session
       // checked out.
       dataReceived.await();
-
-      if (isMultiplexedSessionsEnabled()) {
-        assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(0);
-      } else {
-        assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(1);
-      }
-    }
-    // The read-only transaction is now closed, but the ready callback will continue to receive
-    // data. As it tries to put the data into a synchronous queue and the underlying buffer can also
-    // only hold 1 row, the async result set has not yet finished. The read-only transaction will
-    // release the session back into the pool when all async statements have finished. The number of
-    // sessions in use is therefore still 1.
-    if (isMultiplexedSessionsEnabled()) {
-      assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(0);
-    } else {
-      assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(1);
     }
     List<String> resultList = new ArrayList<>();
     do {
@@ -285,10 +266,7 @@ public class ReadAsyncTest {
     } while (!finished.isDone() || results.size() > 0);
     assertThat(finished.get()).isTrue();
     assertThat(resultList).containsExactly("k1", "k2", "k3");
-    // The session will be released back into the pool by the asynchronous result set when it has
-    // returned all rows. As this is done in the background, it could take a couple of milliseconds.
     closed.get();
-    assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(0);
   }
 
   @Test

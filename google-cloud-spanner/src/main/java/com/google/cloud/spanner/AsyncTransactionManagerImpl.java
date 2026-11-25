@@ -55,7 +55,7 @@ final class AsyncTransactionManagerImpl
 
   @Override
   public void close() {
-    closeAsync();
+    SpannerApiFutures.get(closeAsync());
   }
 
   @Override
@@ -76,14 +76,27 @@ final class AsyncTransactionManagerImpl
   @Override
   public TransactionContextFutureImpl beginAsync() {
     Preconditions.checkState(txn == null, "begin can only be called once");
-    return new TransactionContextFutureImpl(this, internalBeginAsync(true));
+    return new TransactionContextFutureImpl(this, internalBeginAsync(true, ByteString.EMPTY));
   }
 
-  private ApiFuture<TransactionContext> internalBeginAsync(boolean firstAttempt) {
+  @Override
+  public TransactionContextFutureImpl beginAsync(AbortedException exception) {
+    Preconditions.checkState(txn == null, "begin can only be called once");
+    Preconditions.checkNotNull(exception, "AbortedException from the previous attempt is required");
+    ByteString abortedTransactionId =
+        exception.getTransactionID() != null ? exception.getTransactionID() : ByteString.EMPTY;
+    return new TransactionContextFutureImpl(this, internalBeginAsync(true, abortedTransactionId));
+  }
+
+  private ApiFuture<TransactionContext> internalBeginAsync(
+      boolean firstAttempt, ByteString abortedTransactionID) {
     txnState = TransactionState.STARTED;
 
     // Determine the latest transactionId when using a multiplexed session.
     ByteString multiplexedSessionPreviousTransactionId = ByteString.EMPTY;
+    if (firstAttempt && session.getIsMultiplexed()) {
+      multiplexedSessionPreviousTransactionId = abortedTransactionID;
+    }
     if (txn != null && session.getIsMultiplexed() && !firstAttempt) {
       // Use the current transactionId if available, otherwise fallback to the previous aborted
       // transactionId.
@@ -93,7 +106,7 @@ final class AsyncTransactionManagerImpl
 
     txn =
         session.newTransaction(
-            options, /* previousTransactionId = */ multiplexedSessionPreviousTransactionId);
+            options, /* previousTransactionId= */ multiplexedSessionPreviousTransactionId);
     if (firstAttempt) {
       session.setActive(this);
     }
@@ -110,7 +123,7 @@ final class AsyncTransactionManagerImpl
           @Override
           public void onFailure(Throwable t) {
             onError(t);
-            res.setException(SpannerExceptionFactory.newSpannerException(t));
+            res.setException(SpannerExceptionFactory.asSpannerException(t));
           }
 
           @Override
@@ -152,12 +165,19 @@ final class AsyncTransactionManagerImpl
               txnState = TransactionState.ABORTED;
             } else {
               txnState = TransactionState.COMMIT_FAILED;
+              if (span != null) {
+                span.setStatus(t);
+                span.end();
+              }
               commitResponse.setException(t);
             }
           }
 
           @Override
           public void onSuccess(CommitResponse result) {
+            if (span != null) {
+              span.end();
+            }
             commitResponse.set(result);
           }
         },
@@ -177,13 +197,21 @@ final class AsyncTransactionManagerImpl
           ignored -> ApiFutures.immediateFuture(null),
           MoreExecutors.directExecutor());
     } finally {
+      if (span != null) {
+        span.addAnnotation("Transaction rolled back");
+        span.end();
+      }
       txnState = TransactionState.ROLLED_BACK;
     }
   }
 
   @Override
   public TransactionContextFuture resetForRetryAsync() {
-    return new TransactionContextFutureImpl(this, internalBeginAsync(false));
+    if (txn == null || !txn.isAborted() && txnState != TransactionState.ABORTED) {
+      throw new IllegalStateException(
+          "resetForRetry can only be called if the previous attempt aborted");
+    }
+    return new TransactionContextFutureImpl(this, internalBeginAsync(false, ByteString.EMPTY));
   }
 
   @Override
@@ -193,6 +221,9 @@ final class AsyncTransactionManagerImpl
 
   @Override
   public ApiFuture<CommitResponse> getCommitResponse() {
+    Preconditions.checkState(
+        txnState == TransactionState.COMMITTED,
+        "getCommitResponse can only be invoked if the transaction was successfully committed");
     return commitResponse;
   }
 

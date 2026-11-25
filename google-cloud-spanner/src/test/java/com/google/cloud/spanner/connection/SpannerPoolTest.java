@@ -44,6 +44,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
 import java.util.logging.StreamHandler;
@@ -211,7 +212,8 @@ public class SpannerPoolTest {
       currentLogger = currentLogger.getParent();
     }
     if (handlers.length == 0) {
-      throw new IllegalStateException("no handlers found for logger");
+      handlers = new Handler[1];
+      handlers[0] = new ConsoleHandler();
     }
     customLogHandler = new StreamHandler(logCapturingStream, handlers[0].getFormatter());
     useParentHandlers = log.getUseParentHandlers();
@@ -267,6 +269,7 @@ public class SpannerPoolTest {
 
   @Test
   public void testCloseSpanner() {
+    attachLogCapturer();
     SpannerPool pool = createSubjectAndMocks();
     Spanner spanner = pool.getSpanner(options1, connection1);
     // verify that closing is not possible until all connections have been removed
@@ -284,7 +287,8 @@ public class SpannerPoolTest {
     verify(spanner).close();
 
     final String expectedLogPart =
-        "WARNING: There is/are 1 connection(s) still open. Close all connections before stopping the application";
+        "WARNING: There is/are 1 connection(s) still open. Close all connections before stopping"
+            + " the application";
     Spanner spanner2 = pool.getSpanner(options1, connection1);
     pool.checkAndCloseSpanners(CheckAndCloseSpannersMode.WARN);
     String capturedLog = getTestCapturedLog();
@@ -630,5 +634,141 @@ public class SpannerPoolTest {
     spanner1 = pool.getSpanner(optionsOpenTelemetry1, connection1);
     spanner2 = pool.getSpanner(optionsOpenTelemetry3, connection2);
     assertNotEquals(spanner1, spanner2);
+  }
+
+  @Test
+  public void testDynamicChannelPoolSettings() {
+    SpannerPoolKey keyWithoutDcp =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri("cloudspanner:/projects/p/instances/i/databases/d")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+    SpannerPoolKey keyWithDcpEnabled =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=true")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+    SpannerPoolKey keyWithDcpDisabled =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=false")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+    SpannerPoolKey keyWithDcpAndMinChannels =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=true;dcpMinChannels=3")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+    SpannerPoolKey keyWithDcpAndMaxChannels =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=true;dcpMaxChannels=15")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+    SpannerPoolKey keyWithDcpAndInitialChannels =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=true;dcpInitialChannels=5")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+
+    // DCP settings should affect the SpannerPoolKey
+    assertNotEquals(keyWithoutDcp, keyWithDcpEnabled);
+    assertNotEquals(keyWithoutDcp, keyWithDcpDisabled);
+    assertNotEquals(keyWithDcpEnabled, keyWithDcpDisabled);
+
+    // Different channel settings should create different keys
+    assertNotEquals(keyWithDcpEnabled, keyWithDcpAndMinChannels);
+    assertNotEquals(keyWithDcpEnabled, keyWithDcpAndMaxChannels);
+    assertNotEquals(keyWithDcpEnabled, keyWithDcpAndInitialChannels);
+
+    // Same configuration should create equal keys
+    assertEquals(
+        keyWithDcpEnabled,
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=true")
+                .setCredentials(NoCredentials.getInstance())
+                .build()));
+    assertEquals(
+        keyWithDcpAndMinChannels,
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=true;dcpMinChannels=3")
+                .setCredentials(NoCredentials.getInstance())
+                .build()));
+  }
+
+  @Test
+  public void testDynamicChannelPoolWithAllSettings() {
+    SpannerPoolKey keyWithAllDcpSettings =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d"
+                        + "?enableDynamicChannelPool=true;dcpMinChannels=3;dcpMaxChannels=15;dcpInitialChannels=5")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+    SpannerPoolKey keyWithDifferentMaxChannels =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d"
+                        + "?enableDynamicChannelPool=true;dcpMinChannels=3;dcpMaxChannels=20;dcpInitialChannels=5")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+
+    assertNotEquals(keyWithAllDcpSettings, keyWithDifferentMaxChannels);
+
+    // Same configuration should be equal
+    assertEquals(
+        keyWithAllDcpSettings,
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d"
+                        + "?enableDynamicChannelPool=true;dcpMinChannels=3;dcpMaxChannels=15;dcpInitialChannels=5")
+                .setCredentials(NoCredentials.getInstance())
+                .build()));
+  }
+
+  @Test
+  public void testExplicitlyDisabledDynamicChannelPool() {
+    SpannerPoolKey keyWithoutDcpSetting =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri("cloudspanner:/projects/p/instances/i/databases/d")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+    SpannerPoolKey keyWithDcpExplicitlyDisabled =
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=false")
+                .setCredentials(NoCredentials.getInstance())
+                .build());
+
+    // Keys should be different because one has explicit false and one has null (default)
+    assertNotEquals(keyWithoutDcpSetting, keyWithDcpExplicitlyDisabled);
+
+    // Verify the explicit false setting is preserved
+    assertEquals(
+        keyWithDcpExplicitlyDisabled,
+        SpannerPoolKey.of(
+            ConnectionOptions.newBuilder()
+                .setUri(
+                    "cloudspanner:/projects/p/instances/i/databases/d?enableDynamicChannelPool=false")
+                .setCredentials(NoCredentials.getInstance())
+                .build()));
   }
 }

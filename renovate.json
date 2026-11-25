@@ -23,33 +23,12 @@
     {
       "customType": "regex",
       "fileMatch": [
-        "^.kokoro/presubmit/graalvm-native.*.cfg$"
-      ],
-      "matchStrings": [
-        "value: \"gcr.io/cloud-devrel-public-resources/graalvm.*:(?<currentValue>.*?)\""
-      ],
-      "depNameTemplate": "com.google.cloud:sdk-platform-java-config",
-      "datasourceTemplate": "maven"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
         "^.github/workflows/unmanaged_dependency_check.yaml$"
       ],
       "matchStrings": [
         "uses: googleapis/sdk-platform-java/java-shared-dependencies/unmanaged-dependency-check@google-cloud-shared-dependencies/v(?<currentValue>.+?)\\n"
       ],
       "depNameTemplate": "com.google.cloud:sdk-platform-java-config",
-      "datasourceTemplate": "maven"
-    },
-    {
-      "fileMatch": [
-        "^.github/workflows/hermetic_library_generation.yaml$"
-      ],
-      "matchStrings": [
-        "uses: googleapis/sdk-platform-java/.github/scripts@v(?<currentValue>.+?)\\n"
-      ],
-      "depNameTemplate": "com.google.api:gapic-generator-java",
       "datasourceTemplate": "maven"
     }
   ],
@@ -73,7 +52,6 @@
         "^org.jacoco:",
         "^org.codehaus.mojo:",
         "^org.sonatype.plugins:",
-        "^com.coveo:",
         "^com.google.cloud:google-cloud-shared-config"
       ],
       "semanticCommitType": "build",
@@ -111,15 +89,10 @@
         "^com.fasterxml.jackson.core"
       ],
       "groupName": "jackson dependencies"
-    },
-    {
-      "matchPackagePatterns": [
-        "^com.google.api:gapic-generator-java",
-        "^com.google.cloud:sdk-platform-java-config"
-      ],
-      "groupName": "SDK platform Java dependencies"
     }
   ],
   "semanticCommits": true,
-  "dependencyDashboard": true
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0
 }

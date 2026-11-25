@@ -16,10 +16,12 @@
 
 package com.google.cloud.spanner.it;
 
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 import com.google.api.gax.core.FixedCredentialsProvider;
@@ -46,7 +48,6 @@ import com.google.cloud.spanner.SpannerOptions;
 import com.google.common.base.Strings;
 import com.google.longrunning.OperationsClient;
 import com.google.longrunning.OperationsSettings;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,6 +80,7 @@ public class ITVPCNegativeTest {
 
   @BeforeClass
   public static void setUpClass() {
+    assumeFalse("Not applicable for experimental host", isExperimentalHost());
     assumeTrue(
         "To run tests, GOOGLE_CLOUD_TESTS_IN_VPCSC environment variable needs to be set to True",
         IN_VPCSC_TEST != null && IN_VPCSC_TEST.equalsIgnoreCase("true"));
@@ -349,9 +351,7 @@ public class ITVPCNegativeTest {
                 .setTransportChannelProvider(InstantiatingGrpcChannelProvider.newBuilder().build())
                 .setEndpoint("spanner.googleapis.com:443")
                 .setCredentialsProvider(
-                    FixedCredentialsProvider.create(
-                        GoogleCredentials.fromStream(
-                            new FileInputStream(System.getenv("GOOGLE_APPLICATION_CREDENTIALS")))))
+                    FixedCredentialsProvider.create(GoogleCredentials.getApplicationDefault()))
                 .build())) {
       client.listOperations(backupId.getName() + "/operations", "");
       fail("Expected PermissionDeniedException");

@@ -161,7 +161,16 @@ public class ITTransactionManagerAsyncTest {
         } catch (ExecutionException e) {
           assertThat(e.getCause()).isInstanceOf(SpannerException.class);
           SpannerException se = (SpannerException) e.getCause();
-          assertThat(se.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND);
+          if (env.getTestHelper()
+              .getOptions()
+              .getSessionPoolOptions()
+              .getUseMultiplexedSessionForRW()) {
+            // Backend currently returns INVALID_ARGUMENT, however this will be changed to NOT_FOUND
+            // in future.
+            assertThat(se.getErrorCode()).isAnyOf(ErrorCode.NOT_FOUND, ErrorCode.INVALID_ARGUMENT);
+          } else {
+            assertThat(se.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND);
+          }
           // expected
           break;
         }
@@ -210,7 +219,8 @@ public class ITTransactionManagerAsyncTest {
   }
 
   @Ignore(
-      "Cloud Spanner now seems to return CANCELLED instead of ABORTED when a transaction is invalidated by a later transaction in the same session")
+      "Cloud Spanner now seems to return CANCELLED instead of ABORTED when a transaction is"
+          + " invalidated by a later transaction in the same session")
   @Test
   public void testAbortAndRetry() throws InterruptedException, ExecutionException {
     assumeFalse(

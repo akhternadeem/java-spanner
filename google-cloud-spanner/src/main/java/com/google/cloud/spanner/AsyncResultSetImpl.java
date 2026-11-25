@@ -91,6 +91,7 @@ class AsyncResultSetImpl extends ForwardingStructReader
 
   private final BlockingDeque<Struct> buffer;
   private Struct currentRow;
+
   /** Supplies the underlying synchronous {@link ResultSet} that will be producing the rows. */
   private final Supplier<ResultSet> delegateResultSet;
 
@@ -112,9 +113,9 @@ class AsyncResultSetImpl extends ForwardingStructReader
    * Listeners that will be called when the {@link AsyncResultSetImpl} has finished fetching all
    * rows and any underlying transaction or session can be closed.
    */
-  private Collection<Runnable> listeners = new LinkedList<>();
+  private final Collection<Runnable> listeners = new LinkedList<>();
 
-  private State state = State.INITIALIZED;
+  private volatile State state = State.INITIALIZED;
 
   /** This variable indicates that produce rows thread is initiated */
   private volatile boolean produceRowsInitiated;
@@ -137,11 +138,13 @@ class AsyncResultSetImpl extends ForwardingStructReader
    * production of rows that are put into the buffer is only paused once the buffer is full.
    */
   private volatile CountDownLatch pausedLatch = new CountDownLatch(1);
+
   /**
    * This variable is used to pause the producer when the buffer is full and the consumer needs some
    * time to catch up.
    */
   private volatile CountDownLatch bufferConsumptionLatch = new CountDownLatch(0);
+
   /**
    * This variable is used to pause the producer when all rows have been put into the buffer, but
    * the consumer (the callback) has not yet received and processed all rows.
@@ -498,10 +501,12 @@ class AsyncResultSetImpl extends ForwardingStructReader
   }
 
   private void initiateProduceRows() {
-    if (this.state == State.STREAMING_INITIALIZED) {
-      this.state = State.RUNNING;
+    synchronized (monitor) {
+      if (this.state == State.STREAMING_INITIALIZED) {
+        this.state = State.RUNNING;
+      }
+      produceRowsInitiated = true;
     }
-    produceRowsInitiated = true;
     this.service.execute(new ProduceRowsRunnable());
   }
 

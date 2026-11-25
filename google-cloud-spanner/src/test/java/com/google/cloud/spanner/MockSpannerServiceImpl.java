@@ -20,7 +20,6 @@ import com.google.api.gax.grpc.testing.MockGrpcService;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.spanner.AbstractResultSet.LazyByteArray;
-import com.google.cloud.spanner.SessionPool.SessionPoolTransactionContext;
 import com.google.cloud.spanner.TransactionRunnerImpl.TransactionContextImpl;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -62,6 +61,7 @@ import com.google.spanner.v1.PartitionQueryRequest;
 import com.google.spanner.v1.PartitionReadRequest;
 import com.google.spanner.v1.PartitionResponse;
 import com.google.spanner.v1.ReadRequest;
+import com.google.spanner.v1.RequestOptions;
 import com.google.spanner.v1.ResultSet;
 import com.google.spanner.v1.ResultSetMetadata;
 import com.google.spanner.v1.ResultSetStats;
@@ -86,6 +86,7 @@ import io.grpc.protobuf.ProtoUtils;
 import io.grpc.protobuf.lite.ProtoLiteUtils;
 import io.grpc.stub.StreamObserver;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -112,7 +113,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
-import org.threeten.bp.Instant;
 
 /**
  * In-process mock implementation of a Cloud Spanner server. The user must specify the results the
@@ -300,7 +300,7 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
     /** Creates a result for the query that detects the dialect that is used for the database. */
     public static StatementResult detectDialectResult(Dialect resultDialect) {
       return StatementResult.query(
-          SessionPool.DETERMINE_DIALECT_STATEMENT,
+          MultiplexedSessionDatabaseClient.DETERMINE_DIALECT_STATEMENT,
           ResultSet.newBuilder()
               .setMetadata(
                   ResultSetMetadata.newBuilder()
@@ -353,7 +353,8 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
       Preconditions.checkNotNull(columns);
       Preconditions.checkArgument(
           isValidKeySet(keySet),
-          "Currently only KeySet.all() and KeySet.singleKey(Key.of()) are supported for read statements");
+          "Currently only KeySet.all() and KeySet.singleKey(Key.of()) are supported for read"
+              + " statements");
       StringBuilder builder = new StringBuilder("SELECT ");
       boolean first = true;
       for (String col : columns) {
@@ -540,15 +541,15 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
         boolean stickyGlobalExceptions,
         CountDownLatch freezeLock) {
       Uninterruptibles.awaitUninterruptibly(freezeLock);
-      checkException(globalExceptions, stickyGlobalExceptions);
-      if (streamIndices.isEmpty()) {
-        checkException(this.exceptions, stickyException);
-      }
       if (minimumExecutionTime > 0 || randomExecutionTime > 0) {
         Uninterruptibles.sleepUninterruptibly(
             (randomExecutionTime == 0 ? 0 : RANDOM.nextInt(randomExecutionTime))
                 + minimumExecutionTime,
             TimeUnit.MILLISECONDS);
+      }
+      checkException(globalExceptions, stickyGlobalExceptions);
+      if (streamIndices.isEmpty()) {
+        checkException(this.exceptions, stickyException);
       }
     }
 
@@ -577,10 +578,12 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
 
   private final Random random = new Random();
   private double abortProbability = 0.0010D;
+
   /**
-   * Flip this switch to true if you want the {@link SessionPool#DETERMINE_DIALECT_STATEMENT}
-   * statement to be included in the recorded requests on the mock server. It is ignored by default
-   * to prevent tests that do not expect this request to suddenly start failing.
+   * Flip this switch to true if you want the {@link
+   * MultiplexedSessionDatabaseClient#DETERMINE_DIALECT_STATEMENT} statement to be included in the
+   * recorded requests on the mock server. It is ignored by default to prevent tests that do not
+   * expect this request to suddenly start failing.
    */
   private boolean includeDetermineDialectStatementInRequests = false;
 
@@ -606,7 +609,7 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
   private ConcurrentMap<ByteString, Boolean> commitRetryTransactions = new ConcurrentHashMap<>();
   private final AtomicBoolean abortNextTransaction = new AtomicBoolean();
   private final AtomicBoolean abortNextStatement = new AtomicBoolean();
-  private final AtomicBoolean ignoreNextInlineBeginRequest = new AtomicBoolean();
+  private final AtomicBoolean ignoreInlineBeginRequest = new AtomicBoolean();
   private ConcurrentMap<String, AtomicLong> transactionCounters = new ConcurrentHashMap<>();
   private ConcurrentMap<String, List<ByteString>> partitionTokens = new ConcurrentHashMap<>();
   private ConcurrentMap<ByteString, Instant> transactionLastUsed = new ConcurrentHashMap<>();
@@ -727,7 +730,8 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
           .withDescription(
               String.format(
                   "There is no result registered for the statement: %s\n"
-                      + "Call TestSpannerImpl#addStatementResult(StatementResult) before executing the statement.",
+                      + "Call TestSpannerImpl#addStatementResult(StatementResult) before executing"
+                      + " the statement.",
                   statement.toString()))
           .asRuntimeException();
     }
@@ -742,9 +746,10 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
   }
 
   /**
-   * Set this to true if you want the {@link SessionPool#DETERMINE_DIALECT_STATEMENT} statement to
-   * be included in the recorded requests on the mock server. It is ignored by default to prevent
-   * tests that do not expect this request to suddenly start failing.
+   * Set this to true if you want the {@link
+   * MultiplexedSessionDatabaseClient#DETERMINE_DIALECT_STATEMENT} statement to be included in the
+   * recorded requests on the mock server. It is ignored by default to prevent tests that do not
+   * expect this request to suddenly start failing.
    */
   public void setIncludeDetermineDialectStatementInRequests(boolean include) {
     this.includeDetermineDialectStatementInRequests = include;
@@ -756,9 +761,6 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
    */
   public void abortTransaction(TransactionContext transactionContext) {
     Preconditions.checkNotNull(transactionContext);
-    if (transactionContext instanceof SessionPoolTransactionContext) {
-      transactionContext = ((SessionPoolTransactionContext) transactionContext).delegate;
-    }
     if (transactionContext instanceof TransactionContextImpl) {
       TransactionContextImpl impl = (TransactionContextImpl) transactionContext;
       ByteString id =
@@ -789,8 +791,8 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
     }
   }
 
-  public void ignoreNextInlineBeginRequest() {
-    ignoreNextInlineBeginRequest.set(true);
+  public void setIgnoreInlineBeginRequest(boolean ignore) {
+    ignoreInlineBeginRequest.set(ignore);
   }
 
   public void freeze() {
@@ -1062,7 +1064,7 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
                     .setMetadata(
                         ResultSetMetadata.newBuilder()
                             .setTransaction(
-                                ignoreNextInlineBeginRequest.getAndSet(false)
+                                ignoreInlineBeginRequest.get()
                                     ? Transaction.getDefaultInstance()
                                     : Transaction.newBuilder().setId(transactionId).build())
                             .build());
@@ -1092,10 +1094,9 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
     ResultSetMetadata metadata = resultSet.getMetadata();
     if (transactionId != null) {
       metadata =
-          metadata
-              .toBuilder()
+          metadata.toBuilder()
               .setTransaction(
-                  ignoreNextInlineBeginRequest.getAndSet(false)
+                  ignoreInlineBeginRequest.get()
                       ? Transaction.getDefaultInstance()
                       : Transaction.newBuilder().setId(transactionId).build())
               .build();
@@ -1131,7 +1132,8 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
       if (isPartitionedDmlTransaction(transactionId)) {
         throw Status.FAILED_PRECONDITION
             .withDescription(
-                "This transaction is a partitioned DML transaction and cannot be used for batch DML updates.")
+                "This transaction is a partitioned DML transaction and cannot be used for batch DML"
+                    + " updates.")
             .asRuntimeException();
       }
       simulateAbort(session, transactionId);
@@ -1196,7 +1198,7 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
                 .setMetadata(
                     ResultSetMetadata.newBuilder()
                         .setTransaction(
-                            ignoreNextInlineBeginRequest.getAndSet(false)
+                            ignoreInlineBeginRequest.get()
                                 ? Transaction.getDefaultInstance()
                                 : Transaction.newBuilder().setId(transactionId).build())
                         .build())
@@ -1219,7 +1221,9 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
   public void executeStreamingSql(
       ExecuteSqlRequest request, StreamObserver<PartialResultSet> responseObserver) {
     if (includeDetermineDialectStatementInRequests
-        || !request.getSql().equals(SessionPool.DETERMINE_DIALECT_STATEMENT.getSql())) {
+        || !request
+            .getSql()
+            .equals(MultiplexedSessionDatabaseClient.DETERMINE_DIALECT_STATEMENT.getSql())) {
       requests.add(request);
     }
     Preconditions.checkNotNull(request.getSession());
@@ -1241,7 +1245,13 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
             throw firstRes.getException();
           case UPDATE_COUNT:
             returnPartialResultSet(
-                session, 0L, !isPartitioned, responseObserver, request.getTransaction(), false);
+                session,
+                0L,
+                !isPartitioned,
+                responseObserver,
+                request.getTransaction(),
+                transactionId,
+                false);
             break;
           case RESULT_SET:
           default:
@@ -1286,7 +1296,8 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
               res.getUpdateCount(),
               !isPartitioned,
               responseObserver,
-              request.getTransaction());
+              request.getTransaction(),
+              transactionId);
           break;
         default:
           throw new IllegalStateException("Unknown result type: " + res.getType());
@@ -1326,6 +1337,12 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
                 break;
               case DATE:
                 builder.bind(fieldName).toDateArray(null);
+                break;
+              case UUID:
+                builder.bind(fieldName).toUuidArray(null);
+                break;
+              case INTERVAL:
+                builder.bind(fieldName).toIntervalArray(null);
                 break;
               case FLOAT32:
                 builder.bind(fieldName).toFloat32Array((Iterable<Float>) null);
@@ -1372,6 +1389,12 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
             break;
           case DATE:
             builder.bind(fieldName).to((Date) null);
+            break;
+          case UUID:
+            builder.bind(fieldName).to((UUID) null);
+            break;
+          case INTERVAL:
+            builder.bind(fieldName).to((Interval) null);
             break;
           case FLOAT32:
             builder.bind(fieldName).to((Float) null);
@@ -1440,6 +1463,22 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
                         (Iterable<Date>)
                             GrpcStruct.decodeArrayValue(
                                 com.google.cloud.spanner.Type.date(), value.getListValue()));
+                break;
+              case UUID:
+                builder
+                    .bind(fieldName)
+                    .toUuidArray(
+                        (Iterable<UUID>)
+                            GrpcStruct.decodeArrayValue(
+                                com.google.cloud.spanner.Type.uuid(), value.getListValue()));
+                break;
+              case INTERVAL:
+                builder
+                    .bind(fieldName)
+                    .toIntervalArray(
+                        (Iterable<Interval>)
+                            GrpcStruct.decodeArrayValue(
+                                com.google.cloud.spanner.Type.interval(), value.getListValue()));
                 break;
               case FLOAT32:
                 builder
@@ -1531,6 +1570,12 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
             break;
           case DATE:
             builder.bind(fieldName).to(Date.parseDate(value.getStringValue()));
+            break;
+          case UUID:
+            builder.bind(fieldName).to(UUID.fromString(value.getStringValue()));
+            break;
+          case INTERVAL:
+            builder.bind(fieldName).to(Interval.parseFromString(value.getStringValue()));
             break;
           case FLOAT32:
             builder.bind(fieldName).to((float) value.getNumberValue());
@@ -1726,10 +1771,9 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
       metadata = metadata.toBuilder().setTransaction(transaction).build();
     } else {
       metadata =
-          metadata
-              .toBuilder()
+          metadata.toBuilder()
               .setTransaction(
-                  ignoreNextInlineBeginRequest.getAndSet(false)
+                  ignoreInlineBeginRequest.get()
                       ? Transaction.getDefaultInstance()
                       : Transaction.newBuilder().setId(transactionId).build())
               .build();
@@ -1761,8 +1805,10 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
       Long updateCount,
       boolean exact,
       StreamObserver<PartialResultSet> responseObserver,
-      TransactionSelector transaction) {
-    returnPartialResultSet(session, updateCount, exact, responseObserver, transaction, true);
+      TransactionSelector transactionSelector,
+      ByteString transactionId) {
+    returnPartialResultSet(
+        session, updateCount, exact, responseObserver, transactionSelector, transactionId, true);
   }
 
   private void returnPartialResultSet(
@@ -1770,23 +1816,19 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
       Long updateCount,
       boolean exact,
       StreamObserver<PartialResultSet> responseObserver,
-      TransactionSelector transaction,
+      TransactionSelector transactionSelector,
+      ByteString transactionId,
       boolean complete) {
-    Field field =
-        Field.newBuilder()
-            .setName("UPDATE_COUNT")
-            .setType(Type.newBuilder().setCode(TypeCode.INT64).build())
-            .build();
     if (exact) {
       responseObserver.onNext(
           PartialResultSet.newBuilder()
               .setMetadata(
                   ResultSetMetadata.newBuilder()
-                      .setRowType(StructType.newBuilder().addFields(field).build())
+                      .setRowType(StructType.newBuilder().build())
                       .setTransaction(
-                          ignoreNextInlineBeginRequest.getAndSet(false)
+                          ignoreInlineBeginRequest.get() || !transactionSelector.hasBegin()
                               ? Transaction.getDefaultInstance()
-                              : Transaction.newBuilder().setId(transaction.getId()).build())
+                              : Transaction.newBuilder().setId(transactionId).build())
                       .build())
               .setStats(ResultSetStats.newBuilder().setRowCountExact(updateCount).build())
               .build());
@@ -1795,11 +1837,11 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
           PartialResultSet.newBuilder()
               .setMetadata(
                   ResultSetMetadata.newBuilder()
-                      .setRowType(StructType.newBuilder().addFields(field).build())
+                      .setRowType(StructType.newBuilder().build())
                       .setTransaction(
-                          ignoreNextInlineBeginRequest.getAndSet(false)
+                          ignoreInlineBeginRequest.get() || !transactionSelector.hasBegin()
                               ? Transaction.getDefaultInstance()
-                              : Transaction.newBuilder().setId(transaction.getId()).build())
+                              : Transaction.newBuilder().setId(transactionId).build())
                       .build())
               .setStats(ResultSetStats.newBuilder().setRowCountLowerBound(updateCount).build())
               .build());
@@ -1829,7 +1871,7 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
         transactionId = null;
         break;
       case BEGIN:
-        transactionId = beginTransaction(session, tx.getBegin(), null).getId();
+        transactionId = beginTransaction(session, tx.getBegin(), null, null).getId();
         break;
       case ID:
         Transaction transaction = transactions.get(tx.getId());
@@ -1895,7 +1937,8 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
       beginTransactionExecutionTime.simulateExecutionTime(
           exceptions, stickyGlobalExceptions, freezeLock);
       Transaction transaction =
-          beginTransaction(session, request.getOptions(), request.getMutationKey());
+          beginTransaction(
+              session, request.getOptions(), request.getMutationKey(), request.getRequestOptions());
       responseObserver.onNext(transaction);
       responseObserver.onCompleted();
     } catch (StatusRuntimeException t) {
@@ -1906,7 +1949,10 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
   }
 
   private Transaction beginTransaction(
-      Session session, TransactionOptions options, com.google.spanner.v1.Mutation mutationKey) {
+      Session session,
+      TransactionOptions options,
+      com.google.spanner.v1.Mutation mutationKey,
+      RequestOptions requestOptions) {
     ByteString transactionId = generateTransactionName(session.getName());
     Transaction.Builder builder = Transaction.newBuilder().setId(transactionId);
     if (options != null && options.getModeCase() == ModeCase.READ_ONLY) {
@@ -1914,18 +1960,24 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
     }
     if (session.getMultiplexed()
         && options.getModeCase() == ModeCase.READ_WRITE
-        && mutationKey != null) {
+        && mutationKey != null
+        && mutationKey != com.google.spanner.v1.Mutation.getDefaultInstance()) {
       // Mutation only case in a read-write transaction.
       builder.setPrecommitToken(getTransactionPrecommitToken(transactionId));
     }
     Transaction transaction = builder.build();
     transactions.put(transaction.getId(), transaction);
-    transactionsStarted.add(transaction.getId());
+    // TODO: remove once UNIMPLEMENTED error is not thrown for read-write mux
+    // Do not consider the transaction if this request was from background thread
+    if (requestOptions == null
+        || !requestOptions.getTransactionTag().equals("multiplexed-rw-background-begin-txn")) {
+      transactionsStarted.add(transaction.getId());
+      if (abortNextTransaction.getAndSet(false)) {
+        markAbortedTransaction(transaction.getId());
+      }
+    }
     isPartitionedDmlTransaction.put(
         transaction.getId(), options.getModeCase() == ModeCase.PARTITIONED_DML);
-    if (abortNextTransaction.getAndSet(false)) {
-      markAbortedTransaction(transaction.getId());
-    }
     return transaction;
   }
 
@@ -1992,7 +2044,9 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
           throw Status.FAILED_PRECONDITION
               .withDescription(
                   String.format(
-                      "This transaction has been invalidated by a later transaction in the same session.\nTransaction id: "
+                      "This transaction has been invalidated by a later transaction in the same"
+                          + " session.\n"
+                          + "Transaction id: "
                           + id
                           + "\nExpected: "
                           + counter.get(),
@@ -2025,7 +2079,8 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
                 TransactionOptions.newBuilder()
                     .setReadWrite(ReadWrite.getDefaultInstance())
                     .build(),
-                null);
+                null,
+                request.getRequestOptions());
       } else if (request.getTransactionId() != null) {
         transaction = transactions.get(request.getTransactionId());
         Optional<Boolean> aborted =
@@ -2290,6 +2345,7 @@ public class MockSpannerServiceImpl extends SpannerImplBase implements MockGrpcS
       throws InterruptedException, TimeoutException {
     Stopwatch watch = Stopwatch.createStarted();
     while (countRequestsOfType(type) == 0) {
+      //noinspection BusyWait
       Thread.sleep(1L);
       if (watch.elapsed(TimeUnit.MILLISECONDS) > timeoutMillis) {
         throw new TimeoutException(

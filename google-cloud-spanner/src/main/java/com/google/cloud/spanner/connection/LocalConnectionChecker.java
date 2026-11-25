@@ -23,8 +23,9 @@ import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.admin.instance.v1.stub.GrpcInstanceAdminStub;
 import com.google.cloud.spanner.admin.instance.v1.stub.InstanceAdminStubSettings;
+import com.google.common.base.Strings;
 import com.google.spanner.admin.instance.v1.ListInstanceConfigsRequest;
-import org.threeten.bp.Duration;
+import java.time.Duration;
 
 /**
  * Util class for quickly checking whether a local emulator or test server can be found. A common
@@ -42,6 +43,10 @@ class LocalConnectionChecker {
   void checkLocalConnection(ConnectionOptions options) {
     final String emulatorHost = System.getenv("SPANNER_EMULATOR_HOST");
     String host = options.getHost() == null ? emulatorHost : options.getHost();
+    if (Strings.isNullOrEmpty(host)) {
+      return;
+    }
+
     if (host.startsWith("https://")) {
       host = host.substring(8);
     }
@@ -49,7 +54,7 @@ class LocalConnectionChecker {
       host = host.substring(7);
     }
     // Only do the check if the host has been set to localhost.
-    if (host != null && host.startsWith("localhost") && options.isUsePlainText()) {
+    if (host.startsWith("localhost") && options.isUsePlainText()) {
       // Do a quick check to see if anything is actually running on the host.
       try {
         InstanceAdminStubSettings.Builder testEmulatorSettings =
@@ -66,7 +71,7 @@ class LocalConnectionChecker {
                         .build());
         testEmulatorSettings
             .listInstanceConfigsSettings()
-            .setSimpleTimeoutNoRetries(Duration.ofSeconds(10L));
+            .setSimpleTimeoutNoRetriesDuration(Duration.ofSeconds(10L));
         try (GrpcInstanceAdminStub stub =
             GrpcInstanceAdminStub.create(testEmulatorSettings.build())) {
           stub.listInstanceConfigsCallable()
@@ -87,9 +92,10 @@ class LocalConnectionChecker {
         } else {
           msg =
               String.format(
-                  "The environment variable SPANNER_EMULATOR_HOST has been set to '%s', but no running"
-                      + " emulator or other server could be found at that address.\n"
-                      + "Please check the environment variable and/or that the emulator is running.",
+                  "The environment variable SPANNER_EMULATOR_HOST has been set to '%s', but no"
+                      + " running emulator or other server could be found at that address.\n"
+                      + "Please check the environment variable and/or that the emulator is"
+                      + " running.",
                   emulatorHost);
         }
         throw SpannerExceptionFactory.newSpannerException(ErrorCode.UNAVAILABLE, msg);

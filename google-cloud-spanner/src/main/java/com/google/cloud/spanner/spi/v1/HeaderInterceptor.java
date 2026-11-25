@@ -24,22 +24,14 @@ import static com.google.cloud.spanner.spi.v1.SpannerRpcViews.SPANNER_GFE_HEADER
 import static com.google.cloud.spanner.spi.v1.SpannerRpcViews.SPANNER_GFE_LATENCY;
 
 import com.google.api.gax.tracing.ApiTracer;
-import com.google.cloud.spanner.BuiltInMetricsConstant;
-import com.google.cloud.spanner.CompositeTracer;
-import com.google.cloud.spanner.SpannerExceptionFactory;
-import com.google.cloud.spanner.SpannerRpcMetrics;
+import com.google.cloud.spanner.*;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.spanner.admin.database.v1.DatabaseName;
-import io.grpc.CallOptions;
-import io.grpc.Channel;
-import io.grpc.ClientCall;
-import io.grpc.ClientInterceptor;
+import io.grpc.*;
 import io.grpc.ForwardingClientCall.SimpleForwardingClientCall;
 import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener;
-import io.grpc.Grpc;
-import io.grpc.Metadata;
-import io.grpc.MethodDescriptor;
+import io.grpc.alts.AltsContextUtil;
 import io.opencensus.stats.MeasureMap;
 import io.opencensus.stats.Stats;
 import io.opencensus.stats.StatsRecorder;
@@ -50,9 +42,6 @@ import io.opencensus.tags.Tags;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.api.trace.Span;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -70,9 +59,12 @@ class HeaderInterceptor implements ClientInterceptor {
       DatabaseName.of("undefined-project", "undefined-instance", "undefined-database");
   private static final Metadata.Key<String> SERVER_TIMING_HEADER_KEY =
       Metadata.Key.of("server-timing", Metadata.ASCII_STRING_MARSHALLER);
-  private static final String SERVER_TIMING_HEADER_PREFIX = "gfet4t7; dur=";
+  private static final String GFE_TIMING_HEADER = "gfet4t7";
+  private static final String AFE_TIMING_HEADER = "afe";
   private static final Metadata.Key<String> GOOGLE_CLOUD_RESOURCE_PREFIX_KEY =
       Metadata.Key.of("google-cloud-resource-prefix", Metadata.ASCII_STRING_MARSHALLER);
+  private static final Pattern SERVER_TIMING_PATTERN =
+      Pattern.compile("(?<metricName>[a-zA-Z0-9_-]+);\\s*dur=(?<duration>\\d+(\\.\\d+)?)");
   private static final Pattern GOOGLE_CLOUD_RESOURCE_PREFIX_PATTERN =
       Pattern.compile(
           ".*projects/(?<project>\\p{ASCII}[^/]*)(/instances/(?<instance>\\p{ASCII}[^/]*))?(/databases/(?<database>\\p{ASCII}[^/]*))?");
@@ -84,6 +76,8 @@ class HeaderInterceptor implements ClientInterceptor {
       CacheBuilder.newBuilder().maximumSize(1000).build();
   private final Cache<String, Map<String, String>> builtInAttributesCache =
       CacheBuilder.newBuilder().maximumSize(1000).build();
+  private final Cache<DatabaseName, Cache<String, String>> keyCache =
+      CacheBuilder.newBuilder().maximumSize(1000).build();
 
   // Get the global singleton Tagger object.
   private static final Tagger TAGGER = Tags.getTagger();
@@ -92,6 +86,8 @@ class HeaderInterceptor implements ClientInterceptor {
   private static final Logger LOGGER = Logger.getLogger(HeaderInterceptor.class.getName());
   private static final Level LEVEL = Level.INFO;
   private final SpannerRpcMetrics spannerRpcMetrics;
+  private Float gfeLatency;
+  private Float afeLatency;
 
   HeaderInterceptor(SpannerRpcMetrics spannerRpcMetrics) {
     this.spannerRpcMetrics = spannerRpcMetrics;
@@ -109,22 +105,50 @@ class HeaderInterceptor implements ClientInterceptor {
         try {
           Span span = Span.current();
           DatabaseName databaseName = extractDatabaseName(headers);
-          String key = databaseName + method.getFullMethodName();
+          String key = extractKey(databaseName, method.getFullMethodName());
+          String requestId = extractRequestId(headers);
           TagContext tagContext = getTagContext(key, method.getFullMethodName(), databaseName);
           Attributes attributes =
               getMetricAttributes(key, method.getFullMethodName(), databaseName);
-          Map<String, String> builtInMetricsAttributes =
-              getBuiltInMetricAttributes(key, databaseName);
+
           super.start(
               new SimpleForwardingClientCallListener<RespT>(responseListener) {
                 @Override
                 public void onHeaders(Metadata metadata) {
-                  Boolean isDirectPathUsed =
-                      isDirectPathUsed(getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
-                  addBuiltInMetricAttributes(
-                      compositeTracer, builtInMetricsAttributes, isDirectPathUsed);
-                  processHeader(metadata, tagContext, attributes, span);
+                  String serverTiming = metadata.get(SERVER_TIMING_HEADER_KEY);
+                  try {
+                    // Get gfe and afe Latency value
+                    Map<String, Float> serverTimingMetrics = parseServerTimingHeader(serverTiming);
+                    gfeLatency = serverTimingMetrics.get(GFE_TIMING_HEADER);
+                    afeLatency = serverTimingMetrics.get(AFE_TIMING_HEADER);
+                  } catch (NumberFormatException e) {
+                    LOGGER.log(LEVEL, "Invalid server-timing object in header: {}", serverTiming);
+                  }
+
                   super.onHeaders(metadata);
+                }
+
+                @Override
+                public void onClose(Status status, Metadata trailers) {
+                  // Record Built-in Metrics
+                  boolean isDirectPathUsed = AltsContextUtil.check(getAttributes());
+                  boolean isAfeEnabled = GapicSpannerRpc.isEnableAFEServerTiming();
+                  recordSpan(span, requestId);
+                  recordCustomMetrics(tagContext, attributes, isDirectPathUsed);
+                  Map<String, String> builtInMetricsAttributes = new HashMap<>();
+                  try {
+                    builtInMetricsAttributes = getBuiltInMetricAttributes(key, databaseName);
+                  } catch (ExecutionException e) {
+                    LOGGER.log(
+                        LEVEL, "Unable to get built-in metric attributes {}", e.getMessage());
+                  }
+                  recordBuiltInMetrics(
+                      compositeTracer,
+                      builtInMetricsAttributes,
+                      requestId,
+                      isDirectPathUsed,
+                      isAfeEnabled);
+                  super.onClose(status, trailers);
                 }
               },
               headers);
@@ -136,30 +160,75 @@ class HeaderInterceptor implements ClientInterceptor {
     };
   }
 
-  private void processHeader(
-      Metadata metadata, TagContext tagContext, Attributes attributes, Span span) {
+  private void recordCustomMetrics(
+      TagContext tagContext, Attributes attributes, Boolean isDirectPathUsed) {
+    // Record OpenCensus and Custom OpenTelemetry Metrics
     MeasureMap measureMap = STATS_RECORDER.newMeasureMap();
-    String serverTiming = metadata.get(SERVER_TIMING_HEADER_KEY);
-    if (serverTiming != null && serverTiming.startsWith(SERVER_TIMING_HEADER_PREFIX)) {
-      try {
-        long latency = Long.parseLong(serverTiming.substring(SERVER_TIMING_HEADER_PREFIX.length()));
-        measureMap.put(SPANNER_GFE_LATENCY, latency);
+
+    if (!isDirectPathUsed) {
+      if (gfeLatency != null) {
+        long gfeVal = gfeLatency.longValue();
+        measureMap.put(SPANNER_GFE_LATENCY, gfeVal);
         measureMap.put(SPANNER_GFE_HEADER_MISSING_COUNT, 0L);
-        measureMap.record(tagContext);
-
-        spannerRpcMetrics.recordGfeLatency(latency, attributes);
+        spannerRpcMetrics.recordGfeLatency(gfeVal, attributes);
         spannerRpcMetrics.recordGfeHeaderMissingCount(0L, attributes);
-
-        if (span != null) {
-          span.setAttribute("gfe_latency", String.valueOf(latency));
-        }
-      } catch (NumberFormatException e) {
-        LOGGER.log(LEVEL, "Invalid server-timing object in header: {}", serverTiming);
+      } else {
+        measureMap.put(SPANNER_GFE_HEADER_MISSING_COUNT, 1L);
+        spannerRpcMetrics.recordGfeHeaderMissingCount(1L, attributes);
       }
-    } else {
-      spannerRpcMetrics.recordGfeHeaderMissingCount(1L, attributes);
-      measureMap.put(SPANNER_GFE_HEADER_MISSING_COUNT, 1L).record(tagContext);
     }
+    measureMap.record(tagContext);
+  }
+
+  private void recordSpan(Span span, String requestId) {
+    if (span != null) {
+      if (gfeLatency != null) {
+        span.setAttribute("gfe_latency", gfeLatency.toString());
+      }
+      if (afeLatency != null) {
+        span.setAttribute("afe_latency", afeLatency.toString());
+      }
+      span.setAttribute(XGoogSpannerRequestId.REQUEST_ID_HEADER_NAME, requestId);
+    }
+  }
+
+  private void recordBuiltInMetrics(
+      CompositeTracer compositeTracer,
+      Map<String, String> builtInMetricsAttributes,
+      String requestId,
+      Boolean isDirectPathUsed,
+      Boolean isAfeEnabled) {
+    if (compositeTracer != null) {
+      builtInMetricsAttributes.put(BuiltInMetricsConstant.REQUEST_ID_KEY.getKey(), requestId);
+      builtInMetricsAttributes.put(
+          BuiltInMetricsConstant.DIRECT_PATH_USED_KEY.getKey(), Boolean.toString(isDirectPathUsed));
+      compositeTracer.addAttributes(builtInMetricsAttributes);
+      compositeTracer.recordServerTimingHeaderMetrics(
+          gfeLatency, afeLatency, isDirectPathUsed, isAfeEnabled);
+    }
+  }
+
+  private Map<String, Float> parseServerTimingHeader(String serverTiming) {
+    Map<String, Float> serverTimingMetrics = new HashMap<>();
+    if (serverTiming != null) {
+      Matcher matcher = SERVER_TIMING_PATTERN.matcher(serverTiming);
+      while (matcher.find()) {
+        String metricName = matcher.group("metricName");
+        String durationStr = matcher.group("duration");
+
+        if (metricName != null && durationStr != null) {
+          serverTimingMetrics.put(metricName, Float.valueOf(durationStr));
+        }
+      }
+    }
+    return serverTimingMetrics;
+  }
+
+  private String extractKey(DatabaseName databaseName, String methodName)
+      throws ExecutionException {
+    Cache<String, String> keys =
+        keyCache.get(databaseName, () -> CacheBuilder.newBuilder().maximumSize(1000).build());
+    return keys.get(methodName, () -> databaseName + methodName);
   }
 
   private DatabaseName extractDatabaseName(Metadata headers) throws ExecutionException {
@@ -188,6 +257,10 @@ class HeaderInterceptor implements ClientInterceptor {
           });
     }
     return UNDEFINED_DATABASE_NAME;
+  }
+
+  private String extractRequestId(Metadata headers) throws ExecutionException {
+    return headers.get(XGoogSpannerRequestId.REQUEST_ID_HEADER_KEY);
   }
 
   private TagContext getTagContext(String key, String method, DatabaseName databaseName)
@@ -228,31 +301,10 @@ class HeaderInterceptor implements ClientInterceptor {
           attributes.put(BuiltInMetricsConstant.DATABASE_KEY.getKey(), databaseName.getDatabase());
           attributes.put(
               BuiltInMetricsConstant.INSTANCE_ID_KEY.getKey(), databaseName.getInstance());
+          attributes.put(
+              BuiltInMetricsConstant.DIRECT_PATH_ENABLED_KEY.getKey(),
+              String.valueOf(GapicSpannerRpc.DIRECTPATH_CHANNEL_CREATED));
           return attributes;
         });
-  }
-
-  private void addBuiltInMetricAttributes(
-      CompositeTracer compositeTracer,
-      Map<String, String> builtInMetricsAttributes,
-      Boolean isDirectPathUsed) {
-    if (compositeTracer != null) {
-      // Direct Path used attribute
-      Map<String, String> attributes = new HashMap<>(builtInMetricsAttributes);
-      attributes.put(
-          BuiltInMetricsConstant.DIRECT_PATH_USED_KEY.getKey(), Boolean.toString(isDirectPathUsed));
-
-      compositeTracer.addAttributes(attributes);
-    }
-  }
-
-  private Boolean isDirectPathUsed(SocketAddress remoteAddr) {
-    if (remoteAddr instanceof InetSocketAddress) {
-      InetAddress inetAddress = ((InetSocketAddress) remoteAddr).getAddress();
-      String addr = inetAddress.getHostAddress();
-      return addr.startsWith(BuiltInMetricsConstant.DP_IPV4_PREFIX)
-          || addr.startsWith(BuiltInMetricsConstant.DP_IPV6_PREFIX);
-    }
-    return false;
   }
 }

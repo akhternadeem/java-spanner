@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Timestamp;
 import com.google.rpc.Status;
 import com.google.spanner.v1.BatchCreateSessionsResponse;
+import com.google.spanner.v1.CacheUpdate;
 import com.google.spanner.v1.CommitResponse;
 import com.google.spanner.v1.DatabaseName;
 import com.google.spanner.v1.DirectedReadOptions;
@@ -56,6 +57,7 @@ import com.google.spanner.v1.RequestOptions;
 import com.google.spanner.v1.ResultSet;
 import com.google.spanner.v1.ResultSetMetadata;
 import com.google.spanner.v1.ResultSetStats;
+import com.google.spanner.v1.RoutingHint;
 import com.google.spanner.v1.Session;
 import com.google.spanner.v1.SessionName;
 import com.google.spanner.v1.Transaction;
@@ -589,6 +591,7 @@ public class SpannerClientHttpJsonTest {
             .addAllRows(new ArrayList<ListValue>())
             .setStats(ResultSetStats.newBuilder().build())
             .setPrecommitToken(MultiplexedSessionPrecommitToken.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 
@@ -607,6 +610,8 @@ public class SpannerClientHttpJsonTest {
             .setRequestOptions(RequestOptions.newBuilder().build())
             .setDirectedReadOptions(DirectedReadOptions.newBuilder().build())
             .setDataBoostEnabled(true)
+            .setLastStatement(true)
+            .setRoutingHint(RoutingHint.newBuilder().build())
             .build();
 
     ResultSet actualResponse = client.executeSql(request);
@@ -650,6 +655,8 @@ public class SpannerClientHttpJsonTest {
               .setRequestOptions(RequestOptions.newBuilder().build())
               .setDirectedReadOptions(DirectedReadOptions.newBuilder().build())
               .setDataBoostEnabled(true)
+              .setLastStatement(true)
+              .setRoutingHint(RoutingHint.newBuilder().build())
               .build();
       client.executeSql(request);
       Assert.fail("No exception raised");
@@ -687,6 +694,7 @@ public class SpannerClientHttpJsonTest {
             .addAllStatements(new ArrayList<ExecuteBatchDmlRequest.Statement>())
             .setSeqno(109325920)
             .setRequestOptions(RequestOptions.newBuilder().build())
+            .setLastStatements(true)
             .build();
 
     ExecuteBatchDmlResponse actualResponse = client.executeBatchDml(request);
@@ -723,6 +731,7 @@ public class SpannerClientHttpJsonTest {
               .addAllStatements(new ArrayList<ExecuteBatchDmlRequest.Statement>())
               .setSeqno(109325920)
               .setRequestOptions(RequestOptions.newBuilder().build())
+              .setLastStatements(true)
               .build();
       client.executeBatchDml(request);
       Assert.fail("No exception raised");
@@ -739,6 +748,7 @@ public class SpannerClientHttpJsonTest {
             .addAllRows(new ArrayList<ListValue>())
             .setStats(ResultSetStats.newBuilder().build())
             .setPrecommitToken(MultiplexedSessionPrecommitToken.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 
@@ -757,6 +767,7 @@ public class SpannerClientHttpJsonTest {
             .setRequestOptions(RequestOptions.newBuilder().build())
             .setDirectedReadOptions(DirectedReadOptions.newBuilder().build())
             .setDataBoostEnabled(true)
+            .setRoutingHint(RoutingHint.newBuilder().build())
             .build();
 
     ResultSet actualResponse = client.read(request);
@@ -800,6 +811,7 @@ public class SpannerClientHttpJsonTest {
               .setRequestOptions(RequestOptions.newBuilder().build())
               .setDirectedReadOptions(DirectedReadOptions.newBuilder().build())
               .setDataBoostEnabled(true)
+              .setRoutingHint(RoutingHint.newBuilder().build())
               .build();
       client.read(request);
       Assert.fail("No exception raised");
@@ -826,6 +838,7 @@ public class SpannerClientHttpJsonTest {
             .setId(ByteString.EMPTY)
             .setReadTimestamp(Timestamp.newBuilder().build())
             .setPrecommitToken(MultiplexedSessionPrecommitToken.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 
@@ -874,6 +887,7 @@ public class SpannerClientHttpJsonTest {
             .setId(ByteString.EMPTY)
             .setReadTimestamp(Timestamp.newBuilder().build())
             .setPrecommitToken(MultiplexedSessionPrecommitToken.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 
@@ -923,6 +937,8 @@ public class SpannerClientHttpJsonTest {
         CommitResponse.newBuilder()
             .setCommitTimestamp(Timestamp.newBuilder().build())
             .setCommitStats(CommitResponse.CommitStats.newBuilder().build())
+            .setSnapshotTimestamp(Timestamp.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 
@@ -972,6 +988,8 @@ public class SpannerClientHttpJsonTest {
         CommitResponse.newBuilder()
             .setCommitTimestamp(Timestamp.newBuilder().build())
             .setCommitStats(CommitResponse.CommitStats.newBuilder().build())
+            .setSnapshotTimestamp(Timestamp.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 
@@ -1021,6 +1039,8 @@ public class SpannerClientHttpJsonTest {
         CommitResponse.newBuilder()
             .setCommitTimestamp(Timestamp.newBuilder().build())
             .setCommitStats(CommitResponse.CommitStats.newBuilder().build())
+            .setSnapshotTimestamp(Timestamp.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 
@@ -1072,6 +1092,8 @@ public class SpannerClientHttpJsonTest {
         CommitResponse.newBuilder()
             .setCommitTimestamp(Timestamp.newBuilder().build())
             .setCommitStats(CommitResponse.CommitStats.newBuilder().build())
+            .setSnapshotTimestamp(Timestamp.newBuilder().build())
+            .setCacheUpdate(CacheUpdate.newBuilder().build())
             .build();
     mockService.addResponse(expectedResponse);
 

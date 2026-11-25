@@ -16,10 +16,12 @@
 
 package com.google.cloud.spanner;
 
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.setExperimentalHostSpannerOptions;
 import static com.google.common.base.Preconditions.checkState;
 
 import com.google.api.gax.grpc.InstantiatingGrpcChannelProvider;
-import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.spanner.spi.v1.SpannerInterceptorProvider;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -46,7 +48,7 @@ public class GceTestEnvConfig implements TestEnvConfig {
   public static final String GCE_CREDENTIALS_FILE = "spanner.gce.config.credentials_file";
   public static final String GCE_STREAM_BROKEN_PROBABILITY =
       "spanner.gce.config.stream_broken_probability";
-  public static final String ATTEMPT_DIRECT_PATH = "spanner.attempt_directpath";
+  public static final String ENABLE_DIRECT_ACCESS = "spanner.enable_direct_access";
   public static final String DIRECT_PATH_TEST_SCENARIO = "spanner.directpath_test_scenario";
 
   // IP address prefixes allocated for DirectPath backends.
@@ -64,7 +66,7 @@ public class GceTestEnvConfig implements TestEnvConfig {
     double errorProbability =
         Double.parseDouble(System.getProperty(GCE_STREAM_BROKEN_PROBABILITY, "0.0"));
     checkState(errorProbability <= 1.0);
-    boolean attemptDirectPath = Boolean.getBoolean(ATTEMPT_DIRECT_PATH);
+    boolean enableDirectAccess = Boolean.getBoolean(ENABLE_DIRECT_ACCESS);
     String directPathTestScenario = System.getProperty(DIRECT_PATH_TEST_SCENARIO, "");
     SpannerOptions.Builder builder =
         SpannerOptions.newBuilder()
@@ -78,14 +80,15 @@ public class GceTestEnvConfig implements TestEnvConfig {
     }
     if (!credentialsFile.isEmpty()) {
       try {
-        builder.setCredentials(GoogleCredentials.fromStream(new FileInputStream(credentialsFile)));
+        builder.setCredentials(
+            ServiceAccountCredentials.fromStream(new FileInputStream(credentialsFile)));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
     SpannerInterceptorProvider interceptorProvider =
         SpannerInterceptorProvider.createDefault().with(new GrpcErrorInjector(errorProbability));
-    if (attemptDirectPath) {
+    if (enableDirectAccess) {
       interceptorProvider =
           interceptorProvider.with(new DirectPathAddressCheckInterceptor(directPathTestScenario));
     }
@@ -93,13 +96,17 @@ public class GceTestEnvConfig implements TestEnvConfig {
     // DirectPath tests need to set a custom endpoint to the ChannelProvider
     InstantiatingGrpcChannelProvider.Builder customChannelProviderBuilder =
         InstantiatingGrpcChannelProvider.newBuilder();
-    if (attemptDirectPath) {
+    if (enableDirectAccess) {
       customChannelProviderBuilder
           .setEndpoint(DIRECT_PATH_ENDPOINT)
           .setAttemptDirectPath(true)
           .setAttemptDirectPathXds()
           .setInterceptorProvider(interceptorProvider);
       builder.setChannelProvider(customChannelProviderBuilder.build());
+    }
+
+    if (isExperimentalHost()) {
+      setExperimentalHostSpannerOptions(builder);
     }
     options = builder.build();
   }

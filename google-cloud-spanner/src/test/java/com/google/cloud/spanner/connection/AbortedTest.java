@@ -27,6 +27,7 @@ import static org.junit.Assert.fail;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.AbortedDueToConcurrentModificationException;
 import com.google.cloud.spanner.ErrorCode;
+import com.google.cloud.spanner.MockSpannerServiceImpl.SimulatedExecutionTime;
 import com.google.cloud.spanner.MockSpannerServiceImpl.StatementResult;
 import com.google.cloud.spanner.ReadContext.QueryAnalyzeMode;
 import com.google.cloud.spanner.ResultSet;
@@ -52,6 +53,7 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import org.junit.Test;
@@ -72,6 +74,8 @@ public class AbortedTest extends AbstractMockServerTest {
       AbortInterceptor interceptor = new AbortInterceptor(0);
       try (ITConnection connection =
           createConnection(interceptor, new CountTransactionRetryListener())) {
+        interceptor.setUsingMultiplexedSession(
+            isMultiplexedSessionsEnabledForRW(connection.getSpanner()));
         // verify that the there is no test record
         try (ResultSet rs =
             connection.executeQuery(Statement.of("SELECT COUNT(*) AS C FROM TEST WHERE ID=1"))) {
@@ -112,6 +116,8 @@ public class AbortedTest extends AbstractMockServerTest {
       AbortInterceptor interceptor = new AbortInterceptor(0);
       try (ITConnection connection =
           createConnection(interceptor, new CountTransactionRetryListener())) {
+        interceptor.setUsingMultiplexedSession(
+            isMultiplexedSessionsEnabledForRW(connection.getSpanner()));
         // verify that the there is no test record
         try (ResultSet rs =
             connection.executeQuery(Statement.of("SELECT COUNT(*) AS C FROM TEST WHERE ID=1"))) {
@@ -576,6 +582,29 @@ public class AbortedTest extends AbstractMockServerTest {
       mockSpanner.abortNextStatement();
       // The retry should fail, because the sequence will return new values during the retry.
       assertThrows(AbortedDueToConcurrentModificationException.class, connection::commit);
+    }
+  }
+
+  @Test
+  public void testTimeoutWithRetries() {
+    // Verifies that even though a single execution of a statement does not exceed the deadline,
+    // repeated retries of the statement does cause the deadline to be exceeded.
+    try (ITConnection connection = createConnection()) {
+      for (boolean autoCommit : new boolean[] {true, false}) {
+        connection.setAutocommit(autoCommit);
+        mockSpanner.setAbortProbability(1.0);
+        mockSpanner.setExecuteSqlExecutionTime(SimulatedExecutionTime.ofMinimumAndRandomTime(1, 0));
+
+        connection.setStatementTimeout(10, TimeUnit.MILLISECONDS);
+        SpannerException exception =
+            assertThrows(SpannerException.class, () -> connection.execute(INSERT_STATEMENT));
+        assertEquals(ErrorCode.DEADLINE_EXCEEDED, exception.getErrorCode());
+        if (!autoCommit) {
+          connection.rollback();
+        }
+      }
+    } finally {
+      mockSpanner.setAbortProbability(0.0);
     }
   }
 

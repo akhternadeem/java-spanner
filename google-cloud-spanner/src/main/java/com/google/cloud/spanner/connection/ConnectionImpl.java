@@ -25,8 +25,11 @@ import static com.google.cloud.spanner.connection.ConnectionProperties.AUTO_BATC
 import static com.google.cloud.spanner.connection.ConnectionProperties.AUTO_BATCH_DML_UPDATE_COUNT;
 import static com.google.cloud.spanner.connection.ConnectionProperties.AUTO_BATCH_DML_UPDATE_COUNT_VERIFICATION;
 import static com.google.cloud.spanner.connection.ConnectionProperties.AUTO_PARTITION_MODE;
+import static com.google.cloud.spanner.connection.ConnectionProperties.BATCH_DML_UPDATE_COUNT;
 import static com.google.cloud.spanner.connection.ConnectionProperties.DATA_BOOST_ENABLED;
 import static com.google.cloud.spanner.connection.ConnectionProperties.DDL_IN_TRANSACTION_MODE;
+import static com.google.cloud.spanner.connection.ConnectionProperties.DEFAULT_ISOLATION_LEVEL;
+import static com.google.cloud.spanner.connection.ConnectionProperties.DEFAULT_SEQUENCE_KIND;
 import static com.google.cloud.spanner.connection.ConnectionProperties.DELAY_TRANSACTION_START_UNTIL_FIRST_WRITE;
 import static com.google.cloud.spanner.connection.ConnectionProperties.DIRECTED_READ;
 import static com.google.cloud.spanner.connection.ConnectionProperties.KEEP_TRANSACTION_ALIVE;
@@ -36,12 +39,15 @@ import static com.google.cloud.spanner.connection.ConnectionProperties.MAX_PARTI
 import static com.google.cloud.spanner.connection.ConnectionProperties.OPTIMIZER_STATISTICS_PACKAGE;
 import static com.google.cloud.spanner.connection.ConnectionProperties.OPTIMIZER_VERSION;
 import static com.google.cloud.spanner.connection.ConnectionProperties.READONLY;
+import static com.google.cloud.spanner.connection.ConnectionProperties.READ_LOCK_MODE;
 import static com.google.cloud.spanner.connection.ConnectionProperties.READ_ONLY_STALENESS;
 import static com.google.cloud.spanner.connection.ConnectionProperties.RETRY_ABORTS_INTERNALLY;
 import static com.google.cloud.spanner.connection.ConnectionProperties.RETURN_COMMIT_STATS;
 import static com.google.cloud.spanner.connection.ConnectionProperties.RPC_PRIORITY;
 import static com.google.cloud.spanner.connection.ConnectionProperties.SAVEPOINT_SUPPORT;
+import static com.google.cloud.spanner.connection.ConnectionProperties.STATEMENT_TIMEOUT;
 import static com.google.cloud.spanner.connection.ConnectionProperties.TRACING_PREFIX;
+import static com.google.cloud.spanner.connection.ConnectionProperties.TRANSACTION_TIMEOUT;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
@@ -76,6 +82,7 @@ import com.google.cloud.spanner.connection.AbstractStatementParser.ParsedStateme
 import com.google.cloud.spanner.connection.AbstractStatementParser.StatementType;
 import com.google.cloud.spanner.connection.ConnectionProperty.Context;
 import com.google.cloud.spanner.connection.ConnectionState.Type;
+import com.google.cloud.spanner.connection.StatementExecutor.StatementExecutorType;
 import com.google.cloud.spanner.connection.StatementExecutor.StatementTimeout;
 import com.google.cloud.spanner.connection.StatementResult.ResultType;
 import com.google.cloud.spanner.connection.UnitOfWork.CallType;
@@ -87,16 +94,22 @@ import com.google.common.base.Suppliers;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.spanner.v1.DirectedReadOptions;
 import com.google.spanner.v1.ExecuteSqlRequest.QueryOptions;
+import com.google.spanner.v1.RequestOptions;
 import com.google.spanner.v1.ResultSetStats;
+import com.google.spanner.v1.TransactionOptions.IsolationLevel;
+import com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode;
+import io.grpc.Deadline;
+import io.grpc.Deadline.Ticker;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -108,13 +121,11 @@ import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.threeten.bp.Instant;
 
 /** Implementation for {@link Connection}, the generic Spanner connection API (not JDBC). */
 class ConnectionImpl implements Connection {
@@ -130,9 +141,6 @@ class ConnectionImpl implements Connection {
       "This method may only be called while in autocommit mode";
   private static final String NOT_ALLOWED_IN_AUTOCOMMIT =
       "This method may not be called while in autocommit mode";
-
-  private static final ParsedStatement BEGIN_STATEMENT =
-      AbstractStatementParser.getInstance(Dialect.GOOGLE_STANDARD_SQL).parse(Statement.of("BEGIN"));
   private static final ParsedStatement COMMIT_STATEMENT =
       AbstractStatementParser.getInstance(Dialect.GOOGLE_STANDARD_SQL)
           .parse(Statement.of("COMMIT"));
@@ -145,9 +153,6 @@ class ConnectionImpl implements Connection {
   private static final ParsedStatement START_BATCH_DML_STATEMENT =
       AbstractStatementParser.getInstance(Dialect.GOOGLE_STANDARD_SQL)
           .parse(Statement.of("START BATCH DML"));
-  private static final ParsedStatement RUN_BATCH_STATEMENT =
-      AbstractStatementParser.getInstance(Dialect.GOOGLE_STANDARD_SQL)
-          .parse(Statement.of("RUN BATCH"));
 
   // These SAVEPOINT statements are used as sentinels to recognize the start/rollback/release of a
   // savepoint.
@@ -176,6 +181,7 @@ class ConnectionImpl implements Connection {
   private volatile LeakedConnectionException leakedException;
   private final SpannerPool spannerPool;
   private AbstractStatementParser statementParser;
+
   /**
    * The {@link ConnectionStatementExecutor} is responsible for translating parsed {@link
    * ClientSideStatement}s into actual method calls on this {@link ConnectionImpl}. I.e. the {@link
@@ -184,17 +190,6 @@ class ConnectionImpl implements Connection {
    */
   private final ConnectionStatementExecutor connectionStatementExecutor =
       new ConnectionStatementExecutorImpl(this);
-
-  /** Simple thread factory that is used for fire-and-forget rollbacks. */
-  static final class DaemonThreadFactory implements ThreadFactory {
-    @Override
-    public Thread newThread(Runnable r) {
-      Thread t = new Thread(r);
-      t.setName("connection-rollback-executor");
-      t.setDaemon(true);
-      return t;
-    }
-  }
 
   /**
    * Statements are executed using a separate thread in order to be able to cancel these. Statements
@@ -210,6 +205,11 @@ class ConnectionImpl implements Connection {
    * the {@link SpannerPool}.
    */
   private final ConnectionOptions options;
+
+  enum Caller {
+    APPLICATION,
+    TRANSACTION_RUNNER,
+  }
 
   /** The supported batch modes. */
   enum BatchMode {
@@ -260,6 +260,7 @@ class ConnectionImpl implements Connection {
     }
   }
 
+  private final Ticker ticker;
   private StatementExecutor.StatementTimeout statementTimeout =
       new StatementExecutor.StatementTimeout();
   private boolean closed = false;
@@ -273,16 +274,21 @@ class ConnectionImpl implements Connection {
   private final ConnectionState connectionState;
 
   private UnitOfWork currentUnitOfWork = null;
+
   /**
    * This field is only used in autocommit mode to indicate that the user has explicitly started a
    * transaction.
    */
   private boolean inTransaction = false;
+
   /**
    * This field is used to indicate that a transaction begin has been indicated. This is done by
    * calling beginTransaction or by setting a transaction property while not in autocommit mode.
    */
   private boolean transactionBeginMarked = false;
+
+  /** This field is set to true when a transaction runner is active for this connection. */
+  private boolean transactionRunnerActive = false;
 
   private BatchMode batchMode;
   private UnitOfWorkType unitOfWorkType;
@@ -291,8 +297,10 @@ class ConnectionImpl implements Connection {
 
   // The following properties are not 'normal' connection properties, but transient properties that
   // are automatically reset after executing a transaction or statement.
+  private IsolationLevel transactionIsolationLevel;
   private String transactionTag;
   private String statementTag;
+  private RequestOptions.ClientContext clientContext;
   private boolean excludeTxnFromChangeStreams;
   private byte[] protoDescriptors;
   private String protoDescriptorsFilePath;
@@ -302,9 +310,18 @@ class ConnectionImpl implements Connection {
     Preconditions.checkNotNull(options);
     this.leakedException =
         options.isTrackConnectionLeaks() ? new LeakedConnectionException() : null;
+    StatementExecutorType statementExecutorType;
+    if (options.getStatementExecutorType() != null) {
+      statementExecutorType = options.getStatementExecutorType();
+    } else {
+      statementExecutorType =
+          options.isUseVirtualThreads()
+              ? StatementExecutorType.VIRTUAL_THREAD
+              : StatementExecutorType.PLATFORM_THREAD;
+    }
+    this.ticker = options.getTicker();
     this.statementExecutor =
-        new StatementExecutor(
-            options.isUseVirtualThreads(), options.getStatementExecutionInterceptors());
+        new StatementExecutor(statementExecutorType, options.getStatementExecutionInterceptors());
     this.spannerPool = SpannerPool.INSTANCE;
     this.options = options;
     this.spanner = spannerPool.getSpanner(options, this);
@@ -332,9 +349,9 @@ class ConnectionImpl implements Connection {
                             && getDialect() == Dialect.POSTGRESQL
                         ? Type.TRANSACTIONAL
                         : Type.NON_TRANSACTIONAL));
-
+    setInitialStatementTimeout(options.getInitialConnectionPropertyValue(STATEMENT_TIMEOUT));
     // (Re)set the state of the connection to the default.
-    setDefaultTransactionOptions();
+    setDefaultTransactionOptions(getDefaultIsolationLevel());
   }
 
   /** Constructor only for test purposes. */
@@ -348,7 +365,12 @@ class ConnectionImpl implements Connection {
     this.leakedException =
         options.isTrackConnectionLeaks() ? new LeakedConnectionException() : null;
     this.statementExecutor =
-        new StatementExecutor(options.isUseVirtualThreads(), Collections.emptyList());
+        new StatementExecutor(
+            options.isUseVirtualThreads()
+                ? StatementExecutorType.VIRTUAL_THREAD
+                : StatementExecutorType.PLATFORM_THREAD,
+            Collections.emptyList());
+    this.ticker = options.getTicker();
     this.spannerPool = Preconditions.checkNotNull(spannerPool);
     this.options = Preconditions.checkNotNull(options);
     this.spanner = spannerPool.getSpanner(options, this);
@@ -361,10 +383,11 @@ class ConnectionImpl implements Connection {
         new ConnectionState(
             options.getInitialConnectionPropertyValues(),
             Suppliers.ofInstance(Type.NON_TRANSACTIONAL));
+    setInitialStatementTimeout(options.getInitialConnectionPropertyValue(STATEMENT_TIMEOUT));
     setReadOnly(options.isReadOnly());
     setAutocommit(options.isAutocommit());
     setReturnCommitStats(options.isReturnCommitStats());
-    setDefaultTransactionOptions();
+    setDefaultTransactionOptions(getDefaultIsolationLevel());
   }
 
   @Override
@@ -372,9 +395,25 @@ class ConnectionImpl implements Connection {
     return this.spanner;
   }
 
+  private void setInitialStatementTimeout(Duration duration) {
+    if (duration == null || duration.isZero()) {
+      return;
+    }
+    com.google.protobuf.Duration protoDuration =
+        com.google.protobuf.Duration.newBuilder()
+            .setSeconds(duration.getSeconds())
+            .setNanos(duration.getNano())
+            .build();
+    TimeUnit unit =
+        ReadOnlyStalenessUtil.getAppropriateTimeUnit(
+            new ReadOnlyStalenessUtil.DurationGetter(protoDuration));
+    setStatementTimeout(ReadOnlyStalenessUtil.durationToUnits(protoDuration, unit), unit);
+  }
+
   private DdlClient createDdlClient() {
     return DdlClient.newBuilder()
         .setDatabaseAdminClient(spanner.getDatabaseAdminClient())
+        .setDialectSupplier(this::getDialect)
         .setProjectId(options.getProjectId())
         .setInstanceId(options.getInstanceId())
         .setDatabaseName(options.getDatabaseName())
@@ -474,6 +513,9 @@ class ConnectionImpl implements Connection {
     this.connectionState.resetValue(RETRY_ABORTS_INTERNALLY, context, inTransaction);
     this.connectionState.resetValue(AUTOCOMMIT, context, inTransaction);
     this.connectionState.resetValue(READONLY, context, inTransaction);
+    this.connectionState.resetValue(DEFAULT_ISOLATION_LEVEL, context, inTransaction);
+    this.connectionState.resetValue(READ_LOCK_MODE, context, inTransaction);
+    this.connectionState.resetValue(TRANSACTION_TIMEOUT, context, inTransaction);
     this.connectionState.resetValue(READ_ONLY_STALENESS, context, inTransaction);
     this.connectionState.resetValue(OPTIMIZER_VERSION, context, inTransaction);
     this.connectionState.resetValue(OPTIMIZER_STATISTICS_PACKAGE, context, inTransaction);
@@ -496,9 +538,10 @@ class ConnectionImpl implements Connection {
     this.connectionState.resetValue(SAVEPOINT_SUPPORT, context, inTransaction);
     this.protoDescriptors = null;
     this.protoDescriptorsFilePath = null;
+    this.clientContext = null;
 
     if (!isTransactionStarted()) {
-      setDefaultTransactionOptions();
+      setDefaultTransactionOptions(getDefaultIsolationLevel());
     }
   }
 
@@ -507,12 +550,9 @@ class ConnectionImpl implements Connection {
     return unitOfWorkType;
   }
 
-  /** Get the current batch mode of this connection. */
-  BatchMode getBatchMode() {
-    return batchMode;
-  }
-
-  /** @return <code>true</code> if this connection is in a batch. */
+  /**
+   * @return <code>true</code> if this connection is in a batch.
+   */
   boolean isInBatch() {
     return batchMode != BatchMode.NONE;
   }
@@ -537,13 +577,14 @@ class ConnectionImpl implements Connection {
     return closed;
   }
 
-  private <T> T getConnectionPropertyValue(
+  @Override
+  public <T> T getConnectionPropertyValue(
       com.google.cloud.spanner.connection.ConnectionProperty<T> property) {
     return this.connectionState.getValue(property).getValue();
   }
 
   private <T> void setConnectionPropertyValue(ConnectionProperty<T> property, T value) {
-    setConnectionPropertyValue(property, value, /* local = */ false);
+    setConnectionPropertyValue(property, value, /* local= */ false);
   }
 
   private <T> void setConnectionPropertyValue(
@@ -593,7 +634,7 @@ class ConnectionImpl implements Connection {
       // middle of a transaction.
       this.connectionState.commit();
     }
-    clearLastTransactionAndSetDefaultTransactionOptions();
+    clearLastTransactionAndSetDefaultTransactionOptions(getDefaultIsolationLevel());
     // Reset the readOnlyStaleness value if it is no longer compatible with the new autocommit
     // value.
     if (!autocommit) {
@@ -627,7 +668,7 @@ class ConnectionImpl implements Connection {
     ConnectionPreconditions.checkState(
         !transactionBeginMarked, "Cannot set read-only when a transaction has begun");
     setConnectionPropertyValue(READONLY, readOnly);
-    clearLastTransactionAndSetDefaultTransactionOptions();
+    clearLastTransactionAndSetDefaultTransactionOptions(getDefaultIsolationLevel());
   }
 
   @Override
@@ -636,9 +677,59 @@ class ConnectionImpl implements Connection {
     return getConnectionPropertyValue(READONLY);
   }
 
-  private void clearLastTransactionAndSetDefaultTransactionOptions() {
-    setDefaultTransactionOptions();
+  @Override
+  public void setDefaultIsolationLevel(IsolationLevel isolationLevel) {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    ConnectionPreconditions.checkState(
+        !isBatchActive(), "Cannot default isolation level while in a batch");
+    ConnectionPreconditions.checkState(
+        !isTransactionStarted(),
+        "Cannot set default isolation level while a transaction is active");
+    setConnectionPropertyValue(DEFAULT_ISOLATION_LEVEL, isolationLevel);
+    clearLastTransactionAndSetDefaultTransactionOptions(isolationLevel);
+  }
+
+  @Override
+  public IsolationLevel getDefaultIsolationLevel() {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    return getConnectionPropertyValue(DEFAULT_ISOLATION_LEVEL);
+  }
+
+  private void clearLastTransactionAndSetDefaultTransactionOptions(IsolationLevel isolationLevel) {
+    setDefaultTransactionOptions(isolationLevel);
     this.currentUnitOfWork = null;
+  }
+
+  @Override
+  public void setReadLockMode(ReadLockMode readLockMode) {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    setConnectionPropertyValue(READ_LOCK_MODE, readLockMode);
+  }
+
+  @Override
+  public ReadLockMode getReadLockMode() {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    return getConnectionPropertyValue(READ_LOCK_MODE);
+  }
+
+  @Override
+  public void setTransactionTimeout(Duration timeout) {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    setConnectionPropertyValue(TRANSACTION_TIMEOUT, timeout);
+  }
+
+  @Override
+  public Duration getTransactionTimeout() {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    return getConnectionPropertyValue(TRANSACTION_TIMEOUT);
+  }
+
+  @Nullable
+  Deadline getTransactionDeadline() {
+    Duration timeout = getTransactionTimeout();
+    return timeout == null
+        ? null
+        : Deadline.after(timeout.toNanos(), TimeUnit.NANOSECONDS, this.ticker);
   }
 
   @Override
@@ -649,7 +740,8 @@ class ConnectionImpl implements Connection {
         !isBatchActive(), "Cannot set autocommit DML mode while in a batch");
     ConnectionPreconditions.checkState(
         !isInTransaction() && isAutocommit(),
-        "Cannot set autocommit DML mode while not in autocommit mode or while a transaction is active");
+        "Cannot set autocommit DML mode while not in autocommit mode or while a transaction is"
+            + " active");
     ConnectionPreconditions.checkState(
         !isReadOnly(), "Cannot set autocommit DML mode for a read-only connection");
     setConnectionPropertyValue(AUTOCOMMIT_DML_MODE, mode);
@@ -764,6 +856,16 @@ class ConnectionImpl implements Connection {
   }
 
   @Override
+  public String getDefaultSequenceKind() {
+    return getConnectionPropertyValue(DEFAULT_SEQUENCE_KIND);
+  }
+
+  @Override
+  public void setDefaultSequenceKind(String defaultSequenceKind) {
+    setConnectionPropertyValue(DEFAULT_SEQUENCE_KIND, defaultSequenceKind);
+  }
+
+  @Override
   public void setStatementTimeout(long timeout, TimeUnit unit) {
     Preconditions.checkArgument(timeout > 0L, "Zero or negative timeout values are not allowed");
     Preconditions.checkArgument(
@@ -828,11 +930,44 @@ class ConnectionImpl implements Connection {
     this.unitOfWorkType = UnitOfWorkType.of(transactionMode);
   }
 
+  IsolationLevel getTransactionIsolationLevel() {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    ConnectionPreconditions.checkState(!isDdlBatchActive(), "This connection is in a DDL batch");
+    ConnectionPreconditions.checkState(isInTransaction(), "This connection has no transaction");
+    return this.transactionIsolationLevel;
+  }
+
+  void setTransactionIsolationLevel(IsolationLevel isolationLevel) {
+    Preconditions.checkNotNull(isolationLevel);
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    ConnectionPreconditions.checkState(
+        !isBatchActive(), "Cannot set transaction isolation level while in a batch");
+    ConnectionPreconditions.checkState(isInTransaction(), "This connection has no transaction");
+    ConnectionPreconditions.checkState(
+        !isTransactionStarted(),
+        "The transaction isolation level cannot be set after the transaction has started");
+
+    this.transactionBeginMarked = true;
+    this.transactionIsolationLevel = isolationLevel;
+  }
+
   @Override
   public String getTransactionTag() {
     ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
     ConnectionPreconditions.checkState(!isDdlBatchActive(), "This connection is in a DDL batch");
     return transactionTag;
+  }
+
+  @Override
+  public void setClientContext(RequestOptions.ClientContext clientContext) {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    this.clientContext = clientContext;
+  }
+
+  @Override
+  public RequestOptions.ClientContext getClientContext() {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    return clientContext;
   }
 
   @Override
@@ -900,7 +1035,7 @@ class ConnectionImpl implements Connection {
               String.format(
                   "File %s is not a valid proto descriptors file", this.protoDescriptorsFilePath));
         }
-        InputStream pdStream = new FileInputStream(protoDescriptorsFile);
+        InputStream pdStream = Files.newInputStream(protoDescriptorsFile.toPath());
         this.protoDescriptors = ByteArray.copyFrom(pdStream).toByteArray();
       } catch (Exception exception) {
         throw SpannerExceptionFactory.newSpannerException(exception);
@@ -952,8 +1087,12 @@ class ConnectionImpl implements Connection {
 
   @Override
   public void setRetryAbortsInternally(boolean retryAbortsInternally) {
+    setRetryAbortsInternally(retryAbortsInternally, /* local= */ false);
+  }
+
+  void setRetryAbortsInternally(boolean retryAbortsInternally, boolean local) {
     checkSetRetryAbortsInternallyAvailable();
-    setConnectionPropertyValue(RETRY_ABORTS_INTERNALLY, retryAbortsInternally);
+    setConnectionPropertyValue(RETRY_ABORTS_INTERNALLY, retryAbortsInternally, local);
   }
 
   @Override
@@ -1046,7 +1185,7 @@ class ConnectionImpl implements Connection {
 
   @Override
   public void setReturnCommitStats(boolean returnCommitStats) {
-    setReturnCommitStats(returnCommitStats, /* local = */ false);
+    setReturnCommitStats(returnCommitStats, /* local= */ false);
   }
 
   @VisibleForTesting
@@ -1105,13 +1244,14 @@ class ConnectionImpl implements Connection {
   }
 
   /** Resets this connection to its default transaction options. */
-  private void setDefaultTransactionOptions() {
+  private void setDefaultTransactionOptions(IsolationLevel isolationLevel) {
     if (transactionStack.isEmpty()) {
       unitOfWorkType =
           isReadOnly()
               ? UnitOfWorkType.READ_ONLY_TRANSACTION
               : UnitOfWorkType.READ_WRITE_TRANSACTION;
       batchMode = BatchMode.NONE;
+      transactionIsolationLevel = isolationLevel;
       transactionTag = null;
       excludeTxnFromChangeStreams = false;
     } else {
@@ -1121,11 +1261,21 @@ class ConnectionImpl implements Connection {
 
   @Override
   public void beginTransaction() {
-    get(beginTransactionAsync());
+    get(beginTransactionAsync(getConnectionPropertyValue(DEFAULT_ISOLATION_LEVEL)));
+  }
+
+  @Override
+  public void beginTransaction(IsolationLevel isolationLevel) {
+    get(beginTransactionAsync(isolationLevel));
   }
 
   @Override
   public ApiFuture<Void> beginTransactionAsync() {
+    return beginTransactionAsync(getConnectionPropertyValue(DEFAULT_ISOLATION_LEVEL));
+  }
+
+  @Override
+  public ApiFuture<Void> beginTransactionAsync(IsolationLevel isolationLevel) {
     ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
     ConnectionPreconditions.checkState(
         !isBatchActive(), "This connection has an active batch and cannot begin a transaction");
@@ -1135,7 +1285,7 @@ class ConnectionImpl implements Connection {
     ConnectionPreconditions.checkState(!transactionBeginMarked, "A transaction has already begun");
 
     transactionBeginMarked = true;
-    clearLastTransactionAndSetDefaultTransactionOptions();
+    clearLastTransactionAndSetDefaultTransactionOptions(isolationLevel);
     if (isAutocommit()) {
       inTransaction = true;
     }
@@ -1170,16 +1320,19 @@ class ConnectionImpl implements Connection {
 
   @Override
   public void commit() {
-    get(commitAsync(CallType.SYNC));
+    get(commitAsync(CallType.SYNC, Caller.APPLICATION));
   }
 
   @Override
   public ApiFuture<Void> commitAsync() {
-    return commitAsync(CallType.ASYNC);
+    return commitAsync(CallType.ASYNC, Caller.APPLICATION);
   }
 
-  private ApiFuture<Void> commitAsync(CallType callType) {
+  ApiFuture<Void> commitAsync(CallType callType, Caller caller) {
     ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    ConnectionPreconditions.checkState(
+        !transactionRunnerActive || caller == Caller.TRANSACTION_RUNNER,
+        "Cannot call commit when a transaction runner is active");
     maybeAutoCommitOrFlushCurrentUnitOfWork(COMMIT_STATEMENT.getType(), COMMIT_STATEMENT);
     return endCurrentTransactionAsync(callType, commit, COMMIT_STATEMENT);
   }
@@ -1207,16 +1360,19 @@ class ConnectionImpl implements Connection {
 
   @Override
   public void rollback() {
-    get(rollbackAsync(CallType.SYNC));
+    get(rollbackAsync(CallType.SYNC, Caller.APPLICATION));
   }
 
   @Override
   public ApiFuture<Void> rollbackAsync() {
-    return rollbackAsync(CallType.ASYNC);
+    return rollbackAsync(CallType.ASYNC, Caller.APPLICATION);
   }
 
-  private ApiFuture<Void> rollbackAsync(CallType callType) {
+  ApiFuture<Void> rollbackAsync(CallType callType, Caller caller) {
     ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    ConnectionPreconditions.checkState(
+        !transactionRunnerActive || caller == Caller.TRANSACTION_RUNNER,
+        "Cannot call rollback when a transaction runner is active");
     maybeAutoCommitOrFlushCurrentUnitOfWork(ROLLBACK_STATEMENT.getType(), ROLLBACK_STATEMENT);
     return endCurrentTransactionAsync(callType, rollback, ROLLBACK_STATEMENT);
   }
@@ -1244,9 +1400,30 @@ class ConnectionImpl implements Connection {
       if (isAutocommit()) {
         inTransaction = false;
       }
-      setDefaultTransactionOptions();
+      setDefaultTransactionOptions(getDefaultIsolationLevel());
     }
     return res;
+  }
+
+  @Override
+  public <T> T runTransaction(TransactionCallable<T> callable) {
+    ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
+    ConnectionPreconditions.checkState(!isBatchActive(), "Cannot run transaction while in a batch");
+    ConnectionPreconditions.checkState(
+        !isTransactionStarted(), "Cannot run transaction when a transaction is already active");
+    ConnectionPreconditions.checkState(
+        !transactionRunnerActive, "A transaction runner is already active for this connection");
+    this.transactionRunnerActive = true;
+    try {
+      return new TransactionRunnerImpl(this).run(callable);
+    } finally {
+      this.transactionRunnerActive = false;
+    }
+  }
+
+  void resetForRetry(UnitOfWork retryUnitOfWork) {
+    retryUnitOfWork.resetForRetry();
+    this.currentUnitOfWork = retryUnitOfWork;
   }
 
   @Override
@@ -1270,7 +1447,8 @@ class ConnectionImpl implements Connection {
     SavepointSupport savepointSupport = getSavepointSupport();
     ConnectionPreconditions.checkState(
         savepointSupport.isSavepointCreationAllowed(),
-        "This connection does not allow the creation of savepoints. Current value of SavepointSupport: "
+        "This connection does not allow the creation of savepoints. Current value of"
+            + " SavepointSupport: "
             + savepointSupport);
     getCurrentUnitOfWorkOrStartNewUnitOfWork(SAVEPOINT_STATEMENT)
         .savepoint(checkValidIdentifier(name), getDialect());
@@ -1330,8 +1508,7 @@ class ConnectionImpl implements Connection {
       default:
     }
     throw SpannerExceptionFactory.newSpannerException(
-        ErrorCode.INVALID_ARGUMENT,
-        "Unknown statement: " + parsedStatement.getSqlWithoutComments());
+        ErrorCode.INVALID_ARGUMENT, "Unknown statement: " + parsedStatement.getSql());
   }
 
   @VisibleForTesting
@@ -1376,8 +1553,7 @@ class ConnectionImpl implements Connection {
       case UNKNOWN:
       default:
         throw SpannerExceptionFactory.newSpannerException(
-            ErrorCode.INVALID_ARGUMENT,
-            "Unknown statement: " + parsedStatement.getSqlWithoutComments());
+            ErrorCode.INVALID_ARGUMENT, "Unknown statement: " + parsedStatement.getSql());
     }
   }
 
@@ -1409,8 +1585,7 @@ class ConnectionImpl implements Connection {
       default:
     }
     throw SpannerExceptionFactory.newSpannerException(
-        ErrorCode.INVALID_ARGUMENT,
-        "Unknown statement: " + parsedStatement.getSqlWithoutComments());
+        ErrorCode.INVALID_ARGUMENT, "Unknown statement: " + parsedStatement.getSql());
   }
 
   @Override
@@ -1420,7 +1595,7 @@ class ConnectionImpl implements Connection {
 
   @Override
   public AsyncResultSet executeQueryAsync(Statement query, QueryOption... options) {
-    return parseAndExecuteQueryAsync(CallType.ASYNC, query, AnalyzeMode.NONE, options);
+    return parseAndExecuteQueryAsync(query, options);
   }
 
   @Override
@@ -1449,6 +1624,10 @@ class ConnectionImpl implements Connection {
     return getConnectionPropertyValue(AUTO_BATCH_DML_UPDATE_COUNT);
   }
 
+  long getDmlBatchUpdateCount() {
+    return getConnectionPropertyValue(BATCH_DML_UPDATE_COUNT);
+  }
+
   @Override
   public void setAutoBatchDmlUpdateCountVerification(boolean verification) {
     setConnectionPropertyValue(AUTO_BATCH_DML_UPDATE_COUNT_VERIFICATION, verification);
@@ -1457,6 +1636,10 @@ class ConnectionImpl implements Connection {
   @Override
   public boolean isAutoBatchDmlUpdateCountVerification() {
     return getConnectionPropertyValue(AUTO_BATCH_DML_UPDATE_COUNT_VERIFICATION);
+  }
+
+  void setBatchDmlUpdateCount(long updateCount, boolean local) {
+    setConnectionPropertyValue(BATCH_DML_UPDATE_COUNT, updateCount, local);
   }
 
   @Override
@@ -1605,7 +1788,7 @@ class ConnectionImpl implements Connection {
               throw SpannerExceptionFactory.newSpannerException(
                   ErrorCode.FAILED_PRECONDITION,
                   "DML statement with returning clause cannot be executed in read-only mode: "
-                      + parsedStatement.getSqlWithoutComments());
+                      + parsedStatement.getSql());
             }
             return internalExecuteQuery(callType, parsedStatement, analyzeMode, options);
           }
@@ -1616,12 +1799,10 @@ class ConnectionImpl implements Connection {
     }
     throw SpannerExceptionFactory.newSpannerException(
         ErrorCode.INVALID_ARGUMENT,
-        "Statement is not a query or DML with returning clause: "
-            + parsedStatement.getSqlWithoutComments());
+        "Statement is not a query or DML with returning clause: " + parsedStatement.getSql());
   }
 
-  private AsyncResultSet parseAndExecuteQueryAsync(
-      CallType callType, Statement query, AnalyzeMode analyzeMode, QueryOption... options) {
+  private AsyncResultSet parseAndExecuteQueryAsync(Statement query, QueryOption... options) {
     Preconditions.checkNotNull(query);
     ConnectionPreconditions.checkState(!isClosed(), CLOSED_ERROR_MSG);
     ParsedStatement parsedStatement = getStatementParser().parse(query, buildQueryOptions());
@@ -1636,7 +1817,8 @@ class ConnectionImpl implements Connection {
               spanner.getAsyncExecutorProvider(),
               options);
         case QUERY:
-          return internalExecuteQueryAsync(callType, parsedStatement, analyzeMode, options);
+          return internalExecuteQueryAsync(
+              CallType.ASYNC, parsedStatement, AnalyzeMode.NONE, options);
         case UPDATE:
           if (parsedStatement.hasReturningClause()) {
             // Cannot execute DML statement with returning clause in read-only mode or in
@@ -1647,9 +1829,10 @@ class ConnectionImpl implements Connection {
               throw SpannerExceptionFactory.newSpannerException(
                   ErrorCode.FAILED_PRECONDITION,
                   "DML statement with returning clause cannot be executed in read-only mode: "
-                      + parsedStatement.getSqlWithoutComments());
+                      + parsedStatement.getSql());
             }
-            return internalExecuteQueryAsync(callType, parsedStatement, analyzeMode, options);
+            return internalExecuteQueryAsync(
+                CallType.ASYNC, parsedStatement, AnalyzeMode.NONE, options);
           }
         case DDL:
         case UNKNOWN:
@@ -1658,8 +1841,7 @@ class ConnectionImpl implements Connection {
     }
     throw SpannerExceptionFactory.newSpannerException(
         ErrorCode.INVALID_ARGUMENT,
-        "Statement is not a query or DML with returning clause: "
-            + parsedStatement.getSqlWithoutComments());
+        "Statement is not a query or DML with returning clause: " + parsedStatement.getSql());
   }
 
   private boolean isInternalMetadataQuery(QueryOption... options) {
@@ -1686,7 +1868,7 @@ class ConnectionImpl implements Connection {
             throw SpannerExceptionFactory.newSpannerException(
                 ErrorCode.FAILED_PRECONDITION,
                 "DML statement with returning clause cannot be executed using executeUpdate: "
-                    + parsedStatement.getSqlWithoutComments()
+                    + parsedStatement.getSql()
                     + ". Please use executeQuery instead.");
           }
           return get(internalExecuteUpdateAsync(CallType.SYNC, parsedStatement));
@@ -1699,7 +1881,7 @@ class ConnectionImpl implements Connection {
     }
     throw SpannerExceptionFactory.newSpannerException(
         ErrorCode.INVALID_ARGUMENT,
-        "Statement is not an update statement: " + parsedStatement.getSqlWithoutComments());
+        "Statement is not an update statement: " + parsedStatement.getSql());
   }
 
   @Override
@@ -1714,7 +1896,7 @@ class ConnectionImpl implements Connection {
             throw SpannerExceptionFactory.newSpannerException(
                 ErrorCode.FAILED_PRECONDITION,
                 "DML statement with returning clause cannot be executed using executeUpdateAsync: "
-                    + parsedStatement.getSqlWithoutComments()
+                    + parsedStatement.getSql()
                     + ". Please use executeQueryAsync instead.");
           }
           return internalExecuteUpdateAsync(CallType.ASYNC, parsedStatement);
@@ -1727,7 +1909,7 @@ class ConnectionImpl implements Connection {
     }
     throw SpannerExceptionFactory.newSpannerException(
         ErrorCode.INVALID_ARGUMENT,
-        "Statement is not an update statement: " + parsedStatement.getSqlWithoutComments());
+        "Statement is not an update statement: " + parsedStatement.getSql());
   }
 
   @Override
@@ -1750,7 +1932,7 @@ class ConnectionImpl implements Connection {
     }
     throw SpannerExceptionFactory.newSpannerException(
         ErrorCode.INVALID_ARGUMENT,
-        "Statement is not an update statement: " + parsedStatement.getSqlWithoutComments());
+        "Statement is not an update statement: " + parsedStatement.getSql());
   }
 
   @Override
@@ -1772,7 +1954,7 @@ class ConnectionImpl implements Connection {
     }
     throw SpannerExceptionFactory.newSpannerException(
         ErrorCode.INVALID_ARGUMENT,
-        "Statement is not an update statement: " + parsedStatement.getSqlWithoutComments());
+        "Statement is not an update statement: " + parsedStatement.getSql());
   }
 
   @Override
@@ -1804,7 +1986,7 @@ class ConnectionImpl implements Connection {
           throw SpannerExceptionFactory.newSpannerException(
               ErrorCode.INVALID_ARGUMENT,
               "The batch update list contains a statement that is not an update statement: "
-                  + parsedStatement.getSqlWithoutComments());
+                  + parsedStatement.getSql());
       }
     }
     return parsedStatements;
@@ -1859,6 +2041,9 @@ class ConnectionImpl implements Connection {
       options =
           appendQueryOption(options, Options.priority(getConnectionPropertyValue(RPC_PRIORITY)));
     }
+    if (clientContext != null) {
+      options = appendQueryOption(options, Options.clientContext(clientContext));
+    }
     if (currentUnitOfWork != null
         && currentUnitOfWork.supportsDirectedReads(parsedStatement)
         && getConnectionPropertyValue(DIRECTED_READ) != null) {
@@ -1903,6 +2088,14 @@ class ConnectionImpl implements Connection {
         options[options.length - 1] = Options.priority(getConnectionPropertyValue(RPC_PRIORITY));
       }
     }
+    if (clientContext != null) {
+      if (options == null || options.length == 0) {
+        options = new UpdateOption[] {Options.clientContext(clientContext)};
+      } else {
+        options = Arrays.copyOf(options, options.length + 1);
+        options[options.length - 1] = Options.clientContext(clientContext);
+      }
+    }
     return options;
   }
 
@@ -1915,7 +2108,8 @@ class ConnectionImpl implements Connection {
         statement.getType() == StatementType.QUERY
             || (statement.getType() == StatementType.UPDATE
                 && (analyzeMode != AnalyzeMode.NONE || statement.hasReturningClause())),
-        "Statement must either be a query or a DML mode with analyzeMode!=NONE or returning clause");
+        "Statement must either be a query or a DML mode with analyzeMode!=NONE or returning"
+            + " clause");
     boolean isInternalMetadataQuery = isInternalMetadataQuery(options);
     QueryOption[] combinedOptions = concat(statement.getOptionsFromHints(), options);
     UnitOfWork transaction =
@@ -2000,20 +2194,20 @@ class ConnectionImpl implements Connection {
   private UnitOfWork maybeStartAutoDmlBatch(UnitOfWork transaction) {
     if (isInTransaction() && isAutoBatchDml() && !(transaction instanceof DmlBatch)) {
       // Automatically start a DML batch.
-      return startBatchDml(/* autoBatch = */ true);
+      return startBatchDml(/* autoBatch= */ true);
     }
     return transaction;
   }
 
-  private UnitOfWork getCurrentUnitOfWorkOrStartNewUnitOfWork() {
+  UnitOfWork getCurrentUnitOfWorkOrStartNewUnitOfWork() {
     return getCurrentUnitOfWorkOrStartNewUnitOfWork(
-        StatementType.UNKNOWN, /* parsedStatement = */ null, /* internalMetadataQuery = */ false);
+        StatementType.UNKNOWN, /* parsedStatement= */ null, /* internalMetadataQuery= */ false);
   }
 
   private UnitOfWork getCurrentUnitOfWorkOrStartNewUnitOfWork(
       @Nonnull ParsedStatement parsedStatement) {
     return getCurrentUnitOfWorkOrStartNewUnitOfWork(
-        parsedStatement.getType(), parsedStatement, /* internalMetadataQuery = */ false);
+        parsedStatement.getType(), parsedStatement, /* internalMetadataQuery= */ false);
   }
 
   @VisibleForTesting
@@ -2039,19 +2233,19 @@ class ConnectionImpl implements Connection {
     if (isInternalMetadataQuery) {
       // Just return a temporary single-use transaction.
       return createNewUnitOfWork(
-          /* isInternalMetadataQuery = */ true,
-          /* forceSingleUse = */ true,
-          /* autoBatchDml = */ false);
+          /* isInternalMetadataQuery= */ true,
+          /* forceSingleUse= */ true,
+          /* autoBatchDml= */ false);
     }
     maybeAutoCommitOrFlushCurrentUnitOfWork(statementType, parsedStatement);
     if (this.currentUnitOfWork == null || !this.currentUnitOfWork.isActive()) {
       this.currentUnitOfWork =
           createNewUnitOfWork(
-              /* isInternalMetadataQuery = */ false,
-              /* forceSingleUse = */ statementType == StatementType.DDL
+              /* isInternalMetadataQuery= */ false,
+              /* forceSingleUse= */ statementType == StatementType.DDL
                   && getDdlInTransactionMode() != DdlInTransactionMode.FAIL
                   && !this.transactionBeginMarked,
-              /* autoBatchDml = */ false,
+              /* autoBatchDml= */ false,
               statementType);
     }
     return this.currentUnitOfWork;
@@ -2122,22 +2316,20 @@ class ConnectionImpl implements Connection {
               .setDdlClient(ddlClient)
               .setDatabaseClient(dbClient)
               .setBatchClient(batchClient)
-              .setReadOnly(getConnectionPropertyValue(READONLY))
-              .setReadOnlyStaleness(getConnectionPropertyValue(READ_ONLY_STALENESS))
-              .setAutocommitDmlMode(getConnectionPropertyValue(AUTOCOMMIT_DML_MODE))
-              .setReturnCommitStats(getConnectionPropertyValue(RETURN_COMMIT_STATS))
+              .setConnectionState(connectionState)
+              .setTransactionRetryListeners(transactionRetryListeners)
               .setExcludeTxnFromChangeStreams(excludeTxnFromChangeStreams)
-              .setMaxCommitDelay(getConnectionPropertyValue(MAX_COMMIT_DELAY))
               .setStatementTimeout(statementTimeout)
               .withStatementExecutor(statementExecutor)
               .setSpan(
                   createSpanForUnitOfWork(
                       statementType == StatementType.DDL ? DDL_STATEMENT : SINGLE_USE_TRANSACTION))
               .setProtoDescriptors(getProtoDescriptors())
+              .setClientContext(clientContext)
               .build();
       if (!isInternalMetadataQuery && !forceSingleUse) {
         // Reset the transaction options after starting a single-use transaction.
-        setDefaultTransactionOptions();
+        setDefaultTransactionOptions(getDefaultIsolationLevel());
       }
       return singleUseTransaction;
     } else {
@@ -2152,12 +2344,16 @@ class ConnectionImpl implements Connection {
               .setTransactionTag(transactionTag)
               .setRpcPriority(getConnectionPropertyValue(RPC_PRIORITY))
               .setSpan(createSpanForUnitOfWork(READ_ONLY_TRANSACTION))
+              .setClientContext(clientContext)
               .build();
         case READ_WRITE_TRANSACTION:
           return ReadWriteTransaction.newBuilder()
               .setUsesEmulator(options.usesEmulator())
               .setUseAutoSavepointsForEmulator(options.useAutoSavepointsForEmulator())
               .setDatabaseClient(dbClient)
+              .setIsolationLevel(transactionIsolationLevel)
+              .setReadLockMode(getConnectionPropertyValue(READ_LOCK_MODE))
+              .setDeadline(getTransactionDeadline())
               .setDelayTransactionStartUntilFirstWrite(
                   getConnectionPropertyValue(DELAY_TRANSACTION_START_UNTIL_FIRST_WRITE))
               .setKeepTransactionAlive(getConnectionPropertyValue(KEEP_TRANSACTION_ALIVE))
@@ -2172,6 +2368,7 @@ class ConnectionImpl implements Connection {
               .setExcludeTxnFromChangeStreams(excludeTxnFromChangeStreams)
               .setRpcPriority(getConnectionPropertyValue(RPC_PRIORITY))
               .setSpan(createSpanForUnitOfWork(READ_WRITE_TRANSACTION))
+              .setClientContext(clientContext)
               .build();
         case DML_BATCH:
           // A DML batch can run inside the current transaction. It should therefore only
@@ -2182,6 +2379,7 @@ class ConnectionImpl implements Connection {
               .setAutoBatchUpdateCountSupplier(this::getAutoBatchDmlUpdateCount)
               .setAutoBatchUpdateCountVerificationSupplier(
                   this::isAutoBatchDmlUpdateCountVerification)
+              .setDmlBatchUpdateCountSupplier(this::getDmlBatchUpdateCount)
               .setTransaction(currentUnitOfWork)
               .setStatementTimeout(statementTimeout)
               .withStatementExecutor(statementExecutor)
@@ -2190,6 +2388,7 @@ class ConnectionImpl implements Connection {
               .setRpcPriority(getConnectionPropertyValue(RPC_PRIORITY))
               // Use the transaction Span for the DML batch.
               .setSpan(transactionStack.peek().getSpan())
+              .setClientContext(clientContext)
               .build();
         case DDL_BATCH:
           return DdlBatch.newBuilder()
@@ -2199,13 +2398,16 @@ class ConnectionImpl implements Connection {
               .withStatementExecutor(statementExecutor)
               .setSpan(createSpanForUnitOfWork(DDL_BATCH))
               .setProtoDescriptors(getProtoDescriptors())
+              .setConnectionState(connectionState)
+              .setClientContext(clientContext)
               .build();
         default:
       }
     }
     throw SpannerExceptionFactory.newSpannerException(
         ErrorCode.FAILED_PRECONDITION,
-        "This connection does not have an active transaction and the state of this connection does not allow any new transactions to be started");
+        "This connection does not have an active transaction and the state of this connection does"
+            + " not allow any new transactions to be started");
   }
 
   /** Pushes the current unit of work to the stack of nested transactions. */
@@ -2290,9 +2492,9 @@ class ConnectionImpl implements Connection {
     this.unitOfWorkType = UnitOfWorkType.DDL_BATCH;
     this.currentUnitOfWork =
         createNewUnitOfWork(
-            /* isInternalMetadataQuery = */ false,
-            /* forceSingleUse = */ false,
-            /* autoBatchDml = */ false);
+            /* isInternalMetadataQuery= */ false,
+            /* forceSingleUse= */ false,
+            /* autoBatchDml= */ false);
   }
 
   @Override
@@ -2305,7 +2507,7 @@ class ConnectionImpl implements Connection {
     ConnectionPreconditions.checkState(
         !(isInTransaction() && getTransactionMode() == TransactionMode.READ_ONLY_TRANSACTION),
         "Cannot start a DML batch when a read-only transaction is in progress");
-    startBatchDml(/* autoBatch = */ false);
+    startBatchDml(/* autoBatch= */ false);
   }
 
   private UnitOfWork startBatchDml(boolean autoBatch) {
@@ -2316,7 +2518,7 @@ class ConnectionImpl implements Connection {
     this.unitOfWorkType = UnitOfWorkType.DML_BATCH;
     return this.currentUnitOfWork =
         createNewUnitOfWork(
-            /* isInternalMetadataQuery = */ false, /* forceSingleUse = */ false, autoBatch);
+            /* isInternalMetadataQuery= */ false, /* forceSingleUse= */ false, autoBatch);
   }
 
   @Override
@@ -2340,7 +2542,7 @@ class ConnectionImpl implements Connection {
         this.protoDescriptorsFilePath = null;
       }
       this.batchMode = BatchMode.NONE;
-      setDefaultTransactionOptions();
+      setDefaultTransactionOptions(getDefaultIsolationLevel());
     }
   }
 
@@ -2354,7 +2556,7 @@ class ConnectionImpl implements Connection {
       }
     } finally {
       this.batchMode = BatchMode.NONE;
-      setDefaultTransactionOptions();
+      setDefaultTransactionOptions(getDefaultIsolationLevel());
     }
   }
 

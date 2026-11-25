@@ -27,9 +27,11 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
+import com.google.api.gax.rpc.ServerStream;
 import com.google.cloud.NoCredentials;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.AsyncTransactionManager.AsyncTransactionStep;
@@ -40,23 +42,16 @@ import com.google.cloud.spanner.MockSpannerServiceImpl.StatementResult;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.TransactionRunnerImpl.TransactionContextImpl;
 import com.google.cloud.spanner.connection.RandomResultSetGenerator;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
-import com.google.spanner.v1.BeginTransactionRequest;
-import com.google.spanner.v1.CommitRequest;
-import com.google.spanner.v1.ExecuteSqlRequest;
+import com.google.spanner.v1.*;
 import com.google.spanner.v1.RequestOptions.Priority;
 import com.google.spanner.v1.Session;
-import com.google.spanner.v1.Transaction;
 import io.grpc.Status;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,6 +69,7 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
 
   @BeforeClass
   public static void setupResults() {
+    assumeFalse(TestHelper.isMultiplexSessionDisabled());
     mockSpanner.putStatementResults(
         StatementResult.query(STATEMENT, new RandomResultSetGenerator(1).generate()));
     mockSpanner.putStatementResult(StatementResult.update(UPDATE_STATEMENT, UPDATE_COUNT));
@@ -93,16 +89,47 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
             .setSessionPoolOption(
                 SessionPoolOptions.newBuilder()
                     .setUseMultiplexedSession(true)
-                    .setUseMultiplexedSessionBlindWrite(true)
                     .setUseMultiplexedSessionForRW(true)
+                    .setUseMultiplexedSessionPartitionedOps(true)
                     // Set the maintainer to loop once every 1ms
                     .setMultiplexedSessionMaintenanceLoopFrequency(Duration.ofMillis(1L))
                     // Set multiplexed sessions to be replaced once every 1ms
-                    .setMultiplexedSessionMaintenanceDuration(org.threeten.bp.Duration.ofMillis(1L))
+                    .setMultiplexedSessionMaintenanceDuration(Duration.ofMillis(1L))
                     .setFailOnSessionLeak()
                     .build())
             .build()
             .getService();
+  }
+
+  @Test
+  public void testCreateSessionDeadlineExceeded() {
+    // Simulate a problem with the CreateSession RPC making it slow.
+    mockSpanner.setCreateSessionExecutionTime(
+        SimulatedExecutionTime.ofException(Status.DEADLINE_EXCEEDED.asRuntimeException()));
+
+    Spanner testSpanner =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setChannelProvider(channelProvider)
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getService();
+    DatabaseClient client = testSpanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+
+    // The first attempt should lead to a DEADLINE_EXCEEDED error being propagated from the
+    // CreateSession attempt.
+    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
+      SpannerException exception = assertThrows(SpannerException.class, resultSet::next);
+      assertEquals(ErrorCode.DEADLINE_EXCEEDED, exception.getErrorCode());
+    }
+
+    // Remove the simulated problem on the mock server.
+    // The next attempt should then succeed.
+    mockSpanner.removeAllExecutionTimes();
+    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
+      //noinspection StatementWithEmptyBody
+      while (resultSet.next()) {}
+    }
   }
 
   @Test
@@ -214,7 +241,281 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
   }
 
   @Test
-  public void testUnimplementedErrorOnCreation_fallsBackToRegularSessions() {
+  public void testRetryWithTheSessionCreationWaitTime() {
+    mockSpanner.setCreateSessionExecutionTime(
+        SimulatedExecutionTime.ofExceptions(
+            Arrays.asList(
+                Status.DEADLINE_EXCEEDED
+                    .withDescription(
+                        "CallOptions deadline exceeded after 22.986872393s. "
+                            + "Name resolution delay 6.911918521 seconds. [closed=[], "
+                            + "open=[[connecting_and_lb_delay=32445014148ns, was_still_waiting]]]")
+                    .asRuntimeException(),
+                Status.DEADLINE_EXCEEDED
+                    .withDescription(
+                        "CallOptions deadline exceeded after 22.986872393s. "
+                            + "Name resolution delay 6.911918521 seconds. [closed=[], "
+                            + "open=[[connecting_and_lb_delay=32445014148ns, was_still_waiting]]]")
+                    .asRuntimeException())));
+
+    Spanner testSpanner =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setChannelProvider(channelProvider)
+            .setCredentials(NoCredentials.getInstance())
+            .setSessionPoolOption(
+                SessionPoolOptions.newBuilder()
+                    .setUseMultiplexedSession(true)
+                    .setUseMultiplexedSessionForRW(true)
+                    .setUseMultiplexedSessionPartitionedOps(true)
+                    .setWaitForMinSessionsDuration(Duration.ofSeconds(1))
+                    .setFailOnSessionLeak()
+                    .build())
+            .build()
+            .getService();
+
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) testSpanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+
+    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
+      //noinspection StatementWithEmptyBody
+      while (resultSet.next()) {
+        // ignore
+      }
+    }
+
+    List<CreateSessionRequest> createSessionRequests =
+        mockSpanner.getRequestsOfType(CreateSessionRequest.class);
+    assertEquals(3, createSessionRequests.size());
+
+    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(1, requests.size());
+
+    assertNotNull(client.multiplexedSessionDatabaseClient);
+    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
+    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+
+    testSpanner.close();
+  }
+
+  @Test
+  public void testRetryWithTheDatabaseNotFoundExceptionWithSessionCreationWaitTime() {
+    mockSpanner.setCreateSessionExecutionTime(
+        SimulatedExecutionTime.ofExceptions(
+            Collections.singletonList(
+                Status.NOT_FOUND.withDescription("Database not found.").asRuntimeException())));
+
+    Spanner testSpanner =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setChannelProvider(channelProvider)
+            .setCredentials(NoCredentials.getInstance())
+            .setSessionPoolOption(
+                SessionPoolOptions.newBuilder()
+                    .setUseMultiplexedSession(true)
+                    .setUseMultiplexedSessionForRW(true)
+                    .setUseMultiplexedSessionPartitionedOps(true)
+                    .setWaitForMinSessionsDuration(Duration.ofMillis(200))
+                    .setFailOnSessionLeak()
+                    .build())
+            .build()
+            .getService();
+
+    assertThrows(
+        SpannerException.class, () -> testSpanner.getDatabaseClient(DatabaseId.of("p", "i", "d")));
+
+    List<CreateSessionRequest> createSessionRequests =
+        mockSpanner.getRequestsOfType(CreateSessionRequest.class);
+    assertEquals(1, createSessionRequests.size());
+
+    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(0, requests.size());
+
+    testSpanner.close();
+  }
+
+  @Test
+  public void testRetryWithNoSessionCreationWaitTime() {
+    mockSpanner.setCreateSessionExecutionTime(
+        SimulatedExecutionTime.ofExceptions(
+            Collections.singletonList(
+                Status.DEADLINE_EXCEEDED
+                    .withDescription(
+                        "CallOptions deadline exceeded after 22.986872393s. "
+                            + "Name resolution delay 6.911918521 seconds. [closed=[], "
+                            + "open=[[connecting_and_lb_delay=32445014148ns, was_still_waiting]]]")
+                    .asRuntimeException())));
+
+    Spanner testSpanner =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setChannelProvider(channelProvider)
+            .setCredentials(NoCredentials.getInstance())
+            .setSessionPoolOption(
+                SessionPoolOptions.newBuilder()
+                    .setUseMultiplexedSession(true)
+                    .setUseMultiplexedSessionForRW(true)
+                    .setUseMultiplexedSessionPartitionedOps(true)
+                    .setFailOnSessionLeak()
+                    .build())
+            .build()
+            .getService();
+
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) testSpanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+
+    SpannerException spannerException =
+        assertThrows(
+            SpannerException.class,
+            () -> {
+              try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
+                //noinspection StatementWithEmptyBody
+                while (resultSet.next()) {
+                  // ignore
+                }
+              }
+            });
+    assertEquals(ErrorCode.DEADLINE_EXCEEDED, spannerException.getErrorCode());
+
+    // The CreateSession RPC will be retried, and as the exception is removed by the first call,
+    // the second attempt will succeed.
+    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
+      //noinspection StatementWithEmptyBody
+      while (resultSet.next()) {
+        // ignore
+      }
+    }
+
+    List<CreateSessionRequest> createSessionRequests =
+        mockSpanner.getRequestsOfType(CreateSessionRequest.class);
+    assertEquals(2, createSessionRequests.size());
+
+    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(1, requests.size());
+
+    testSpanner.close();
+  }
+
+  @Test
+  public void testRetryWithDelayedInResponseExceedsSessionCreationWaitTime() {
+    mockSpanner.setCreateSessionExecutionTime(
+        SimulatedExecutionTime.ofMinimumAndRandomTimeAndExceptions(
+            150,
+            0,
+            Arrays.asList(
+                Status.DEADLINE_EXCEEDED
+                    .withDescription(
+                        "CallOptions deadline exceeded after 22.986872393s. "
+                            + "Name resolution delay 6.911918521 seconds. [closed=[], "
+                            + "open=[[connecting_and_lb_delay=32445014148ns, was_still_waiting]]]")
+                    .asRuntimeException(),
+                Status.UNAVAILABLE
+                    .withDescription(
+                        "CallOptions deadline exceeded after 22.986872393s. "
+                            + "Name resolution delay 6.911918521 seconds. [closed=[], "
+                            + "open=[[connecting_and_lb_delay=32445014148ns, was_still_waiting]]]")
+                    .asRuntimeException())));
+
+    Spanner testSpanner =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setChannelProvider(channelProvider)
+            .setCredentials(NoCredentials.getInstance())
+            .setSessionPoolOption(
+                SessionPoolOptions.newBuilder()
+                    .setUseMultiplexedSession(true)
+                    .setUseMultiplexedSessionForRW(true)
+                    .setUseMultiplexedSessionPartitionedOps(true)
+                    .setWaitForMinSessionsDuration(Duration.ofMillis(200))
+                    .setFailOnSessionLeak()
+                    .build())
+            .build()
+            .getService();
+
+    SpannerException spannerException =
+        assertThrows(
+            SpannerException.class,
+            () -> {
+              DatabaseClientImpl client =
+                  (DatabaseClientImpl) testSpanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+
+              try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
+                //noinspection StatementWithEmptyBody
+                while (resultSet.next()) {
+                  // ignore
+                }
+              }
+            });
+    assertEquals(ErrorCode.DEADLINE_EXCEEDED, spannerException.getErrorCode());
+
+    List<CreateSessionRequest> createSessionRequests =
+        mockSpanner.getRequestsOfType(CreateSessionRequest.class);
+    assertEquals(2, createSessionRequests.size());
+
+    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(0, requests.size());
+
+    testSpanner.close();
+  }
+
+  @Test
+  public void testRetryWithDelayInExceptionWithInSessionCreationWaitTime() {
+    mockSpanner.setCreateSessionExecutionTime(
+        SimulatedExecutionTime.ofMinimumAndRandomTimeAndExceptions(
+            50,
+            0,
+            Arrays.asList(
+                Status.DEADLINE_EXCEEDED
+                    .withDescription(
+                        "CallOptions deadline exceeded after 22.986872393s. "
+                            + "Name resolution delay 6.911918521 seconds. [closed=[], "
+                            + "open=[[connecting_and_lb_delay=32445014148ns, was_still_waiting]]]")
+                    .asRuntimeException(),
+                Status.DEADLINE_EXCEEDED
+                    .withDescription(
+                        "CallOptions deadline exceeded after 22.986872393s. "
+                            + "Name resolution delay 6.911918521 seconds. [closed=[], "
+                            + "open=[[connecting_and_lb_delay=32445014148ns, was_still_waiting]]]")
+                    .asRuntimeException())));
+
+    Spanner testSpanner =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setChannelProvider(channelProvider)
+            .setCredentials(NoCredentials.getInstance())
+            .setSessionPoolOption(
+                SessionPoolOptions.newBuilder()
+                    .setUseMultiplexedSession(true)
+                    .setUseMultiplexedSessionForRW(true)
+                    .setUseMultiplexedSessionPartitionedOps(true)
+                    .setWaitForMinSessionsDuration(Duration.ofMillis(200))
+                    .setFailOnSessionLeak()
+                    .build())
+            .build()
+            .getService();
+
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) testSpanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+
+    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
+      //noinspection StatementWithEmptyBody
+      while (resultSet.next()) {
+        // ignore
+      }
+    }
+
+    List<CreateSessionRequest> createSessionRequests =
+        mockSpanner.getRequestsOfType(CreateSessionRequest.class);
+    assertEquals(3, createSessionRequests.size());
+
+    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(1, requests.size());
+
+    testSpanner.close();
+  }
+
+  @Test
+  public void testUnimplementedErrorOnCreationIsPropagated() {
     mockSpanner.setCreateSessionExecutionTime(
         SimulatedExecutionTime.ofException(
             Status.UNIMPLEMENTED
@@ -229,116 +530,13 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
             SpannerException.class,
             client.multiplexedSessionDatabaseClient::getCurrentSessionReference);
     assertEquals(ErrorCode.UNIMPLEMENTED, spannerException.getErrorCode());
-    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
-      //noinspection StatementWithEmptyBody
-      while (resultSet.next()) {
-        // ignore
-      }
-    }
-    // Verify that we received one ExecuteSqlRequest, and that it used a regular session.
-    assertEquals(1, mockSpanner.countRequestsOfType(ExecuteSqlRequest.class));
-    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
 
-    Session session = mockSpanner.getSession(requests.get(0).getSession());
-    assertNotNull(session);
-    assertFalse(session.getMultiplexed());
+    spannerException =
+        assertThrows(SpannerException.class, () -> client.singleUse().executeQuery(STATEMENT));
+    assertEquals(ErrorCode.UNIMPLEMENTED, spannerException.getErrorCode());
 
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    assertEquals(0L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
-    assertEquals(0L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
-  }
-
-  @Test
-  public void
-      testUnimplementedErrorOnCreation_firstReceivesError_secondFallsBackToRegularSessions() {
-    mockSpanner.setCreateSessionExecutionTime(
-        SimulatedExecutionTime.ofException(
-            Status.UNIMPLEMENTED
-                .withDescription("Multiplexed sessions are not implemented")
-                .asRuntimeException()));
-    // Freeze the mock server to ensure that the CreateSession RPC does not return an error or any
-    // other result just yet.
-    mockSpanner.freeze();
-    // Get a database client using multiplexed sessions. The CreateSession RPC will be blocked as
-    // long as the mock server is frozen.
-    DatabaseClientImpl client =
-        (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    // Try to execute a query. This is all non-blocking until the call to ResultSet#next().
-    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
-      // Unfreeze the mock server to get the error from the backend. This query will then fail.
-      mockSpanner.unfreeze();
-      SpannerException spannerException = assertThrows(SpannerException.class, resultSet::next);
-      assertEquals(ErrorCode.UNIMPLEMENTED, spannerException.getErrorCode());
-    }
-    // The next query will fall back to regular sessions and succeed.
-    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
-      //noinspection StatementWithEmptyBody
-      while (resultSet.next()) {
-        // ignore
-      }
-    }
-    // Verify that we received one ExecuteSqlRequest, and that it used a regular session.
-    assertEquals(1, mockSpanner.countRequestsOfType(ExecuteSqlRequest.class));
-    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
-
-    Session session = mockSpanner.getSession(requests.get(0).getSession());
-    assertNotNull(session);
-    assertFalse(session.getMultiplexed());
-
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    assertEquals(0L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
-    assertEquals(0L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
-  }
-
-  @Test
-  public void testMaintainerInvalidatesMultiplexedSessionClientIfUnimplemented() {
-    DatabaseClientImpl client =
-        (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    // The first query should succeed.
-    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
-      //noinspection StatementWithEmptyBody
-      while (resultSet.next()) {
-        // ignore
-      }
-    }
-    // Now ensure that CreateSession returns UNIMPLEMENTED. This error should be recognized by the
-    // maintainer and invalidate the MultiplexedSessionDatabaseClient. New queries will fall back to
-    // regular sessions.
-    mockSpanner.setCreateSessionExecutionTime(
-        SimulatedExecutionTime.ofException(
-            Status.UNIMPLEMENTED
-                .withDescription("Multiplexed sessions are not implemented")
-                .asRuntimeException()));
-    // Wait until the client sees that MultiplexedSessions are not supported.
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    Stopwatch stopwatch = Stopwatch.createStarted();
-    while (client.multiplexedSessionDatabaseClient.isMultiplexedSessionsSupported()
-        && stopwatch.elapsed().compareTo(Duration.ofSeconds(5)) < 0) {
-      Thread.yield();
-    }
-    // Queries should fall back to regular sessions.
-    try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
-      //noinspection StatementWithEmptyBody
-      while (resultSet.next()) {
-        // ignore
-      }
-    }
-    // Verify that we received two ExecuteSqlRequests, and that the first one used a multiplexed
-    // session, and that the second used a regular session.
-    assertEquals(2, mockSpanner.countRequestsOfType(ExecuteSqlRequest.class));
-    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
-
-    Session session1 = mockSpanner.getSession(requests.get(0).getSession());
-    assertNotNull(session1);
-    assertTrue(session1.getMultiplexed());
-
-    Session session2 = mockSpanner.getSession(requests.get(1).getSession());
-    assertNotNull(session2);
-    assertFalse(session2.getMultiplexed());
-
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
-    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+    // Verify that we received no ExecuteSqlRequests.
+    assertEquals(0, mockSpanner.countRequestsOfType(ExecuteSqlRequest.class));
   }
 
   @Test
@@ -350,10 +548,7 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
     mockSpanner.setCommitExecutionTime(
         SimulatedExecutionTime.ofException(
             mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
-    Timestamp timestamp =
-        client.writeAtLeastOnce(
-            Collections.singletonList(
-                Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build()));
+    Timestamp timestamp = MockSpannerTestActions.writeAtLeastOnceInsertMutation(client);
     assertNotNull(timestamp);
 
     List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
@@ -371,10 +566,7 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
   public void testWriteAtLeastOnce() {
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    Timestamp timestamp =
-        client.writeAtLeastOnce(
-            Collections.singletonList(
-                Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build()));
+    Timestamp timestamp = MockSpannerTestActions.writeAtLeastOnceInsertMutation(client);
     assertNotNull(timestamp);
 
     List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
@@ -424,10 +616,8 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
   public void testWriteAtLeastOnceWithOptions() {
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    client.writeAtLeastOnceWithOptions(
-        Collections.singletonList(
-            Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build()),
-        Options.priority(RpcPriority.LOW));
+    MockSpannerTestActions.writeAtLeastOnceWithOptionsInsertMutation(
+        client, Options.priority(RpcPriority.LOW));
 
     List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
     assertThat(commitRequests).hasSize(1);
@@ -448,10 +638,8 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
   public void testWriteAtLeastOnceWithTagOptions() {
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    client.writeAtLeastOnceWithOptions(
-        Collections.singletonList(
-            Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build()),
-        Options.tag("app=spanner,env=test"));
+    MockSpannerTestActions.writeAtLeastOnceWithOptionsInsertMutation(
+        client, Options.tag("app=spanner,env=test"));
 
     List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
     assertThat(commitRequests).hasSize(1);
@@ -473,10 +661,8 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
   public void testWriteAtLeastOnceWithExcludeTxnFromChangeStreams() {
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    client.writeAtLeastOnceWithOptions(
-        Collections.singletonList(
-            Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build()),
-        Options.excludeTxnFromChangeStreams());
+    MockSpannerTestActions.writeAtLeastOnceWithOptionsInsertMutation(
+        client, Options.excludeTxnFromChangeStreams());
 
     List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
     assertThat(commitRequests).hasSize(1);
@@ -590,10 +776,7 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
     mockSpanner.setCommitExecutionTime(
         SimulatedExecutionTime.ofException(
             mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
-    Timestamp timestamp =
-        client.write(
-            Collections.singletonList(
-                Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build()));
+    Timestamp timestamp = MockSpannerTestActions.writeInsertMutation(client);
     assertNotNull(timestamp);
 
     List<BeginTransactionRequest> beginTransactionRequests =
@@ -1228,15 +1411,7 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
     // Test verifies mutation-only case within a R/W transaction via AsyncRunner.
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    AsyncRunner runner = client.runAsync();
-    get(
-        runner.runAsync(
-            txn -> {
-              txn.buffer(Mutation.delete("TEST", KeySet.all()));
-              return ApiFutures.immediateFuture(null);
-            },
-            MoreExecutors.directExecutor()));
-
+    MockSpannerTestActions.asyncRunnerCommit(client, MoreExecutors.directExecutor());
     // Verify that the mutation key is set in BeginTransactionRequest
     List<BeginTransactionRequest> beginTransactions =
         mockSpanner.getRequestsOfType(BeginTransactionRequest.class);
@@ -1260,18 +1435,7 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
     // Test verifies mutation-only case within a R/W transaction via AsyncTransactionManager.
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
-    try (AsyncTransactionManager manager = client.transactionManagerAsync()) {
-      TransactionContextFuture transaction = manager.beginAsync();
-      get(
-          transaction
-              .then(
-                  (txn, input) -> {
-                    txn.buffer(Mutation.delete("TEST", KeySet.all()));
-                    return ApiFutures.immediateFuture(null);
-                  },
-                  MoreExecutors.directExecutor())
-              .commitAsync());
-    }
+    MockSpannerTestActions.transactionManagerAsyncCommit(client, MoreExecutors.directExecutor());
 
     // Verify that the mutation key is set in BeginTransactionRequest
     List<BeginTransactionRequest> beginTransactions =
@@ -1291,229 +1455,224 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
         request.getPrecommitToken().getPrecommitToken());
   }
 
-  // Tests the behavior of the server-side kill switch for read-write multiplexed sessions..
+  private Spanner setupSpannerBySkippingBeginTransactionVerificationForMux() {
+    return SpannerOptions.newBuilder()
+        .setProjectId("test-project")
+        .setChannelProvider(channelProvider)
+        .setCredentials(NoCredentials.getInstance())
+        .setSessionPoolOption(
+            SessionPoolOptions.newBuilder()
+                .setUseMultiplexedSession(true)
+                .setUseMultiplexedSessionForRW(true)
+                .setSkipVerifyingBeginTransactionForMuxRW(true)
+                .build())
+        .build()
+        .getService();
+  }
+
+  private void verifyMutationKeySetInBeginTransactionRequests(
+      List<BeginTransactionRequest> beginTransactionRequests) {
+    assertEquals(2, beginTransactionRequests.size());
+    // Verify the requests are executed using multiplexed sessions
+    for (BeginTransactionRequest request : beginTransactionRequests) {
+      assertTrue(mockSpanner.getSession(request.getSession()).getMultiplexed());
+      assertTrue(request.hasMutationKey());
+      assertTrue(request.getMutationKey().hasInsert());
+    }
+  }
+
+  private void verifyPreCommitTokenSetInCommitRequest(List<CommitRequest> commitRequests) {
+    assertEquals(1L, commitRequests.size());
+    for (CommitRequest request : commitRequests) {
+      assertTrue(mockSpanner.getSession(request.getSession()).getMultiplexed());
+      assertNotNull(request.getPrecommitToken());
+      assertEquals(
+          ByteString.copyFromUtf8("TransactionPrecommitToken"),
+          request.getPrecommitToken().getPrecommitToken());
+    }
+  }
+
+  // The following 4 tests validate mutation-only cases where the BeginTransaction RPC fails with an
+  // ABORTED or retryable error
   @Test
-  public void testInitialBeginTransactionWithRW_receivesUnimplemented_fallsBackToRegularSession() {
+  public void testMutationOnlyCaseAbortedDuringBeginTransaction() {
+    // This test ensures that when a transaction containing only mutations is retried after an
+    // ABORT error in the BeginTransaction RPC:
+    // 1. The mutation key is correctly included in the BeginTransaction request.
+    // 2. The precommit token is properly set in the Commit request.
+    Spanner spanner = setupSpannerBySkippingBeginTransactionVerificationForMux();
+
+    // Force the BeginTransaction RPC to return Aborted the first time it is called. The exception
+    // is cleared after the first call, so the retry should succeed.
     mockSpanner.setBeginTransactionExecutionTime(
         SimulatedExecutionTime.ofException(
-            Status.UNIMPLEMENTED
-                .withDescription(
-                    "Transaction type read_write not supported with multiplexed sessions")
-                .asRuntimeException()));
+            mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
+
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
 
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-
-    // Wait until the client sees that MultiplexedSessions are not supported for read-write.
-    // Get the begin transaction reference. This will block until the BeginTransaction RPC with
-    // read-write has failed.
-    SpannerException spannerException =
-        assertThrows(
-            SpannerException.class,
-            client.multiplexedSessionDatabaseClient::getReadWriteBeginTransactionReference);
-    assertEquals(ErrorCode.UNIMPLEMENTED, spannerException.getErrorCode());
-    assertTrue(client.multiplexedSessionDatabaseClient.unimplementedForRW.get());
-
-    // read-write transaction should fallback to regular sessions
     client
         .readWriteTransaction()
         .run(
             transaction -> {
-              try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
-                //noinspection StatementWithEmptyBody
-                while (resultSet.next()) {
-                  // ignore
-                }
-              }
+              Mutation mutation =
+                  Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build();
+              transaction.buffer(mutation);
               return null;
             });
 
-    // Verify that we received one ExecuteSqlRequest, and it uses a regular session due to fallback.
-    List<ExecuteSqlRequest> executeSqlRequests =
-        mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
-    assertEquals(1, executeSqlRequests.size());
-    // Verify the requests are not executed using multiplexed sessions
-    Session session2 = mockSpanner.getSession(executeSqlRequests.get(0).getSession());
-    assertNotNull(session2);
-    assertFalse(session2.getMultiplexed());
+    // Verify that for mutation only case, a mutation key is set in BeginTransactionRequest.
+    List<BeginTransactionRequest> beginTransactionRequests =
+        mockSpanner.getRequestsOfType(BeginTransactionRequest.class);
+    verifyMutationKeySetInBeginTransactionRequests(beginTransactionRequests);
+
+    // Verify that the latest precommit token is set in the CommitRequest
+    List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
+    verifyPreCommitTokenSetInCommitRequest(commitRequests);
+
+    spanner.close();
   }
 
   @Test
-  public void
-      testReadWriteUnimplementedErrorDuringInitialBeginTransactionRPC_firstReceivesError_secondFallsBackToRegularSessions() {
-    // This test simulates the following scenario,
-    // 1. The server-side flag for RW multiplexed sessions is disabled.
-    // 2. Application starts. The initial BeginTransaction RPC during client initialization will
-    // fail with UNIMPLEMENTED error.
-    // 3. Read-write transaction initialized before the BeginTransaction RPC response will fail with
-    // UNIMPLEMENTED error.
-    // 4. Read-write transaction initialized after the BeginTransaction RPC response will fallback
-    // to regular sessions.
+  public void testMutationOnlyUsingTransactionManagerAbortedDuringBeginTransaction() {
+    // This test ensures that when a transaction containing only mutations is retried after an
+    // ABORT error in the BeginTransaction RPC:
+    // 1. The mutation key is correctly included in the BeginTransaction request.
+    // 2. The precommit token is properly set in the Commit request.
+    Spanner spanner = setupSpannerBySkippingBeginTransactionVerificationForMux();
+
+    // Force the BeginTransaction RPC to return Aborted the first time it is called. The exception
+    // is cleared after the first call, so the retry should succeed.
     mockSpanner.setBeginTransactionExecutionTime(
         SimulatedExecutionTime.ofException(
-            Status.UNIMPLEMENTED
-                .withDescription(
-                    "Transaction type read_write not supported with multiplexed sessions")
-                .asRuntimeException()));
-    mockSpanner.setExecuteStreamingSqlExecutionTime(
-        SimulatedExecutionTime.ofException(
-            Status.UNIMPLEMENTED
-                .withDescription(
-                    "Transaction type read_write not supported with multiplexed sessions")
-                .asRuntimeException()));
-    // Freeze the mock server to ensure that the BeginTransaction with read-write on multiplexed
-    // session RPC does not return an error or any
-    // other result just yet.
-    mockSpanner.freeze();
-    // Get a database client using multiplexed sessions. The BeginTransaction RPC to validation
-    // read-write on multiplexed session will be blocked as
-    // long as the mock server is frozen.
+            mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
+
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
 
-    // Get the runner so that the read-write transaction is executed via multiplexed session.
-    TransactionRunner runner = client.readWriteTransaction();
+    try (TransactionManager manager = client.transactionManager()) {
+      TransactionContext transaction = manager.begin();
+      while (true) {
+        try {
+          Mutation mutation =
+              Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build();
+          transaction.buffer(mutation);
+          manager.commit();
+          assertNotNull(manager.getCommitTimestamp());
+          break;
+        } catch (AbortedException e) {
+          transaction = manager.resetForRetry();
+        }
+      }
+    }
 
-    // Unfreeze the mock server to get the error from the backend. The above read-write transaction
-    // will then fail.
-    mockSpanner.unfreeze();
+    // Verify that for mutation only case, a mutation key is set in BeginTransactionRequest.
+    List<BeginTransactionRequest> beginTransactionRequests =
+        mockSpanner.getRequestsOfType(BeginTransactionRequest.class);
+    verifyMutationKeySetInBeginTransactionRequests(beginTransactionRequests);
 
-    SpannerException e =
-        assertThrows(
-            SpannerException.class,
-            () ->
-                runner.run(
-                    transaction -> {
-                      ResultSet resultSet = transaction.executeQuery(STATEMENT);
-                      //noinspection StatementWithEmptyBody
-                      while (resultSet.next()) {
-                        // ignore
-                      }
-                      return null;
-                    }));
-    assertEquals(ErrorCode.UNIMPLEMENTED, e.getErrorCode());
+    // Verify that the latest precommit token is set in the CommitRequest
+    List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
+    verifyPreCommitTokenSetInCommitRequest(commitRequests);
 
-    // Wait until the client sees that MultiplexedSessions are not supported for read-write.
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    SpannerException spannerException =
-        assertThrows(
-            SpannerException.class,
-            client.multiplexedSessionDatabaseClient::getReadWriteBeginTransactionReference);
-    assertEquals(ErrorCode.UNIMPLEMENTED, spannerException.getErrorCode());
-    assertTrue(client.multiplexedSessionDatabaseClient.unimplementedForRW.get());
-
-    // The next read-write transaction will fall back to regular sessions and succeed.
-    client
-        .readWriteTransaction()
-        .run(
-            transaction -> {
-              try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
-                //noinspection StatementWithEmptyBody
-                while (resultSet.next()) {
-                  // ignore
-                }
-              }
-              return null;
-            });
-
-    // Verify that two ExecuteSqlRequests were received: the first using a multiplexed session and
-    // the second using a regular session.
-    assertEquals(2, mockSpanner.countRequestsOfType(ExecuteSqlRequest.class));
-    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
-
-    Session session1 = mockSpanner.getSession(requests.get(0).getSession());
-    assertNotNull(session1);
-    assertTrue(session1.getMultiplexed());
-
-    Session session2 = mockSpanner.getSession(requests.get(1).getSession());
-    assertNotNull(session2);
-    assertFalse(session2.getMultiplexed());
-
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
-    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+    spanner.close();
   }
 
   @Test
-  public void testReadWriteUnimplemented_firstReceivesError_secondFallsBackToRegularSessions() {
-    // This test simulates the following scenario,
-    // 1. The server side flag for read-write multiplexed session is not disabled. When an
-    // application starts, the initial BeginTransaction RPC with read-write will succeed.
-    // 2. After time t, the server side flag for read-write multiplexed session is disabled. After
-    // this a read-write transaction executed with multiplexed sessions should fail with
-    // UNIMPLEMENTED error.
-    // 3. All read-write transactions in the application after the initial failure should fallback
-    // to using regular sessions.
-    mockSpanner.setExecuteStreamingSqlExecutionTime(
+  public void testMutationOnlyUsingAsyncRunnerAbortedDuringBeginTransaction() {
+    // This test ensures that when a transaction containing only mutations is retried after an
+    // ABORT error in the BeginTransaction RPC:
+    // 1. The mutation key is correctly included in the BeginTransaction request.
+    // 2. The precommit token is properly set in the Commit request.
+
+    Spanner spanner = setupSpannerBySkippingBeginTransactionVerificationForMux();
+
+    // Force the BeginTransaction RPC to return Aborted the first time it is called. The exception
+    // is cleared after the first call, so the retry should succeed.
+    mockSpanner.setBeginTransactionExecutionTime(
         SimulatedExecutionTime.ofException(
-            Status.UNIMPLEMENTED
-                .withDescription(
-                    "Transaction type read_write not supported with multiplexed sessions")
-                .asRuntimeException()));
+            mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
 
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
 
-    // Wait until the initial BeginTransaction RPC with read-write is complete.
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    Transaction txn =
-        client.multiplexedSessionDatabaseClient.getReadWriteBeginTransactionReference();
-    assertNotNull(txn);
-    assertNotNull(txn.getId());
-    assertFalse(client.multiplexedSessionDatabaseClient.unimplementedForRW.get());
+    AsyncRunner runner = client.runAsync();
+    get(
+        runner.runAsync(
+            txn -> {
+              txn.buffer(
+                  Mutation.newInsertBuilder("FOO").set("ID").to(1L).set("NAME").to("Bar").build());
+              return ApiFutures.immediateFuture(null);
+            },
+            MoreExecutors.directExecutor()));
 
-    SpannerException e =
-        assertThrows(
-            SpannerException.class,
-            () ->
-                client
-                    .readWriteTransaction()
-                    .run(
-                        transaction -> {
-                          ResultSet resultSet = transaction.executeQuery(STATEMENT);
-                          //noinspection StatementWithEmptyBody
-                          while (resultSet.next()) {
-                            // ignore
-                          }
-                          return null;
-                        }));
-    assertEquals(ErrorCode.UNIMPLEMENTED, e.getErrorCode());
+    // Verify that for mutation only case, a mutation key is set in BeginTransactionRequest.
+    List<BeginTransactionRequest> beginTransactionRequests =
+        mockSpanner.getRequestsOfType(BeginTransactionRequest.class);
+    verifyMutationKeySetInBeginTransactionRequests(beginTransactionRequests);
 
-    // Verify that the previous failed transaction has marked multiplexed session client to be
-    // unimplemented for read-write.
-    assertTrue(client.multiplexedSessionDatabaseClient.unimplementedForRW.get());
+    // Verify that the latest precommit token is set in the CommitRequest
+    List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
+    verifyPreCommitTokenSetInCommitRequest(commitRequests);
 
-    // The next read-write transaction will fall back to regular sessions and succeed.
-    client
-        .readWriteTransaction()
-        .run(
-            transaction -> {
-              try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
-                //noinspection StatementWithEmptyBody
-                while (resultSet.next()) {
-                  // ignore
-                }
-              }
-              return null;
-            });
+    spanner.close();
+  }
 
-    // Verify that two ExecuteSqlRequests were received: the first using a multiplexed session and
-    // the second using a regular session.
-    assertEquals(2, mockSpanner.countRequestsOfType(ExecuteSqlRequest.class));
-    List<ExecuteSqlRequest> requests = mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+  @Test
+  public void testMutationOnlyUsingTransactionManagerAsyncAbortedDuringBeginTransaction()
+      throws Exception {
+    // This test verifies that in the case of mutations-only, when a transaction is retried after an
+    // ABORT in BeginTransaction RPC, the mutation key is correctly set in the BeginTransaction
+    // request
+    // and precommit token is set in Commit request.
+    Spanner spanner = setupSpannerBySkippingBeginTransactionVerificationForMux();
 
-    Session session1 = mockSpanner.getSession(requests.get(0).getSession());
-    assertNotNull(session1);
-    assertTrue(session1.getMultiplexed());
+    // Force the BeginTransaction RPC to return Aborted the first time it is called. The exception
+    // is cleared after the first call, so the retry should succeed.
+    mockSpanner.setBeginTransactionExecutionTime(
+        SimulatedExecutionTime.ofException(
+            mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
 
-    Session session2 = mockSpanner.getSession(requests.get(1).getSession());
-    assertNotNull(session2);
-    assertFalse(session2.getMultiplexed());
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
 
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
-    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+    try (AsyncTransactionManager manager = client.transactionManagerAsync()) {
+      TransactionContextFuture transaction = manager.beginAsync();
+      while (true) {
+        CommitTimestampFuture commitTimestamp =
+            transaction
+                .then(
+                    (txn, input) -> {
+                      txn.buffer(
+                          Mutation.newInsertBuilder("FOO")
+                              .set("ID")
+                              .to(1L)
+                              .set("NAME")
+                              .to("Bar")
+                              .build());
+                      return ApiFutures.immediateFuture(null);
+                    },
+                    MoreExecutors.directExecutor())
+                .commitAsync();
+        try {
+          assertThat(commitTimestamp.get()).isNotNull();
+          break;
+        } catch (AbortedException e) {
+          transaction = manager.resetForRetryAsync();
+        }
+      }
+    }
+
+    // Verify that for mutation only case, a mutation key is set in BeginTransactionRequest.
+    List<BeginTransactionRequest> beginTransactionRequests =
+        mockSpanner.getRequestsOfType(BeginTransactionRequest.class);
+    verifyMutationKeySetInBeginTransactionRequests(beginTransactionRequests);
+
+    // Verify that the latest precommit token is set in the CommitRequest
+    List<CommitRequest> commitRequests = mockSpanner.getRequestsOfType(CommitRequest.class);
+    verifyPreCommitTokenSetInCommitRequest(commitRequests);
+
+    spanner.close();
   }
 
   @Test
@@ -1527,22 +1686,11 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
     DatabaseClientImpl client =
         (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
 
-    // Wait until the initial BeginTransaction RPC with read-write is complete.
-    assertNotNull(client.multiplexedSessionDatabaseClient);
-    Transaction txn =
-        client.multiplexedSessionDatabaseClient.getReadWriteBeginTransactionReference();
-    assertNotNull(txn);
-    assertNotNull(txn.getId());
-    assertFalse(client.multiplexedSessionDatabaseClient.unimplementedForRW.get());
-
     // Try to execute a query using single use transaction.
     try (ResultSet resultSet = client.singleUse().executeQuery(STATEMENT)) {
       SpannerException spannerException = assertThrows(SpannerException.class, resultSet::next);
       assertEquals(ErrorCode.UNIMPLEMENTED, spannerException.getErrorCode());
     }
-    // Verify other UNIMPLEMENTED errors does not turn off read-write transactions to use
-    // multiplexed sessions.
-    assertFalse(client.multiplexedSessionDatabaseClient.unimplementedForRW.get());
 
     // The read-write transaction should use multiplexed sessions and succeed.
     client
@@ -1633,6 +1781,317 @@ public class MultiplexedSessionDatabaseClientMockServerTest extends AbstractMock
     assertNotNull(client.multiplexedSessionDatabaseClient);
     assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
     assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+  }
+
+  @Test
+  public void testBatchWriteAtLeastOnce() {
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+
+    Iterable<MutationGroup> MUTATION_GROUPS =
+        ImmutableList.of(
+            MutationGroup.of(
+                Mutation.newInsertBuilder("FOO1").set("ID").to(1L).set("NAME").to("Bar1").build(),
+                Mutation.newInsertBuilder("FOO2").set("ID").to(2L).set("NAME").to("Bar2").build()),
+            MutationGroup.of(
+                Mutation.newInsertBuilder("FOO3").set("ID").to(3L).set("NAME").to("Bar3").build(),
+                Mutation.newInsertBuilder("FOO4").set("ID").to(4L).set("NAME").to("Bar4").build()));
+
+    ServerStream<BatchWriteResponse> responseStream = client.batchWriteAtLeastOnce(MUTATION_GROUPS);
+    int idx = 0;
+    for (BatchWriteResponse response : responseStream) {
+      assertEquals(
+          response.getStatus(),
+          com.google.rpc.Status.newBuilder().setCode(com.google.rpc.Code.OK_VALUE).build());
+      assertEquals(response.getIndexesList(), ImmutableList.of(idx, idx + 1));
+      idx += 2;
+    }
+
+    assertNotNull(responseStream);
+    List<BatchWriteRequest> requests = mockSpanner.getRequestsOfType(BatchWriteRequest.class);
+    assertEquals(requests.size(), 1);
+    BatchWriteRequest request = requests.get(0);
+    assertTrue(mockSpanner.getSession(request.getSession()).getMultiplexed());
+    assertEquals(request.getMutationGroupsCount(), 2);
+    assertEquals(request.getRequestOptions().getPriority(), Priority.PRIORITY_UNSPECIFIED);
+    assertFalse(request.getExcludeTxnFromChangeStreams());
+
+    assertNotNull(client.multiplexedSessionDatabaseClient);
+    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
+    assertEquals(1L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+  }
+
+  @Test
+  public void
+      testRWTransactionWithTransactionManager_CommitAborted_SetsTransactionId_AndUsedInNewInstance() {
+    // The below test verifies the behaviour of begin(AbortedException) method which is used to
+    // maintain transaction priority if resetForRetry() is not called.
+
+    // This test performs the following steps:
+    // 1. Simulates an ABORTED exception during commit and verifies that the transaction ID is
+    // included in the AbortedException.
+    // 2. Passes the ABORTED exception to the begin(AbortedException) method of a new
+    // TransactionManager, and verifies that the transaction ID from the failed transaction is sent
+    // during the inline begin of the first request.
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+    // Force the Commit RPC to return Aborted the first time it is called. The exception is cleared
+    // after the first call, so the retry should succeed.
+    mockSpanner.setCommitExecutionTime(
+        SimulatedExecutionTime.ofException(
+            mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
+
+    ByteString abortedTransactionID = null;
+    AbortedException exception = null;
+    try (TransactionManager manager = client.transactionManager()) {
+      TransactionContext transaction = manager.begin();
+      try {
+        try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
+          //noinspection StatementWithEmptyBody
+          while (resultSet.next()) {
+            // ignore
+          }
+        }
+        manager.commit();
+        assertNotNull(manager.getCommitTimestamp());
+      } catch (AbortedException e) {
+        // The transactionID of the Aborted transaction should be set in AbortedException class.
+        assertNotNull(e.getTransactionID());
+        abortedTransactionID = e.getTransactionID();
+        exception = e;
+      }
+    }
+    // Verify that the transactionID of the aborted transaction is set.
+    assertNotNull(abortedTransactionID);
+    assertNotNull(exception);
+    mockSpanner.clearRequests();
+
+    // Pass AbortedException while invoking begin on the new manager instance.
+    try (TransactionManager manager = client.transactionManager()) {
+      TransactionContext transaction = manager.begin(exception);
+      while (true) {
+        try {
+          try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
+            //noinspection StatementWithEmptyBody
+            while (resultSet.next()) {
+              // ignore
+            }
+          }
+          manager.commit();
+          assertNotNull(manager.getCommitTimestamp());
+          break;
+        } catch (AbortedException e) {
+          transaction = manager.resetForRetry();
+        }
+      }
+    }
+
+    // Verify that the ExecuteSqlRequest with the inline begin passes the transactionID of the
+    // previously aborted transaction.
+    List<ExecuteSqlRequest> executeSqlRequests =
+        mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(1, executeSqlRequests.size());
+    assertTrue(mockSpanner.getSession(executeSqlRequests.get(0).getSession()).getMultiplexed());
+    assertNotNull(
+        executeSqlRequests
+            .get(0)
+            .getTransaction()
+            .getBegin()
+            .getReadWrite()
+            .getMultiplexedSessionPreviousTransactionId());
+    assertEquals(
+        executeSqlRequests
+            .get(0)
+            .getTransaction()
+            .getBegin()
+            .getReadWrite()
+            .getMultiplexedSessionPreviousTransactionId(),
+        abortedTransactionID);
+
+    assertNotNull(client.multiplexedSessionDatabaseClient);
+    assertEquals(2L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
+    assertEquals(2L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+  }
+
+  @Test
+  public void
+      testRWTransactionWithTransactionManager_ExecuteSQLAborted_SetsTransactionId_AndUsedInNewInstance() {
+    // This test performs the following steps:
+    // 1. Simulates an ABORTED exception during ExecuteSQL and verifies that the transaction ID is
+    // included in the AbortedException.
+    // 2. Passes the ABORTED exception to the begin(AbortedException) method of a new
+    // TransactionManager, and verifies that the transaction ID from the failed transaction is sent
+    // during the inline begin of the first request.
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+
+    ByteString abortedTransactionID = null;
+    AbortedException exception = null;
+    try (TransactionManager manager = client.transactionManager()) {
+      TransactionContext transaction = manager.begin();
+      try {
+        try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
+          //noinspection StatementWithEmptyBody
+          while (resultSet.next()) {
+            // ignore
+          }
+        }
+
+        // Simulate an ABORTED in next ExecuteSQL request.
+        mockSpanner.setExecuteStreamingSqlExecutionTime(
+            SimulatedExecutionTime.ofException(
+                mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
+
+        try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
+          //noinspection StatementWithEmptyBody
+          while (resultSet.next()) {
+            // ignore
+          }
+        }
+        manager.commit();
+        assertNotNull(manager.getCommitTimestamp());
+      } catch (AbortedException e) {
+        // The transactionID of the Aborted transaction should be set in AbortedException class.
+        assertNotNull(e.getTransactionID());
+        abortedTransactionID = e.getTransactionID();
+        exception = e;
+      }
+    }
+    // Verify that the transactionID of the aborted transaction is set.
+    assertNotNull(abortedTransactionID);
+    assertNotNull(exception);
+    mockSpanner.clearRequests();
+
+    // Pass AbortedException while invoking begin on the new manager instance.
+    try (TransactionManager manager = client.transactionManager()) {
+      TransactionContext transaction = manager.begin(exception);
+      while (true) {
+        try {
+          try (ResultSet resultSet = transaction.executeQuery(STATEMENT)) {
+            //noinspection StatementWithEmptyBody
+            while (resultSet.next()) {
+              // ignore
+            }
+          }
+          manager.commit();
+          assertNotNull(manager.getCommitTimestamp());
+          break;
+        } catch (AbortedException e) {
+          transaction = manager.resetForRetry();
+        }
+      }
+    }
+
+    // Verify that the ExecuteSqlRequest with inline begin includes the transaction ID from the
+    // previously aborted transaction.
+    List<ExecuteSqlRequest> executeSqlRequests =
+        mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(1, executeSqlRequests.size());
+    assertTrue(mockSpanner.getSession(executeSqlRequests.get(0).getSession()).getMultiplexed());
+    assertNotNull(
+        executeSqlRequests
+            .get(0)
+            .getTransaction()
+            .getBegin()
+            .getReadWrite()
+            .getMultiplexedSessionPreviousTransactionId());
+    assertEquals(
+        executeSqlRequests
+            .get(0)
+            .getTransaction()
+            .getBegin()
+            .getReadWrite()
+            .getMultiplexedSessionPreviousTransactionId(),
+        abortedTransactionID);
+
+    assertNotNull(client.multiplexedSessionDatabaseClient);
+    assertEquals(2L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
+    assertEquals(2L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
+  }
+
+  @Test
+  public void
+      testRWTransactionWithAsyncTransactionManager_CommitAborted_SetsTransactionId_AndUsedInNewInstance()
+          throws Exception {
+    // This test performs the following steps:
+    // 1. Simulates an ABORTED exception during ExecuteSQL and verifies that the transaction ID is
+    // included in the AbortedException.
+    // 2. Passes the ABORTED exception to the begin(AbortedException) method of a new
+    // AsyncTransactionManager, and verifies that the transaction ID from the failed transaction is
+    // sent
+    // during the inline begin of the first request.
+    DatabaseClientImpl client =
+        (DatabaseClientImpl) spanner.getDatabaseClient(DatabaseId.of("p", "i", "d"));
+    // Force the Commit RPC to return Aborted the first time it is called. The exception is cleared
+    // after the first call, so the retry should succeed.
+    mockSpanner.setCommitExecutionTime(
+        SimulatedExecutionTime.ofException(
+            mockSpanner.createAbortedException(ByteString.copyFromUtf8("test"))));
+    ByteString abortedTransactionID = null;
+    AbortedException exception = null;
+    try (AsyncTransactionManager manager = client.transactionManagerAsync()) {
+      TransactionContextFuture transactionContextFuture = manager.beginAsync();
+      try {
+        AsyncTransactionStep<Void, Long> updateCount =
+            transactionContextFuture.then(
+                (transaction, ignored) -> transaction.executeUpdateAsync(UPDATE_STATEMENT),
+                MoreExecutors.directExecutor());
+        CommitTimestampFuture commitTimestamp = updateCount.commitAsync();
+        assertEquals(UPDATE_COUNT, updateCount.get().longValue());
+        assertNotNull(commitTimestamp.get());
+      } catch (AbortedException e) {
+        assertNotNull(e.getTransactionID());
+        exception = e;
+        abortedTransactionID = e.getTransactionID();
+      }
+    }
+
+    // Verify that the transactionID of the aborted transaction is set.
+    assertNotNull(abortedTransactionID);
+    assertNotNull(exception);
+    mockSpanner.clearRequests();
+
+    try (AsyncTransactionManager manager = client.transactionManagerAsync()) {
+      TransactionContextFuture transactionContextFuture = manager.beginAsync(exception);
+      while (true) {
+        try {
+          AsyncTransactionStep<Void, Long> updateCount =
+              transactionContextFuture.then(
+                  (transaction, ignored) -> transaction.executeUpdateAsync(UPDATE_STATEMENT),
+                  MoreExecutors.directExecutor());
+          CommitTimestampFuture commitTimestamp = updateCount.commitAsync();
+          assertEquals(UPDATE_COUNT, updateCount.get().longValue());
+          assertNotNull(commitTimestamp.get());
+          break;
+        } catch (AbortedException e) {
+          transactionContextFuture = manager.resetForRetryAsync();
+        }
+      }
+    }
+
+    List<ExecuteSqlRequest> executeSqlRequests =
+        mockSpanner.getRequestsOfType(ExecuteSqlRequest.class);
+    assertEquals(1, executeSqlRequests.size());
+    assertTrue(mockSpanner.getSession(executeSqlRequests.get(0).getSession()).getMultiplexed());
+    assertNotNull(
+        executeSqlRequests
+            .get(0)
+            .getTransaction()
+            .getBegin()
+            .getReadWrite()
+            .getMultiplexedSessionPreviousTransactionId());
+    assertEquals(
+        executeSqlRequests
+            .get(0)
+            .getTransaction()
+            .getBegin()
+            .getReadWrite()
+            .getMultiplexedSessionPreviousTransactionId(),
+        abortedTransactionID);
+
+    assertNotNull(client.multiplexedSessionDatabaseClient);
+    assertEquals(2L, client.multiplexedSessionDatabaseClient.getNumSessionsAcquired().get());
+    assertEquals(2L, client.multiplexedSessionDatabaseClient.getNumSessionsReleased().get());
   }
 
   private void waitForSessionToBeReplaced(DatabaseClientImpl client) {

@@ -51,6 +51,7 @@ class DmlBatch extends AbstractBaseUnitOfWork {
   private final boolean autoBatch;
   private final Supplier<Long> autoBatchUpdateCountSupplier;
   private final Supplier<Boolean> verifyUpdateCountsSupplier;
+  private final Supplier<Long> dmlbatchUpdateCountSupplier;
   private final UnitOfWork transaction;
   private final String statementTag;
   private final List<ParsedStatement> statements = new ArrayList<>();
@@ -61,6 +62,7 @@ class DmlBatch extends AbstractBaseUnitOfWork {
     private boolean autoBatch;
     private Supplier<Long> autoBatchUpdateCountSupplier = Suppliers.ofInstance(1L);
     private Supplier<Boolean> verifyUpdateCountsSupplier = Suppliers.ofInstance(Boolean.FALSE);
+    private Supplier<Long> dmlbatchUpdateCountSupplier = Suppliers.ofInstance(-1L);
     private UnitOfWork transaction;
     private String statementTag;
 
@@ -78,6 +80,12 @@ class DmlBatch extends AbstractBaseUnitOfWork {
 
     Builder setAutoBatchUpdateCountVerificationSupplier(Supplier<Boolean> verificationSupplier) {
       this.verifyUpdateCountsSupplier = verificationSupplier;
+      return this;
+    }
+
+    Builder setDmlBatchUpdateCountSupplier(Supplier<Long> dmlbatchUpdateCountSupplier) {
+      Preconditions.checkNotNull(dmlbatchUpdateCountSupplier);
+      this.dmlbatchUpdateCountSupplier = dmlbatchUpdateCountSupplier;
       return this;
     }
 
@@ -108,6 +116,7 @@ class DmlBatch extends AbstractBaseUnitOfWork {
     this.autoBatch = builder.autoBatch;
     this.autoBatchUpdateCountSupplier = builder.autoBatchUpdateCountSupplier;
     this.verifyUpdateCountsSupplier = builder.verifyUpdateCountsSupplier;
+    this.dmlbatchUpdateCountSupplier = builder.dmlbatchUpdateCountSupplier;
     this.transaction = Preconditions.checkNotNull(builder.transaction);
     this.statementTag = builder.statementTag;
   }
@@ -193,7 +202,7 @@ class DmlBatch extends AbstractBaseUnitOfWork {
   long getUpdateCount() {
     // Auto-batching returns update count 1 by default, as this is what ORMs normally expect.
     // Standard batches return -1 by default, to indicate that the update count is unknown.
-    return isAutoBatch() ? autoBatchUpdateCountSupplier.get() : -1L;
+    return isAutoBatch() ? autoBatchUpdateCountSupplier.get() : dmlbatchUpdateCountSupplier.get();
   }
 
   @Override
@@ -204,9 +213,7 @@ class DmlBatch extends AbstractBaseUnitOfWork {
         "The batch is no longer active and cannot be used for further statements");
     Preconditions.checkArgument(
         update.getType() == StatementType.UPDATE,
-        "Only DML statements are allowed. \""
-            + update.getSqlWithoutComments()
-            + "\" is not a DML-statement.");
+        "Only DML statements are allowed. \"" + update.getSql() + "\" is not a DML-statement.");
     long updateCount = getUpdateCount();
     this.statements.add(update);
     this.updateCounts = Arrays.copyOf(this.updateCounts, this.updateCounts.length + 1);
@@ -233,9 +240,7 @@ class DmlBatch extends AbstractBaseUnitOfWork {
     for (ParsedStatement update : updates) {
       Preconditions.checkArgument(
           update.getType() == StatementType.UPDATE,
-          "Only DML statements are allowed. \""
-              + update.getSqlWithoutComments()
-              + "\" is not a DML-statement.");
+          "Only DML statements are allowed. \"" + update.getSql() + "\" is not a DML-statement.");
     }
     long[] updateCountArray = new long[Iterables.size(updates)];
     Arrays.fill(updateCountArray, getUpdateCount());

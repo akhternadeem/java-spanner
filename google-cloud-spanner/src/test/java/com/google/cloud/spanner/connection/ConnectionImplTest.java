@@ -46,6 +46,7 @@ import com.google.api.core.ApiFutures;
 import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.NoCredentials;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.AbortedException;
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.BatchTransactionId;
@@ -118,6 +119,11 @@ public class ConnectionImplTest {
     public TransactionContext begin() {
       state = TransactionState.STARTED;
       return txContext;
+    }
+
+    @Override
+    public TransactionContext begin(AbortedException exception) {
+      return begin();
     }
 
     @Override
@@ -354,7 +360,8 @@ public class ConnectionImplTest {
                   public <T> T run(TransactionCallable<T> callable) {
                     commitResponse = new CommitResponse(Timestamp.ofTimeSecondsAndNanos(1, 1));
                     TransactionContext transaction = mock(TransactionContext.class);
-                    when(transaction.executeUpdate(Statement.of(UPDATE))).thenReturn(1L);
+                    when(transaction.executeUpdate(Statement.of(UPDATE), Options.lastStatement()))
+                        .thenReturn(1L);
                     try {
                       return callable.run(transaction);
                     } catch (Exception e) {
@@ -1939,6 +1946,45 @@ public class ConnectionImplTest {
             .getMessage()
             .contains(
                 "Only statements that return a result of one of the following types are allowed"));
+  }
+
+  @Test
+  public void testSetAndGetClientContext() {
+    try (Connection connection =
+        createConnection(
+            ConnectionOptions.newBuilder()
+                .setUri(URI)
+                .setCredentials(NoCredentials.getInstance())
+                .build())) {
+      com.google.spanner.v1.RequestOptions.ClientContext context =
+          com.google.spanner.v1.RequestOptions.ClientContext.newBuilder()
+              .putSecureContext(
+                  "key", com.google.protobuf.Value.newBuilder().setStringValue("test").build())
+              .build();
+      connection.setClientContext(context);
+      assertEquals(context, connection.getClientContext());
+    }
+  }
+
+  @Test
+  public void testResetClearsClientContext() {
+    try (Connection connection =
+        createConnection(
+            ConnectionOptions.newBuilder()
+                .setUri(URI)
+                .setCredentials(NoCredentials.getInstance())
+                .build())) {
+      com.google.spanner.v1.RequestOptions.ClientContext context =
+          com.google.spanner.v1.RequestOptions.ClientContext.newBuilder()
+              .putSecureContext(
+                  "key", com.google.protobuf.Value.newBuilder().setStringValue("test").build())
+              .build();
+      connection.setClientContext(context);
+      assertEquals(context, connection.getClientContext());
+
+      connection.reset();
+      assertNull(connection.getClientContext());
+    }
   }
 
   @Test

@@ -20,6 +20,7 @@ import static com.google.cloud.spanner.connection.ReadOnlyStalenessUtil.parseTim
 import static com.google.cloud.spanner.connection.ReadOnlyStalenessUtil.toChronoUnit;
 
 import com.google.api.gax.core.CredentialsProvider;
+import com.google.api.gax.grpc.GrpcInterceptorProvider;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Options.RpcPriority;
@@ -33,6 +34,8 @@ import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.spanner.v1.DirectedReadOptions;
+import com.google.spanner.v1.TransactionOptions;
+import com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
@@ -247,7 +250,8 @@ class ClientSideStatementValueConverters {
             } else {
               duration = Duration.ofMillis(Long.parseLong(value.trim()));
             }
-            if (duration.isZero()) {
+            // Converters should return null for invalid values.
+            if (duration.isNegative()) {
               return null;
             }
             return duration;
@@ -271,9 +275,16 @@ class ClientSideStatementValueConverters {
   /** Converter from string to possible values for read only staleness ({@link TimestampBound}). */
   static class ReadOnlyStalenessConverter
       implements ClientSideStatementValueConverter<TimestampBound> {
+    // Some backslashes need to be specified as hexcode.
+    // See https://github.com/google/google-java-format/issues/1253
     static final ReadOnlyStalenessConverter INSTANCE =
         new ReadOnlyStalenessConverter(
-            "'((STRONG)|(MIN_READ_TIMESTAMP)[\\t ]+((\\d{4})-(\\d{2})-(\\d{2})([Tt](\\d{2}):(\\d{2}):(\\d{2})(\\.\\d{1,9})?)([Zz]|([+-])(\\d{2}):(\\d{2})))|(READ_TIMESTAMP)[\\t ]+((\\d{4})-(\\d{2})-(\\d{2})([Tt](\\d{2}):(\\d{2}):(\\d{2})(\\.\\d{1,9})?)([Zz]|([+-])(\\d{2}):(\\d{2})))|(MAX_STALENESS)[\\t ]+((\\d{1,19})(s|ms|us|ns))|(EXACT_STALENESS)[\\t ]+((\\d{1,19})(s|ms|us|ns)))'");
+            "'((STRONG)|(MIN_READ_TIMESTAMP)[\\t"
+                + " ]+((\\d{4})-(\\d{2})-(\\d{2})([Tt](\\d{2}):(\\d{2}):(\\d{2})(\\.\\d{1,9})?)([Zz]|([+-])(\\d{2}):(\\d{2})))|(READ_TIMESTAMP)[\u005Ct"
+                + " ]+((\\d{4})-(\\d{2})-(\\d{2})([Tt](\\d{2}):(\\d{2}):(   "
+                + " \\d{2})(\\.\\d{1,9})?)([Zz]|([+-])(\\d{2}):(\\d{2})))|(MAX_STALENESS)[\u005Ct"
+                + " ]+((\\d{1,19})(s|ms|us|ns))|(EXACT_STALENESS)[\\t"
+                + " ]+((\\d{1,19})(s|ms|us|ns)))'");
 
     private final Pattern allowedValues;
     private final CaseInsensitiveEnumMap<Mode> values = new CaseInsensitiveEnumMap<>(Mode.class);
@@ -339,6 +350,7 @@ class ClientSideStatementValueConverters {
       return null;
     }
   }
+
   /**
    * Converter from string to possible values for {@link com.google.spanner.v1.DirectedReadOptions}.
    */
@@ -370,7 +382,8 @@ class ClientSideStatementValueConverters {
               String.format(
                   "Failed to parse '%s' as a valid value for DIRECTED_READ.\n"
                       + "The value should be a JSON string like this: '%s'.\n"
-                      + "You can generate a valid JSON string from a DirectedReadOptions instance by calling %s.%s",
+                      + "You can generate a valid JSON string from a DirectedReadOptions instance"
+                      + " by calling %s.%s",
                   value,
                   "{\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"eu-west1\",\"type\":\"READ_ONLY\"}]}}",
                   DirectedReadOptionsUtil.class.getName(),
@@ -379,6 +392,68 @@ class ClientSideStatementValueConverters {
         }
       }
       return null;
+    }
+  }
+
+  /**
+   * Converter for converting strings to {@link
+   * com.google.spanner.v1.TransactionOptions.IsolationLevel} values.
+   */
+  static class IsolationLevelConverter
+      implements ClientSideStatementValueConverter<TransactionOptions.IsolationLevel> {
+    static final IsolationLevelConverter INSTANCE = new IsolationLevelConverter();
+
+    private final CaseInsensitiveEnumMap<TransactionOptions.IsolationLevel> values =
+        new CaseInsensitiveEnumMap<>(TransactionOptions.IsolationLevel.class);
+
+    IsolationLevelConverter() {}
+
+    /** Constructor needed for reflection. */
+    public IsolationLevelConverter(String allowedValues) {}
+
+    @Override
+    public Class<TransactionOptions.IsolationLevel> getParameterClass() {
+      return TransactionOptions.IsolationLevel.class;
+    }
+
+    @Override
+    public TransactionOptions.IsolationLevel convert(String value) {
+      if (value != null) {
+        // This ensures that 'repeatable read' is translated to 'repeatable_read'. The text between
+        // 'repeatable' and 'read' can be any number of valid whitespace characters.
+        value = value.trim().replaceFirst("\\s+", "_");
+      }
+      return values.get(value);
+    }
+  }
+
+  /**
+   * Converter for converting strings to {@link
+   * com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode} values.
+   */
+  static class ReadLockModeConverter implements ClientSideStatementValueConverter<ReadLockMode> {
+    static final ReadLockModeConverter INSTANCE = new ReadLockModeConverter();
+
+    private final CaseInsensitiveEnumMap<ReadLockMode> values =
+        new CaseInsensitiveEnumMap<>(ReadLockMode.class);
+
+    ReadLockModeConverter() {}
+
+    /** Constructor needed for reflection. */
+    public ReadLockModeConverter(String allowedValues) {}
+
+    @Override
+    public Class<ReadLockMode> getParameterClass() {
+      return ReadLockMode.class;
+    }
+
+    @Override
+    public ReadLockMode convert(String value) {
+      if (value != null && value.equalsIgnoreCase("unspecified")) {
+        // Allow 'unspecified' to be used in addition to 'read_lock_mode_unspecified'.
+        value = ReadLockMode.READ_LOCK_MODE_UNSPECIFIED.name();
+      }
+      return values.get(value);
     }
   }
 
@@ -529,6 +604,11 @@ class ClientSideStatementValueConverters {
         } else if (valueWithSingleSpaces.substring(currentIndex).startsWith("read write")) {
           currentIndex += "read write".length();
           mode.setAccessMode(AccessMode.READ_WRITE_TRANSACTION);
+        } else if (valueWithSingleSpaces
+            .substring(currentIndex)
+            .startsWith("isolation level repeatable read")) {
+          currentIndex += "isolation level repeatable read".length();
+          mode.setIsolationLevel(IsolationLevel.ISOLATION_LEVEL_REPEATABLE_READ);
         } else if (valueWithSingleSpaces
             .substring(currentIndex)
             .startsWith("isolation level serializable")) {
@@ -739,6 +819,54 @@ class ClientSideStatementValueConverters {
               ErrorCode.INVALID_ARGUMENT,
               "Failed to create an instance of "
                   + credentialsProviderName
+                  + ": "
+                  + exception.getMessage(),
+              exception);
+        }
+      }
+      return null;
+    }
+  }
+
+  static class GrpcInterceptorProviderConverter
+      implements ClientSideStatementValueConverter<GrpcInterceptorProvider> {
+    static final GrpcInterceptorProviderConverter INSTANCE = new GrpcInterceptorProviderConverter();
+
+    private GrpcInterceptorProviderConverter() {}
+
+    @Override
+    public Class<GrpcInterceptorProvider> getParameterClass() {
+      return GrpcInterceptorProvider.class;
+    }
+
+    @Override
+    public GrpcInterceptorProvider convert(String interceptorProviderName) {
+      if (!Strings.isNullOrEmpty(interceptorProviderName)) {
+        try {
+          Class<? extends GrpcInterceptorProvider> clazz =
+              (Class<? extends GrpcInterceptorProvider>) Class.forName(interceptorProviderName);
+          Constructor<? extends GrpcInterceptorProvider> constructor =
+              clazz.getDeclaredConstructor();
+          return constructor.newInstance();
+        } catch (ClassNotFoundException classNotFoundException) {
+          throw SpannerExceptionFactory.newSpannerException(
+              ErrorCode.INVALID_ARGUMENT,
+              "Unknown or invalid GrpcInterceptorProvider class name: " + interceptorProviderName,
+              classNotFoundException);
+        } catch (NoSuchMethodException noSuchMethodException) {
+          throw SpannerExceptionFactory.newSpannerException(
+              ErrorCode.INVALID_ARGUMENT,
+              "GrpcInterceptorProvider "
+                  + interceptorProviderName
+                  + " does not have a public no-arg constructor.",
+              noSuchMethodException);
+        } catch (InvocationTargetException
+            | InstantiationException
+            | IllegalAccessException exception) {
+          throw SpannerExceptionFactory.newSpannerException(
+              ErrorCode.INVALID_ARGUMENT,
+              "Failed to create an instance of "
+                  + interceptorProviderName
                   + ": "
                   + exception.getMessage(),
               exception);

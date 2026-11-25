@@ -16,13 +16,11 @@
 
 package com.google.cloud.spanner.it;
 
-import static com.google.cloud.spanner.testing.EmulatorSpannerHelper.isUsingEmulator;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeFalse;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Database;
@@ -93,8 +91,6 @@ public class ITFloat32Test {
   @BeforeClass
   public static void setUpDatabase()
       throws ExecutionException, InterruptedException, TimeoutException {
-    assumeFalse("Emulator does not support FLOAT32 yet", isUsingEmulator());
-
     Database googleStandardSQLDatabase =
         env.getTestHelper().createTestDatabase(GOOGLE_STANDARD_SQL_SCHEMA);
 
@@ -221,18 +217,18 @@ public class ITFloat32Test {
 
     if (dialect.dialect == Dialect.POSTGRESQL) {
       statement +=
-          "('dml1', 3.14::float8, array[1.1]::float4[]), "
-              + "('dml2', '3.14'::float4, array[3.14::float4, 3.14::float8]::float4[]), "
-              + "('dml3', 'nan'::real, array['inf'::real, (3.14::float8)::float4, 1.2, '-inf']::float4[]), "
-              + "('dml4', 1.175494e-38::real, array[1.175494e-38, 3.4028234e38, -3.4028234e38]::real[]), "
-              + "('dml5', null, null)";
+          "('dml1', 3.14::float8, array[1.1]::float4[]), ('dml2', '3.14'::float4,"
+              + " array[3.14::float4, 3.14::float8]::float4[]), ('dml3', 'nan'::real,"
+              + " array['inf'::real, (3.14::float8)::float4, 1.2, '-inf']::float4[]), ('dml4',"
+              + " 1.175494e-38::real, array[1.175494e-38, 3.4028234e38, -3.4028234e38]::real[]),"
+              + " ('dml5', null, null)";
     } else {
       statement +=
-          "('dml1', 3.14, [CAST(1.1 AS FLOAT32)]), "
-              + "('dml2', CAST('3.14' AS FLOAT32), array[CAST(3.14 AS FLOAT32), 3.14]), "
-              + "('dml3', CAST('nan' AS FLOAT32), array[CAST('inf' AS FLOAT32), CAST(CAST(3.14 AS FLOAT64) AS FLOAT32), 1.2, CAST('-inf' AS FLOAT32)]), "
-              + "('dml4', 1.175494e-38, [CAST(1.175494e-38 AS FLOAT32), 3.4028234e38, -3.4028234e38]), "
-              + "('dml5', null, null)";
+          "('dml1', 3.14, [CAST(1.1 AS FLOAT32)]), ('dml2', CAST('3.14' AS FLOAT32),"
+              + " array[CAST(3.14 AS FLOAT32), 3.14]), ('dml3', CAST('nan' AS FLOAT32),"
+              + " array[CAST('inf' AS FLOAT32), CAST(CAST(3.14 AS FLOAT64) AS FLOAT32), 1.2,"
+              + " CAST('-inf' AS FLOAT32)]), ('dml4', 1.175494e-38, [CAST(1.175494e-38 AS FLOAT32),"
+              + " 3.4028234e38, -3.4028234e38]), ('dml5', null, null)";
     }
     return statement;
   }

@@ -48,6 +48,15 @@
 	  "exampleStatements": ["show variable statement_timeout"]
 	},
 	{
+		"name": "SHOW VARIABLE TRANSACTION_TIMEOUT",
+		"executorName": "ClientSideStatementNoParamExecutor",
+		"resultType": "RESULT_SET",
+		"statementType": "SHOW_TRANSACTION_TIMEOUT",
+		"regex": "(?is)\\A\\s*show\\s+variable\\s+transaction_timeout\\s*\\z",
+		"method": "statementShowTransactionTimeout",
+		"exampleStatements": ["show variable transaction_timeout"]
+	},
+	{
 	  "name": "SHOW VARIABLE READ_TIMESTAMP",
 	  "executorName": "ClientSideStatementNoParamExecutor",
 	  "resultType": "RESULT_SET",
@@ -249,13 +258,26 @@
 		"exampleStatements": ["run partitioned query select col1, col2 from my_table"]
 	},
 	{
-	  "name": "BEGIN TRANSACTION",
-	  "executorName": "ClientSideStatementNoParamExecutor",
+	  "name": "BEGIN [TRANSACTION] [ISOLATION LEVEL isolation_level]",
+	  "executorName": "ClientSideStatementBeginExecutor",
 	  "resultType": "NO_RESULT",
 	  "statementType": "BEGIN",
-	  "regex": "(?is)\\A\\s*(?:begin|start)(?:\\s+transaction)?\\s*\\z",
+	  "regex": "(?is)\\A\\s*(?:begin|start)(?:\\s+transaction)?(?:\\s+isolation\\s+level\\s+(repeatable\\s+read|serializable))?\\s*\\z",
 	  "method": "statementBeginTransaction",
-	  "exampleStatements": ["begin", "start", "begin transaction", "start transaction"]
+	  "exampleStatements": [
+			"begin",
+			"start",
+			"begin transaction",
+			"start transaction",
+			"begin isolation level repeatable read",
+			"begin transaction isolation level repeatable read",
+			"begin isolation level serializable",
+			"begin transaction isolation level serializable",
+			"start isolation level repeatable read",
+			"start transaction isolation level repeatable read",
+			"start isolation level serializable",
+			"start transaction isolation level serializable"
+		]
 	},
 	{
 	  "name": "COMMIT TRANSACTION",
@@ -355,13 +377,18 @@
 	  }
 	},
 	{
-	  "name": "SET RETRY_ABORTS_INTERNALLY = TRUE|FALSE",
+	  "name": "SET [LOCAL] RETRY_ABORTS_INTERNALLY = TRUE|FALSE",
 	  "executorName": "ClientSideStatementSetExecutor",
 	  "resultType": "NO_RESULT",
 	  "statementType": "SET_RETRY_ABORTS_INTERNALLY",
-	  "regex": "(?is)\\A\\s*set\\s+retry_aborts_internally\\s*(?:=)\\s*(.*)\\z",
+	  "regex": "(?is)\\A\\s*set\\s+(local\\s+)?retry_aborts_internally\\s*(?:=)\\s*(.*)\\z",
 	  "method": "statementSetRetryAbortsInternally",
-	  "exampleStatements": ["set retry_aborts_internally = true", "set retry_aborts_internally = false"],
+	  "exampleStatements": [
+			"set retry_aborts_internally = true",
+			"set retry_aborts_internally = false",
+			"set local retry_aborts_internally = true",
+			"set local retry_aborts_internally = false"
+		],
 	  "examplePrerequisiteStatements": ["set readonly = false", "set autocommit = false"],
 	  "setStatement": {
 	    "propertyName": "RETRY_ABORTS_INTERNALLY",
@@ -371,17 +398,17 @@
 	  }
 	},
 	{
-	  "name": "SET AUTOCOMMIT_DML_MODE = 'PARTITIONED_NON_ATOMIC'|'TRANSACTIONAL'",
+	  "name": "SET AUTOCOMMIT_DML_MODE = 'PARTITIONED_NON_ATOMIC'|'TRANSACTIONAL'|'TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'",
 	  "executorName": "ClientSideStatementSetExecutor",
 	  "resultType": "NO_RESULT",
 	  "statementType": "SET_AUTOCOMMIT_DML_MODE",
 	  "regex": "(?is)\\A\\s*set\\s+autocommit_dml_mode\\s*(?:=)\\s*(.*)\\z",
 	  "method": "statementSetAutocommitDmlMode",
-	  "exampleStatements": ["set autocommit_dml_mode='PARTITIONED_NON_ATOMIC'", "set autocommit_dml_mode='TRANSACTIONAL'"],
+	  "exampleStatements": ["set autocommit_dml_mode='PARTITIONED_NON_ATOMIC'", "set autocommit_dml_mode='TRANSACTIONAL'", "set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'"],
 	  "setStatement": {
 	    "propertyName": "AUTOCOMMIT_DML_MODE",
 	    "separator": "=",
-	    "allowedValues": "'(PARTITIONED_NON_ATOMIC|TRANSACTIONAL)'",
+	    "allowedValues": "'(PARTITIONED_NON_ATOMIC|TRANSACTIONAL|TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC)'",
 	    "converterName": "ClientSideStatementValueConverters$AutocommitDmlModeConverter"
 	  }
 	},
@@ -409,6 +436,31 @@
 	    "allowedValues": "('(\\d{1,19})(s|ms|us|ns)'|\\d{1,19}|NULL)",
 	    "converterName": "ClientSideStatementValueConverters$DurationConverter"
 	  }
+	},
+	{
+		"name": "SET TRANSACTION_TIMEOUT = '<duration>'|NULL",
+		"executorName": "ClientSideStatementSetExecutor",
+		"resultType": "NO_RESULT",
+		"statementType": "SET_TRANSACTION_TIMEOUT",
+		"regex": "(?is)\\A\\s*set\\s+transaction_timeout\\s*(?:=)\\s*(.*)\\z",
+		"method": "statementSetTransactionTimeout",
+		"exampleStatements": [
+			"set transaction_timeout=null",
+			"set transaction_timeout = null ",
+			"set transaction_timeout='1s'",
+			"set transaction_timeout = '1s' ",
+			"set transaction_timeout=100",
+			"set transaction_timeout = 100 ",
+			"set transaction_timeout='100ms'",
+			"set transaction_timeout='10000us'",
+			"set transaction_timeout='9223372036854775807ns'"
+		],
+		"setStatement": {
+			"propertyName": "TRANSACTION_TIMEOUT",
+			"separator": "=",
+			"allowedValues": "('(\\d{1,19})(s|ms|us|ns)'|\\d{1,19}|NULL)",
+			"converterName": "ClientSideStatementValueConverters$DurationConverter"
+		}
 	},
 	{
 	  "name": "SET TRANSACTION READ ONLY|READ WRITE",
@@ -700,6 +752,54 @@
 	    "allowedValues": "(TRUE|FALSE)",
 	    "converterName": "ClientSideStatementValueConverters$BooleanConverter"
 	  }
+	},
+  {
+    "name": "SET [LOCAL] BATCH_DML_UPDATE_COUNT = <INT64>",
+    "executorName": "ClientSideStatementSetExecutor",
+    "resultType": "NO_RESULT",
+    "statementType": "SET_BATCH_DML_UPDATE_COUNT",
+    "regex": "(?is)\\A\\s*set\\s+(local\\s+)?batch_dml_update_count\\s*(?:=)\\s*(.*)\\z",
+    "method": "statementSetBatchDmlUpdateCount",
+    "exampleStatements": [
+      "set local batch_dml_update_count = 0",
+      "set local batch_dml_update_count = 100",
+      "set batch_dml_update_count = 1",
+      "set batch_dml_update_count = 100"
+    ],
+    "examplePrerequisiteStatements": ["set readonly = false", "set autocommit = false"],
+    "setStatement": {
+      "propertyName": "BATCH_DML_UPDATE_COUNT",
+      "separator": "=",
+      "allowedValues": "(\\d{1,19})",
+      "converterName": "ClientSideStatementValueConverters$LongConverter"
+    }
+  },
+	{
+		"name": "SHOW VARIABLE READ_LOCK_MODE",
+		"executorName": "ClientSideStatementNoParamExecutor",
+		"resultType": "RESULT_SET",
+		"statementType": "SHOW_READ_LOCK_MODE",
+		"regex": "(?is)\\A\\s*show\\s+variable\\s+read_lock_mode\\s*\\z",
+		"method": "statementShowReadLockMode",
+		"exampleStatements": ["show variable read_lock_mode"]
+	},
+	{
+		"name": "SET READ_LOCK_MODE = 'OPTIMISTIC'|'PESSIMISTIC'|'UNSPECIFIED'",
+		"executorName": "ClientSideStatementSetExecutor",
+		"resultType": "NO_RESULT",
+		"statementType": "SET_READ_LOCK_MODE",
+		"regex": "(?is)\\A\\s*set\\s+read_lock_mode\\s*(?:=)\\s*(.*)\\z",
+		"method": "statementSetReadLockMode",
+		"exampleStatements": [
+			"set read_lock_mode='OPTIMISTIC'",
+			"set read_lock_mode='PESSIMISTIC'",
+			"set read_lock_mode='UNSPECIFIED'"],
+		"setStatement": {
+			"propertyName": "READ_LOCK_MODE",
+			"separator": "=",
+			"allowedValues": "'(OPTIMISTIC|PESSIMISTIC|UNSPECIFIED|READ_LOCK_MODE_UNSPECIFIED)'",
+			"converterName": "ClientSideStatementValueConverters$ReadLockModeConverter"
+		}
 	},
 	{
 		"name": "SHOW VARIABLE DATA_BOOST_ENABLED",

@@ -36,7 +36,6 @@ import com.google.spanner.v1.*;
 import com.google.spanner.v1.StructType.Field;
 import io.grpc.*;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -88,9 +87,10 @@ public class SpannerThreadsTest {
   private static InetSocketAddress address;
 
   @BeforeClass
-  public static void startServer() throws IOException {
+  public static void startServer() throws Exception {
     assumeTrue(
-        "Skip tests when emulator is enabled as this test interferes with the check whether the emulator is running",
+        "Skip tests when emulator is enabled as this test interferes with the check whether the"
+            + " emulator is running",
         System.getenv("SPANNER_EMULATOR_HOST") == null);
 
     mockSpanner = new MockSpannerServiceImpl();

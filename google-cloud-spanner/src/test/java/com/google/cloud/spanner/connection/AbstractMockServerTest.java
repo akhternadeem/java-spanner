@@ -16,6 +16,7 @@
 
 package com.google.cloud.spanner.connection;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ForceCloseSpannerFunction;
 import com.google.cloud.spanner.MockSpannerServiceImpl;
 import com.google.cloud.spanner.MockSpannerServiceImpl.StatementResult;
@@ -107,7 +108,7 @@ public abstract class AbstractMockServerTest {
           .setMetadata(SINGLE_COL_INT64_RESULTSET_METADATA)
           .build();
   public static final com.google.spanner.v1.ResultSet UPDATE_RETURNING_RESULTSET =
-      com.google.spanner.v1.ResultSet.newBuilder()
+      ResultSet.newBuilder()
           .setStats(ResultSetStats.newBuilder().setRowCountExact(1))
           .setMetadata(
               ResultSetMetadata.newBuilder()
@@ -118,6 +119,10 @@ public abstract class AbstractMockServerTest {
                                   .setName("col")
                                   .setType(Type.newBuilder().setCodeValue(TypeCode.INT64_VALUE))
                                   .build())))
+          .addRows(
+              ListValue.newBuilder()
+                  .addValues(Value.newBuilder().setStringValue("1").build())
+                  .build())
           .build();
 
   protected static final ResultSet SELECT1_RESULTSET =
@@ -155,7 +160,7 @@ public abstract class AbstractMockServerTest {
   private static boolean clientStreamParentHandlers;
 
   @BeforeClass
-  public static void startStaticServer() throws IOException {
+  public static void startStaticServer() throws Exception {
     startStaticServer(createServerInterceptor());
   }
 
@@ -198,6 +203,8 @@ public abstract class AbstractMockServerTest {
     mockSpanner.putStatementResult(
         StatementResult.query(SELECT_RANDOM_STATEMENT, RANDOM_RESULT_SET));
     mockSpanner.putStatementResult(StatementResult.query(SELECT1_STATEMENT, SELECT1_RESULTSET));
+    mockSpanner.putStatementResult(
+        StatementResult.detectDialectResult(Dialect.GOOGLE_STANDARD_SQL));
 
     futureParentHandlers = Logger.getLogger(AbstractFuture.class.getName()).getUseParentHandlers();
     exceptionRunnableParentHandlers =
@@ -246,6 +253,7 @@ public abstract class AbstractMockServerTest {
   @Before
   public void setupResults() {
     mockSpanner.clearRequests();
+    mockSpanner.removeAllExecutionTimes();
     mockDatabaseAdmin.getRequests().clear();
     mockInstanceAdmin.getRequests().clear();
   }
@@ -283,6 +291,7 @@ public abstract class AbstractMockServerTest {
         ConnectionOptions.newBuilder()
             .setUri(getBaseUrl() + additionalUrlOptions)
             .setStatementExecutionInterceptors(interceptors);
+    configureConnectionOptions(builder);
     ConnectionOptions options = builder.build();
     ITConnection connection = createITConnection(options);
     for (TransactionRetryListener listener : transactionRetryListeners) {
@@ -291,13 +300,18 @@ public abstract class AbstractMockServerTest {
     return connection;
   }
 
+  protected ConnectionOptions.Builder configureConnectionOptions(
+      ConnectionOptions.Builder builder) {
+    return builder;
+  }
+
   protected String getBaseUrl() {
     return String.format(
         "cloudspanner://localhost:%d/projects/proj/instances/inst/databases/db?usePlainText=true;autocommit=false;retryAbortsInternally=true",
         server.getPort());
   }
 
-  protected int getPort() {
+  protected static int getPort() {
     return server.getPort();
   }
 
@@ -320,5 +334,19 @@ public abstract class AbstractMockServerTest {
       return false;
     }
     return spanner.getOptions().getSessionPoolOptions().getUseMultiplexedSession();
+  }
+
+  boolean isMultiplexedSessionsEnabledForPartitionedOps(Spanner spanner) {
+    if (spanner.getOptions() == null || spanner.getOptions().getSessionPoolOptions() == null) {
+      return false;
+    }
+    return spanner.getOptions().getSessionPoolOptions().getUseMultiplexedSessionPartitionedOps();
+  }
+
+  boolean isMultiplexedSessionsEnabledForRW(Spanner spanner) {
+    if (spanner.getOptions() == null || spanner.getOptions().getSessionPoolOptions() == null) {
+      return false;
+    }
+    return spanner.getOptions().getSessionPoolOptions().getUseMultiplexedSessionForRW();
   }
 }

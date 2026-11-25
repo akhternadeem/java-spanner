@@ -16,6 +16,7 @@
 
 package com.google.cloud.spanner;
 
+import com.google.api.gax.core.GaxProperties;
 import com.google.cloud.spanner.Options.TagOption;
 import com.google.cloud.spanner.Options.TransactionOption;
 import com.google.cloud.spanner.SpannerOptions.TracingFramework;
@@ -38,15 +39,31 @@ class TraceWrapper {
       AttributeKey.stringKey("transaction.tag");
   private static final AttributeKey<String> STATEMENT_TAG_KEY =
       AttributeKey.stringKey("statement.tag");
+  private static final AttributeKey<String> INSTANCE_NAME_KEY =
+      AttributeKey.stringKey("instance.name");
+  private static final AttributeKey<String> DB_NAME_KEY = AttributeKey.stringKey("db.name");
   private static final AttributeKey<String> DB_STATEMENT_KEY =
       AttributeKey.stringKey("db.statement");
   private static final AttributeKey<List<String>> DB_STATEMENT_ARRAY_KEY =
       AttributeKey.stringArrayKey("db.statement");
+  private static final AttributeKey<String> DB_TABLE_NAME_KEY = AttributeKey.stringKey("db.table");
+  private static final AttributeKey<String> CLOUD_REGION_KEY =
+      AttributeKey.stringKey("cloud.region");
+  private static final AttributeKey<String> GCP_CLIENT_SERVICE_KEY =
+      AttributeKey.stringKey("gcp.client.service");
+  private static final AttributeKey<String> GCP_CLIENT_VERSION_KEY =
+      AttributeKey.stringKey("gcp.client.version");
+  private static final AttributeKey<String> GCP_CLIENT_REPO_KEY =
+      AttributeKey.stringKey("gcp.client.repo");
+  private static final AttributeKey<String> GCP_RESOURCE_NAME_KEY =
+      AttributeKey.stringKey("gcp.resource.name");
+  private static final String GCP_RESOURCE_NAME_PREFIX = "//spanner.googleapis.com/";
   private static final AttributeKey<String> THREAD_NAME_KEY = AttributeKey.stringKey("thread.name");
 
   private final Tracer openCensusTracer;
   private final io.opentelemetry.api.trace.Tracer openTelemetryTracer;
   private final boolean enableExtendedTracing;
+  private final Attributes commonAttributes;
 
   TraceWrapper(
       Tracer openCensusTracer,
@@ -55,20 +72,25 @@ class TraceWrapper {
     this.openTelemetryTracer = openTelemetryTracer;
     this.openCensusTracer = openCensusTracer;
     this.enableExtendedTracing = enableExtendedTracing;
+    this.commonAttributes = createCommonAttributes();
   }
 
   ISpan spanBuilder(String spanName) {
     return spanBuilder(spanName, Attributes.empty());
   }
 
-  ISpan spanBuilder(String spanName, TransactionOption... options) {
-    return spanBuilder(spanName, createTransactionAttributes(options));
+  ISpan spanBuilder(String spanName, Attributes attributes, TransactionOption... options) {
+    return spanBuilder(spanName, createTransactionAttributes(attributes, options));
   }
 
   ISpan spanBuilder(String spanName, Attributes attributes) {
     if (SpannerOptions.getActiveTracingFramework().equals(TracingFramework.OPEN_TELEMETRY)) {
       return new OpenTelemetrySpan(
-          openTelemetryTracer.spanBuilder(spanName).setAllAttributes(attributes).startSpan());
+          openTelemetryTracer
+              .spanBuilder(spanName)
+              .setAllAttributes(attributes)
+              .setAllAttributes(commonAttributes)
+              .startSpan());
     } else {
       return new OpenCensusSpan(openCensusTracer.spanBuilder(spanName).startSpan());
     }
@@ -137,7 +159,9 @@ class TraceWrapper {
     }
   }
 
-  Attributes createTransactionAttributes(TransactionOption... options) {
+  Attributes createTransactionAttributes(
+      Attributes commonAttributes, TransactionOption... options) {
+    AttributesBuilder builder = commonAttributes.toBuilder();
     if (options != null && options.length > 0) {
       Optional<TagOption> tagOption =
           Arrays.stream(options)
@@ -145,10 +169,10 @@ class TraceWrapper {
               .map(option -> (TagOption) option)
               .findAny();
       if (tagOption.isPresent()) {
-        return Attributes.of(TRANSACTION_TAG_KEY, tagOption.get().getTag());
+        builder.put(TRANSACTION_TAG_KEY, tagOption.get().getTag());
       }
     }
-    return Attributes.empty();
+    return builder.build();
   }
 
   Attributes createStatementAttributes(Statement statement, Options options) {
@@ -183,6 +207,32 @@ class TraceWrapper {
       return builder.build();
     }
     return Attributes.empty();
+  }
+
+  Attributes createTableAttributes(String tableName, Options options) {
+    AttributesBuilder builder = Attributes.builder();
+    builder.put(DB_TABLE_NAME_KEY, tableName);
+    if (options != null && options.hasTag()) {
+      builder.put(STATEMENT_TAG_KEY, options.tag());
+    }
+    return builder.build();
+  }
+
+  Attributes createDatabaseAttributes(DatabaseId db) {
+    AttributesBuilder builder = Attributes.builder();
+    builder.put(DB_NAME_KEY, db.getDatabase());
+    builder.put(INSTANCE_NAME_KEY, db.getInstanceId().getInstance());
+    builder.put(GCP_RESOURCE_NAME_KEY, GCP_RESOURCE_NAME_PREFIX + db.getName());
+    return builder.build();
+  }
+
+  private Attributes createCommonAttributes() {
+    AttributesBuilder builder = Attributes.builder();
+    builder.put(GCP_CLIENT_SERVICE_KEY, "spanner");
+    builder.put(GCP_CLIENT_REPO_KEY, "googleapis/java-spanner");
+    builder.put(GCP_CLIENT_VERSION_KEY, GaxProperties.getLibraryVersion(TraceWrapper.class));
+    builder.put(CLOUD_REGION_KEY, BuiltInMetricsProvider.detectClientLocation());
+    return builder.build();
   }
 
   private static String getTraceThreadName() {

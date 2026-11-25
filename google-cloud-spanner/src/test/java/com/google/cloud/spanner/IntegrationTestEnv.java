@@ -16,20 +16,34 @@
 
 package com.google.cloud.spanner;
 
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
 import static com.google.common.base.Preconditions.checkState;
 import static org.junit.Assume.assumeFalse;
 
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.Timestamp;
+import com.google.cloud.opentelemetry.trace.TraceConfiguration;
+import com.google.cloud.opentelemetry.trace.TraceExporter;
 import com.google.cloud.spanner.DatabaseInfo.DatabaseField;
 import com.google.cloud.spanner.testing.EmulatorSpannerHelper;
 import com.google.cloud.spanner.testing.RemoteSpannerHelper;
 import com.google.common.collect.Iterators;
 import com.google.spanner.admin.instance.v1.CreateInstanceMetadata;
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
+import io.opentelemetry.sdk.trace.samplers.Sampler;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,8 +81,20 @@ public class IntegrationTestEnv extends ExternalResource {
   private final boolean alwaysCreateNewInstance;
   private RemoteSpannerHelper testHelper;
 
+  private Collection<TestEnvOptions> testEnvOptions = Collections.emptyList();
+
+  public enum TestEnvOptions {
+    USE_END_TO_END_TRACING;
+    // TODO : Move alwaysCreateNewInstance to TestEnvOptions
+  }
+
   public IntegrationTestEnv() {
     this(false);
+  }
+
+  public IntegrationTestEnv(Collection<TestEnvOptions> testEnvOptions) {
+    this(false);
+    this.testEnvOptions = testEnvOptions;
   }
 
   public IntegrationTestEnv(final boolean alwaysCreateNewInstance) {
@@ -105,10 +131,19 @@ public class IntegrationTestEnv extends ExternalResource {
   protected void before() throws Throwable {
     this.initializeConfig();
     assumeFalse(alwaysCreateNewInstance && isCloudDevel());
+    assumeFalse(
+        "Creating instances is not supported in experimental host",
+        alwaysCreateNewInstance && isExperimentalHost());
 
     this.config.setUp();
-
     SpannerOptions options = config.spannerOptions();
+    if (testEnvOptions.stream()
+        .anyMatch(testEnvOption -> TestEnvOptions.USE_END_TO_END_TRACING.equals(testEnvOption))) {
+      // OpenTelemetry set up for enabling End to End tracing for all integration test env.
+      // The gRPC stub and connections are created during test env set up using SpannerOptions and
+      // are reused for executing statements.
+      options = spannerOptionsWithEndToEndTracing(options);
+    }
     String instanceProperty = System.getProperty(TEST_INSTANCE_PROPERTY, "");
     InstanceId instanceId;
     if (!instanceProperty.isEmpty() && !alwaysCreateNewInstance) {
@@ -131,6 +166,37 @@ public class IntegrationTestEnv extends ExternalResource {
     } else {
       cleanUpOldDatabases(instanceId);
     }
+  }
+
+  public SpannerOptions spannerOptionsWithEndToEndTracing(SpannerOptions options) {
+    assumeFalse("This test requires credentials", EmulatorSpannerHelper.isUsingEmulator());
+
+    TraceConfiguration.Builder traceConfigurationBuilder = TraceConfiguration.builder();
+    if (options.getCredentials() != null) {
+      traceConfigurationBuilder.setCredentials(options.getCredentials());
+    }
+    SpanExporter traceExporter =
+        TraceExporter.createWithConfiguration(
+            traceConfigurationBuilder.setProjectId(options.getProjectId()).build());
+
+    String serviceName = "java-spanner-integration-tests-" + ThreadLocalRandom.current().nextInt();
+    SdkTracerProvider sdkTracerProvider =
+        SdkTracerProvider.builder()
+            // Always sample in this test to ensure we know what we get.
+            .setSampler(Sampler.alwaysOn())
+            .setResource(Resource.builder().put("service.name", serviceName).build())
+            .addSpanProcessor(BatchSpanProcessor.builder(traceExporter).build())
+            .build();
+    OpenTelemetrySdk openTelemetry =
+        OpenTelemetrySdk.builder()
+            .setTracerProvider(sdkTracerProvider)
+            .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
+            .build();
+    SpannerOptions.enableOpenTelemetryTraces();
+    return options.toBuilder()
+        .setOpenTelemetry(openTelemetry)
+        .setEnableEndToEndTracing(true)
+        .build();
   }
 
   RemoteSpannerHelper createTestHelper(SpannerOptions options, InstanceId instanceId)
@@ -220,36 +286,56 @@ public class IntegrationTestEnv extends ExternalResource {
     return exception
             .getMessage()
             .contains(
-                "Quota exceeded for quota metric 'Instance create requests' and limit 'Instance create requests per minute'")
+                "Quota exceeded for quota metric 'Instance create requests' and limit 'Instance"
+                    + " create requests per minute'")
         || exception.getMessage().matches(".*cannot add \\d+ nodes in region.*");
   }
 
   private void cleanUpOldDatabases(InstanceId instanceId) {
-    long OLD_DB_THRESHOLD_SECS = TimeUnit.SECONDS.convert(6L, TimeUnit.HOURS);
+    long OLD_DB_THRESHOLD_SECS = TimeUnit.SECONDS.convert(2L, TimeUnit.HOURS);
     Timestamp currentTimestamp = Timestamp.now();
     int numDropped = 0;
     String TEST_DB_REGEX = "(testdb_(.*)_(.*))|(mysample-(.*))";
 
     logger.log(Level.INFO, "Dropping old test databases from {0}", instanceId.getName());
-    for (Database db : databaseAdminClient.listDatabases(instanceId.getInstance()).iterateAll()) {
+    while (true) {
       try {
-        long timeDiff = currentTimestamp.getSeconds() - db.getCreateTime().getSeconds();
-        // Delete all databases which are more than OLD_DB_THRESHOLD_SECS seconds old.
-        if ((db.getId().getDatabase().matches(TEST_DB_REGEX))
-            && (timeDiff > OLD_DB_THRESHOLD_SECS)) {
-          logger.log(Level.INFO, "Dropping test database {0}", db.getId());
-          if (db.isDropProtectionEnabled()) {
-            Database updatedDatabase =
-                databaseAdminClient.newDatabaseBuilder(db.getId()).disableDropProtection().build();
-            databaseAdminClient
-                .updateDatabase(updatedDatabase, DatabaseField.DROP_PROTECTION)
-                .get();
+        for (Database db :
+            databaseAdminClient.listDatabases(instanceId.getInstance()).iterateAll()) {
+          try {
+            long timeDiff = currentTimestamp.getSeconds() - db.getCreateTime().getSeconds();
+            // Delete all databases which are more than OLD_DB_THRESHOLD_SECS seconds old.
+            if ((db.getId().getDatabase().matches(TEST_DB_REGEX))
+                && (timeDiff > OLD_DB_THRESHOLD_SECS)) {
+              logger.log(Level.INFO, "Dropping test database {0}", db.getId());
+              if (db.isDropProtectionEnabled()) {
+                Database updatedDatabase =
+                    databaseAdminClient
+                        .newDatabaseBuilder(db.getId())
+                        .disableDropProtection()
+                        .build();
+                databaseAdminClient
+                    .updateDatabase(updatedDatabase, DatabaseField.DROP_PROTECTION)
+                    .get();
+              }
+              db.drop();
+              ++numDropped;
+            }
+          } catch (SpannerException | ExecutionException | InterruptedException e) {
+            logger.log(Level.SEVERE, "Failed to drop test database " + db.getId(), e);
           }
-          db.drop();
-          ++numDropped;
         }
-      } catch (SpannerException | ExecutionException | InterruptedException e) {
-        logger.log(Level.SEVERE, "Failed to drop test database " + db.getId(), e);
+        break;
+      } catch (SpannerException exception) {
+        if (exception.getErrorCode() != ErrorCode.RESOURCE_EXHAUSTED) {
+          throw exception;
+        }
+        // Wait a little and try again.
+        try {
+          Thread.sleep(10_000);
+        } catch (InterruptedException interruptedException) {
+          throw SpannerExceptionFactory.propagateInterrupt(interruptedException);
+        }
       }
     }
     logger.log(Level.INFO, "Dropped {0} test database(s)", numDropped);
@@ -260,7 +346,7 @@ public class IntegrationTestEnv extends ExternalResource {
       if (isOwnedInstance) {
         // Delete the instance, which implicitly drops all databases in it.
         try {
-          if (!EmulatorSpannerHelper.isUsingEmulator()) {
+          if (!EmulatorSpannerHelper.isUsingEmulator() && !isExperimentalHost()) {
             // Backups must be explicitly deleted before the instance may be deleted.
             logger.log(
                 Level.FINE, "Deleting backups on test instance {0}", testHelper.getInstanceId());

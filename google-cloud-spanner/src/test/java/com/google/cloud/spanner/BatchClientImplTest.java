@@ -36,6 +36,7 @@ import com.google.protobuf.util.Timestamps;
 import com.google.spanner.v1.Session;
 import com.google.spanner.v1.Transaction;
 import io.opentelemetry.api.OpenTelemetry;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import org.junit.Before;
@@ -88,6 +89,8 @@ public final class BatchClientImplTest {
     when(spannerOptions.getTransportOptions()).thenReturn(transportOptions);
     SessionPoolOptions sessionPoolOptions = mock(SessionPoolOptions.class);
     when(sessionPoolOptions.getPoolMaintainerClock()).thenReturn(Clock.INSTANCE);
+    when(sessionPoolOptions.getUseMultiplexedSessionPartitionedOps()).thenReturn(true);
+    when(sessionPoolOptions.getMultiplexedSessionMaintenanceDuration()).thenReturn(Duration.ZERO);
     when(spannerOptions.getSessionPoolOptions()).thenReturn(sessionPoolOptions);
     @SuppressWarnings("resource")
     SpannerImpl spanner = new SpannerImpl(gapicRpc, spannerOptions);
@@ -97,8 +100,9 @@ public final class BatchClientImplTest {
   @SuppressWarnings("unchecked")
   @Test
   public void testBatchReadOnlyTxnWithBound() throws Exception {
-    Session sessionProto = Session.newBuilder().setName(SESSION_NAME).build();
-    when(gapicRpc.createSession(eq(DB_NAME), anyString(), anyMap(), optionsCaptor.capture()))
+    Session sessionProto = Session.newBuilder().setName(SESSION_NAME).setMultiplexed(true).build();
+    when(gapicRpc.createSession(
+            eq(DB_NAME), anyString(), anyMap(), optionsCaptor.capture(), eq(true)))
         .thenReturn(sessionProto);
     com.google.protobuf.Timestamp timestamp = Timestamps.parse(TIMESTAMP);
     Transaction txnMetadata =

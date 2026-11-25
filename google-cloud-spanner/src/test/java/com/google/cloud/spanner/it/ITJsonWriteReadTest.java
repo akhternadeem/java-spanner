@@ -16,6 +16,7 @@
 
 package com.google.cloud.spanner.it;
 
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assume.assumeFalse;
@@ -30,7 +31,6 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.spanner.testing.EmulatorSpannerHelper;
 import com.google.cloud.spanner.testing.RemoteSpannerHelper;
 import com.google.common.io.Resources;
 import java.io.File;
@@ -68,23 +68,19 @@ public class ITJsonWriteReadTest {
   @BeforeClass
   public static void beforeClass() {
     final RemoteSpannerHelper testHelper = env.getTestHelper();
-    if (!EmulatorSpannerHelper.isUsingEmulator()) {
-      final Database database =
-          testHelper.createTestDatabase(
-              "CREATE TABLE "
-                  + TABLE_NAME
-                  + "("
-                  + "Id INT64 NOT NULL,"
-                  + "json JSON"
-                  + ") PRIMARY KEY (Id)");
-      databaseClient = testHelper.getDatabaseClient(database);
-    }
+    final Database database =
+        testHelper.createTestDatabase(
+            "CREATE TABLE "
+                + TABLE_NAME
+                + "("
+                + "Id INT64 NOT NULL,"
+                + "json JSON"
+                + ") PRIMARY KEY (Id)");
+    databaseClient = testHelper.getDatabaseClient(database);
   }
 
   @Test
   public void testWriteValidJsonValues() throws IOException {
-    assumeFalse("Emulator does not yet support JSON", EmulatorSpannerHelper.isUsingEmulator());
-
     List<String> resources = getJsonFilePaths(RESOURCES_DIR + File.separator + VALID_JSON_DIR);
 
     long id = 0L;
@@ -116,8 +112,7 @@ public class ITJsonWriteReadTest {
 
   @Test
   public void testWriteAndReadInvalidJsonValues() throws IOException {
-    assumeFalse("Emulator does not yet support JSON", EmulatorSpannerHelper.isUsingEmulator());
-
+    assumeFalse("Tracking the failure via b/441255097 for experimental host", isExperimentalHost());
     List<String> resources = getJsonFilePaths(RESOURCES_DIR + File.separator + INVALID_JSON_DIR);
 
     AtomicLong id = new AtomicLong(100);
@@ -140,7 +135,14 @@ public class ITJsonWriteReadTest {
                               .to(Value.json(jsonStr))
                               .build())));
 
-      assertEquals(ErrorCode.FAILED_PRECONDITION, exception.getErrorCode());
+      if (env.getTestHelper()
+          .getOptions()
+          .getSessionPoolOptions()
+          .getUseMultiplexedSessionForRW()) {
+        assertEquals(ErrorCode.INVALID_ARGUMENT, exception.getErrorCode());
+      } else {
+        assertEquals(ErrorCode.FAILED_PRECONDITION, exception.getErrorCode());
+      }
     }
   }
 

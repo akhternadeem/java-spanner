@@ -42,7 +42,6 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.data.MetricData;
 import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.HashMap;
@@ -50,10 +49,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -73,6 +69,7 @@ public class SpannerRpcMetricsTest {
   private static DatabaseClient databaseClientNoHeader;
   private static String instanceId = "fake-instance";
   private static String databaseId = "fake-database";
+  private static String noHeaderdatabaseId = "fake-database-1";
   private static String projectId = "fake-project";
   private static AtomicInteger fakeServerTiming = new AtomicInteger(new Random().nextInt(1000) + 1);
   private static final Statement SELECT1AND2 =
@@ -111,7 +108,7 @@ public class SpannerRpcMetricsTest {
   private static InMemoryMetricReader inMemoryMetricReaderInjected;
 
   @BeforeClass
-  public static void startServer() throws IOException {
+  public static void startServer() throws Exception {
     SpannerOptions.enableOpenTelemetryMetrics();
     mockSpanner = new MockSpannerServiceImpl();
     mockSpanner.setAbortProbability(0.0D); // We don't want any unpredictable aborted transactions.
@@ -182,7 +179,7 @@ public class SpannerRpcMetricsTest {
         createSpannerOptions(addressNoHeader, serverNoHeader).getService();
     databaseClientNoHeader =
         spannerNoHeaderNoOpenTelemetry.getDatabaseClient(
-            DatabaseId.of(projectId, instanceId, databaseId));
+            DatabaseId.of(projectId, instanceId, noHeaderdatabaseId));
   }
 
   @AfterClass
@@ -227,7 +224,8 @@ public class SpannerRpcMetricsTest {
     long count =
         getHeaderLatencyMetric(
             getMetricData("spanner/gfe_header_missing_count", inMemoryMetricReaderInjected),
-            "google.spanner.v1.Spanner/ExecuteSql");
+            "google.spanner.v1.Spanner/Commit",
+            databaseId);
     assertEquals(0, count);
 
     databaseClientNoHeader
@@ -236,7 +234,8 @@ public class SpannerRpcMetricsTest {
     long count1 =
         getHeaderLatencyMetric(
             getMetricData("spanner/gfe_header_missing_count", inMemoryMetricReader),
-            "google.spanner.v1.Spanner/ExecuteSql");
+            "google.spanner.v1.Spanner/Commit",
+            noHeaderdatabaseId);
     assertEquals(1, count1);
   }
 
@@ -272,9 +271,12 @@ public class SpannerRpcMetricsTest {
         .build();
   }
 
-  private long getHeaderLatencyMetric(MetricData metricData, String methodName) {
+  private long getHeaderLatencyMetric(MetricData metricData, String methodName, String databaseId) {
     return metricData.getLongSumData().getPoints().stream()
-        .filter(x -> x.getAttributes().asMap().containsValue(methodName))
+        .filter(
+            x ->
+                x.getAttributes().asMap().containsValue(methodName)
+                    && x.getAttributes().asMap().containsValue(databaseId))
         .findFirst()
         .get()
         .getValue();

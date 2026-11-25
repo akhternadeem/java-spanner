@@ -16,11 +16,14 @@
 
 package com.google.cloud.spanner.connection;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.connection.PgTransactionMode.IsolationLevel;
 import com.google.spanner.v1.DirectedReadOptions;
+import com.google.spanner.v1.TransactionOptions;
+import com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode;
 import java.time.Duration;
 
 /**
@@ -35,6 +38,7 @@ import java.time.Duration;
  * <p>The client side statements are defined in the ClientSideStatements.json file.
  */
 interface ConnectionStatementExecutor {
+  Dialect getDialect();
 
   StatementResult statementSetAutocommit(Boolean autocommit);
 
@@ -44,7 +48,7 @@ interface ConnectionStatementExecutor {
 
   StatementResult statementShowReadOnly();
 
-  StatementResult statementSetRetryAbortsInternally(Boolean retryAbortsInternally);
+  StatementResult statementSetRetryAbortsInternally(Boolean retryAbortsInternally, Boolean local);
 
   StatementResult statementShowRetryAbortsInternally();
 
@@ -55,6 +59,10 @@ interface ConnectionStatementExecutor {
   StatementResult statementSetStatementTimeout(Duration duration);
 
   StatementResult statementShowStatementTimeout();
+
+  StatementResult statementSetTransactionTimeout(Duration duration);
+
+  StatementResult statementShowTransactionTimeout();
 
   StatementResult statementShowReadTimestamp();
 
@@ -107,7 +115,7 @@ interface ConnectionStatementExecutor {
 
   StatementResult statementShowExcludeTxnFromChangeStreams();
 
-  StatementResult statementBeginTransaction();
+  StatementResult statementBeginTransaction(TransactionOptions.IsolationLevel isolationLevel);
 
   StatementResult statementBeginPgTransaction(PgTransactionMode transactionMode);
 
@@ -144,6 +152,8 @@ interface ConnectionStatementExecutor {
 
   StatementResult statementShowTransactionIsolationLevel();
 
+  StatementResult statementShowDefaultTransactionIsolation();
+
   StatementResult statementSetProtoDescriptors(byte[] protoDescriptors);
 
   StatementResult statementSetProtoDescriptorsFilePath(String filePath);
@@ -176,6 +186,8 @@ interface ConnectionStatementExecutor {
 
   StatementResult statementRunPartitionedQuery(Statement statement);
 
+  StatementResult statementSetBatchDmlUpdateCount(Long updateCount, Boolean local);
+
   StatementResult statementSetAutoBatchDml(Boolean autoBatchDml);
 
   StatementResult statementShowAutoBatchDml();
@@ -187,4 +199,8 @@ interface ConnectionStatementExecutor {
   StatementResult statementSetAutoBatchDmlUpdateCountVerification(Boolean verification);
 
   StatementResult statementShowAutoBatchDmlUpdateCountVerification();
+
+  StatementResult statementSetReadLockMode(ReadLockMode readLockMode);
+
+  StatementResult statementShowReadLockMode();
 }

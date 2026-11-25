@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ import com.google.iam.v1.TestIamPermissionsRequest;
 import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
 import com.google.protobuf.Empty;
+import com.google.spanner.admin.database.v1.AddSplitPointsRequest;
+import com.google.spanner.admin.database.v1.AddSplitPointsResponse;
 import com.google.spanner.admin.database.v1.Backup;
 import com.google.spanner.admin.database.v1.BackupSchedule;
 import com.google.spanner.admin.database.v1.CopyBackupMetadata;
@@ -62,6 +64,8 @@ import com.google.spanner.admin.database.v1.GetBackupScheduleRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
 import com.google.spanner.admin.database.v1.GetDatabaseRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationResponse;
 import com.google.spanner.admin.database.v1.ListBackupOperationsRequest;
 import com.google.spanner.admin.database.v1.ListBackupOperationsResponse;
 import com.google.spanner.admin.database.v1.ListBackupSchedulesRequest;
@@ -132,8 +136,8 @@ import javax.annotation.Generated;
  * }</pre>
  *
  * Please refer to the [Client Side Retry
- * Guide](https://github.com/googleapis/google-cloud-java/blob/main/docs/client_retries.md) for
- * additional support in setting retries.
+ * Guide](https://docs.cloud.google.com/java/docs/client-retries) for additional support in setting
+ * retries.
  *
  * <p>To configure the RetrySettings of a Long Running Operation method, create an
  * OperationTimedPollAlgorithm object and update the RPC's polling algorithm. For example, to
@@ -151,7 +155,7 @@ import javax.annotation.Generated;
  *         RetrySettings.newBuilder()
  *             .setInitialRetryDelayDuration(Duration.ofMillis(500))
  *             .setRetryDelayMultiplier(1.5)
- *             .setMaxRetryDelay(Duration.ofMillis(5000))
+ *             .setMaxRetryDelayDuration(Duration.ofMillis(5000))
  *             .setTotalTimeoutDuration(Duration.ofHours(24))
  *             .build());
  * databaseAdminSettingsBuilder
@@ -312,6 +316,11 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
     return ((DatabaseAdminStubSettings) getStubSettings()).listDatabaseRolesSettings();
   }
 
+  /** Returns the object with the settings used for calls to addSplitPoints. */
+  public UnaryCallSettings<AddSplitPointsRequest, AddSplitPointsResponse> addSplitPointsSettings() {
+    return ((DatabaseAdminStubSettings) getStubSettings()).addSplitPointsSettings();
+  }
+
   /** Returns the object with the settings used for calls to createBackupSchedule. */
   public UnaryCallSettings<CreateBackupScheduleRequest, BackupSchedule>
       createBackupScheduleSettings() {
@@ -339,6 +348,13 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
           ListBackupSchedulesRequest, ListBackupSchedulesResponse, ListBackupSchedulesPagedResponse>
       listBackupSchedulesSettings() {
     return ((DatabaseAdminStubSettings) getStubSettings()).listBackupSchedulesSettings();
+  }
+
+  /** Returns the object with the settings used for calls to internalUpdateGraph. */
+  public UnaryCallSettings<
+          InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationSettings() {
+    return ((DatabaseAdminStubSettings) getStubSettings()).internalUpdateGraphOperationSettings();
   }
 
   public static final DatabaseAdminSettings create(DatabaseAdminStubSettings stub)
@@ -606,6 +622,12 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
       return getStubSettingsBuilder().listDatabaseRolesSettings();
     }
 
+    /** Returns the builder for the settings used for calls to addSplitPoints. */
+    public UnaryCallSettings.Builder<AddSplitPointsRequest, AddSplitPointsResponse>
+        addSplitPointsSettings() {
+      return getStubSettingsBuilder().addSplitPointsSettings();
+    }
+
     /** Returns the builder for the settings used for calls to createBackupSchedule. */
     public UnaryCallSettings.Builder<CreateBackupScheduleRequest, BackupSchedule>
         createBackupScheduleSettings() {
@@ -637,6 +659,13 @@ public class DatabaseAdminSettings extends ClientSettings<DatabaseAdminSettings>
             ListBackupSchedulesPagedResponse>
         listBackupSchedulesSettings() {
       return getStubSettingsBuilder().listBackupSchedulesSettings();
+    }
+
+    /** Returns the builder for the settings used for calls to internalUpdateGraph. */
+    public UnaryCallSettings.Builder<
+            InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+        internalUpdateGraphOperationSettings() {
+      return getStubSettingsBuilder().internalUpdateGraphOperationSettings();
     }
 
     @Override

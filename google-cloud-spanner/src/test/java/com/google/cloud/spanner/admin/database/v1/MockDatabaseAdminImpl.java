@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
 import com.google.protobuf.AbstractMessage;
 import com.google.protobuf.Empty;
+import com.google.spanner.admin.database.v1.AddSplitPointsRequest;
+import com.google.spanner.admin.database.v1.AddSplitPointsResponse;
 import com.google.spanner.admin.database.v1.Backup;
 import com.google.spanner.admin.database.v1.BackupSchedule;
 import com.google.spanner.admin.database.v1.CopyBackupRequest;
@@ -41,6 +43,8 @@ import com.google.spanner.admin.database.v1.GetBackupScheduleRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
 import com.google.spanner.admin.database.v1.GetDatabaseRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationResponse;
 import com.google.spanner.admin.database.v1.ListBackupOperationsRequest;
 import com.google.spanner.admin.database.v1.ListBackupOperationsResponse;
 import com.google.spanner.admin.database.v1.ListBackupSchedulesRequest;
@@ -462,7 +466,8 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
       responseObserver.onError(
           new IllegalArgumentException(
               String.format(
-                  "Unrecognized response type %s for method ListDatabaseOperations, expected %s or %s",
+                  "Unrecognized response type %s for method ListDatabaseOperations, expected %s or"
+                      + " %s",
                   response == null ? "null" : response.getClass().getName(),
                   ListDatabaseOperationsResponse.class.getName(),
                   Exception.class.getName())));
@@ -484,7 +489,8 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
       responseObserver.onError(
           new IllegalArgumentException(
               String.format(
-                  "Unrecognized response type %s for method ListBackupOperations, expected %s or %s",
+                  "Unrecognized response type %s for method ListBackupOperations, expected %s or"
+                      + " %s",
                   response == null ? "null" : response.getClass().getName(),
                   ListBackupOperationsResponse.class.getName(),
                   Exception.class.getName())));
@@ -514,6 +520,27 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
   }
 
   @Override
+  public void addSplitPoints(
+      AddSplitPointsRequest request, StreamObserver<AddSplitPointsResponse> responseObserver) {
+    Object response = responses.poll();
+    if (response instanceof AddSplitPointsResponse) {
+      requests.add(request);
+      responseObserver.onNext(((AddSplitPointsResponse) response));
+      responseObserver.onCompleted();
+    } else if (response instanceof Exception) {
+      responseObserver.onError(((Exception) response));
+    } else {
+      responseObserver.onError(
+          new IllegalArgumentException(
+              String.format(
+                  "Unrecognized response type %s for method AddSplitPoints, expected %s or %s",
+                  response == null ? "null" : response.getClass().getName(),
+                  AddSplitPointsResponse.class.getName(),
+                  Exception.class.getName())));
+    }
+  }
+
+  @Override
   public void createBackupSchedule(
       CreateBackupScheduleRequest request, StreamObserver<BackupSchedule> responseObserver) {
     Object response = responses.poll();
@@ -527,7 +554,8 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
       responseObserver.onError(
           new IllegalArgumentException(
               String.format(
-                  "Unrecognized response type %s for method CreateBackupSchedule, expected %s or %s",
+                  "Unrecognized response type %s for method CreateBackupSchedule, expected %s or"
+                      + " %s",
                   response == null ? "null" : response.getClass().getName(),
                   BackupSchedule.class.getName(),
                   Exception.class.getName())));
@@ -569,7 +597,8 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
       responseObserver.onError(
           new IllegalArgumentException(
               String.format(
-                  "Unrecognized response type %s for method UpdateBackupSchedule, expected %s or %s",
+                  "Unrecognized response type %s for method UpdateBackupSchedule, expected %s or"
+                      + " %s",
                   response == null ? "null" : response.getClass().getName(),
                   BackupSchedule.class.getName(),
                   Exception.class.getName())));
@@ -590,7 +619,8 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
       responseObserver.onError(
           new IllegalArgumentException(
               String.format(
-                  "Unrecognized response type %s for method DeleteBackupSchedule, expected %s or %s",
+                  "Unrecognized response type %s for method DeleteBackupSchedule, expected %s or"
+                      + " %s",
                   response == null ? "null" : response.getClass().getName(),
                   Empty.class.getName(),
                   Exception.class.getName())));
@@ -615,6 +645,29 @@ public class MockDatabaseAdminImpl extends DatabaseAdminImplBase {
                   "Unrecognized response type %s for method ListBackupSchedules, expected %s or %s",
                   response == null ? "null" : response.getClass().getName(),
                   ListBackupSchedulesResponse.class.getName(),
+                  Exception.class.getName())));
+    }
+  }
+
+  @Override
+  public void internalUpdateGraphOperation(
+      InternalUpdateGraphOperationRequest request,
+      StreamObserver<InternalUpdateGraphOperationResponse> responseObserver) {
+    Object response = responses.poll();
+    if (response instanceof InternalUpdateGraphOperationResponse) {
+      requests.add(request);
+      responseObserver.onNext(((InternalUpdateGraphOperationResponse) response));
+      responseObserver.onCompleted();
+    } else if (response instanceof Exception) {
+      responseObserver.onError(((Exception) response));
+    } else {
+      responseObserver.onError(
+          new IllegalArgumentException(
+              String.format(
+                  "Unrecognized response type %s for method InternalUpdateGraphOperation, expected"
+                      + " %s or %s",
+                  response == null ? "null" : response.getClass().getName(),
+                  InternalUpdateGraphOperationResponse.class.getName(),
                   Exception.class.getName())));
     }
   }

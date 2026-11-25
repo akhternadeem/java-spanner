@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
 import com.google.longrunning.stub.GrpcOperationsStub;
 import com.google.protobuf.Empty;
+import com.google.spanner.admin.database.v1.AddSplitPointsRequest;
+import com.google.spanner.admin.database.v1.AddSplitPointsResponse;
 import com.google.spanner.admin.database.v1.Backup;
 import com.google.spanner.admin.database.v1.BackupSchedule;
 import com.google.spanner.admin.database.v1.CopyBackupMetadata;
@@ -57,6 +59,8 @@ import com.google.spanner.admin.database.v1.GetBackupScheduleRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
 import com.google.spanner.admin.database.v1.GetDatabaseRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationResponse;
 import com.google.spanner.admin.database.v1.ListBackupOperationsRequest;
 import com.google.spanner.admin.database.v1.ListBackupOperationsResponse;
 import com.google.spanner.admin.database.v1.ListBackupSchedulesRequest;
@@ -100,6 +104,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(ListDatabasesRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(ListDatabasesResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<CreateDatabaseRequest, Operation>
@@ -110,6 +115,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(CreateDatabaseRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<GetDatabaseRequest, Database> getDatabaseMethodDescriptor =
@@ -118,6 +124,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/GetDatabase")
           .setRequestMarshaller(ProtoUtils.marshaller(GetDatabaseRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Database.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<UpdateDatabaseRequest, Operation>
@@ -128,6 +135,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(UpdateDatabaseRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<UpdateDatabaseDdlRequest, Operation>
@@ -138,6 +146,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(UpdateDatabaseDdlRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<DropDatabaseRequest, Empty> dropDatabaseMethodDescriptor =
@@ -146,6 +155,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/DropDatabase")
           .setRequestMarshaller(ProtoUtils.marshaller(DropDatabaseRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Empty.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<GetDatabaseDdlRequest, GetDatabaseDdlResponse>
@@ -157,6 +167,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(GetDatabaseDdlRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(GetDatabaseDdlResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<SetIamPolicyRequest, Policy> setIamPolicyMethodDescriptor =
@@ -165,6 +176,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/SetIamPolicy")
           .setRequestMarshaller(ProtoUtils.marshaller(SetIamPolicyRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Policy.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<GetIamPolicyRequest, Policy> getIamPolicyMethodDescriptor =
@@ -173,6 +185,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/GetIamPolicy")
           .setRequestMarshaller(ProtoUtils.marshaller(GetIamPolicyRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Policy.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<TestIamPermissionsRequest, TestIamPermissionsResponse>
@@ -185,6 +198,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(TestIamPermissionsRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(TestIamPermissionsResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<CreateBackupRequest, Operation>
@@ -194,6 +208,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/CreateBackup")
               .setRequestMarshaller(ProtoUtils.marshaller(CreateBackupRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<CopyBackupRequest, Operation> copyBackupMethodDescriptor =
@@ -202,6 +217,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/CopyBackup")
           .setRequestMarshaller(ProtoUtils.marshaller(CopyBackupRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<GetBackupRequest, Backup> getBackupMethodDescriptor =
@@ -210,6 +226,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/GetBackup")
           .setRequestMarshaller(ProtoUtils.marshaller(GetBackupRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Backup.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<UpdateBackupRequest, Backup> updateBackupMethodDescriptor =
@@ -218,6 +235,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/UpdateBackup")
           .setRequestMarshaller(ProtoUtils.marshaller(UpdateBackupRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Backup.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<DeleteBackupRequest, Empty> deleteBackupMethodDescriptor =
@@ -226,6 +244,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
           .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/DeleteBackup")
           .setRequestMarshaller(ProtoUtils.marshaller(DeleteBackupRequest.getDefaultInstance()))
           .setResponseMarshaller(ProtoUtils.marshaller(Empty.getDefaultInstance()))
+          .setSampledToLocalTracing(true)
           .build();
 
   private static final MethodDescriptor<ListBackupsRequest, ListBackupsResponse>
@@ -236,6 +255,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(ProtoUtils.marshaller(ListBackupsRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(ListBackupsResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<RestoreDatabaseRequest, Operation>
@@ -246,6 +266,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(RestoreDatabaseRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(Operation.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<
@@ -260,6 +281,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(ListDatabaseOperationsRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(ListDatabaseOperationsResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<ListBackupOperationsRequest, ListBackupOperationsResponse>
@@ -272,6 +294,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(ListBackupOperationsRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(ListBackupOperationsResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<ListDatabaseRolesRequest, ListDatabaseRolesResponse>
@@ -283,6 +306,19 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(ListDatabaseRolesRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(ListDatabaseRolesResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
+              .build();
+
+  private static final MethodDescriptor<AddSplitPointsRequest, AddSplitPointsResponse>
+      addSplitPointsMethodDescriptor =
+          MethodDescriptor.<AddSplitPointsRequest, AddSplitPointsResponse>newBuilder()
+              .setType(MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName("google.spanner.admin.database.v1.DatabaseAdmin/AddSplitPoints")
+              .setRequestMarshaller(
+                  ProtoUtils.marshaller(AddSplitPointsRequest.getDefaultInstance()))
+              .setResponseMarshaller(
+                  ProtoUtils.marshaller(AddSplitPointsResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<CreateBackupScheduleRequest, BackupSchedule>
@@ -294,6 +330,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(CreateBackupScheduleRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(BackupSchedule.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<GetBackupScheduleRequest, BackupSchedule>
@@ -304,6 +341,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(GetBackupScheduleRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(BackupSchedule.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<UpdateBackupScheduleRequest, BackupSchedule>
@@ -315,6 +353,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(UpdateBackupScheduleRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(BackupSchedule.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<DeleteBackupScheduleRequest, Empty>
@@ -326,6 +365,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
               .setRequestMarshaller(
                   ProtoUtils.marshaller(DeleteBackupScheduleRequest.getDefaultInstance()))
               .setResponseMarshaller(ProtoUtils.marshaller(Empty.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private static final MethodDescriptor<ListBackupSchedulesRequest, ListBackupSchedulesResponse>
@@ -338,6 +378,23 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                   ProtoUtils.marshaller(ListBackupSchedulesRequest.getDefaultInstance()))
               .setResponseMarshaller(
                   ProtoUtils.marshaller(ListBackupSchedulesResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
+              .build();
+
+  private static final MethodDescriptor<
+          InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationMethodDescriptor =
+          MethodDescriptor
+              .<InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+                  newBuilder()
+              .setType(MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(
+                  "google.spanner.admin.database.v1.DatabaseAdmin/InternalUpdateGraphOperation")
+              .setRequestMarshaller(
+                  ProtoUtils.marshaller(InternalUpdateGraphOperationRequest.getDefaultInstance()))
+              .setResponseMarshaller(
+                  ProtoUtils.marshaller(InternalUpdateGraphOperationResponse.getDefaultInstance()))
+              .setSampledToLocalTracing(true)
               .build();
 
   private final UnaryCallable<ListDatabasesRequest, ListDatabasesResponse> listDatabasesCallable;
@@ -386,6 +443,7 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
       listDatabaseRolesCallable;
   private final UnaryCallable<ListDatabaseRolesRequest, ListDatabaseRolesPagedResponse>
       listDatabaseRolesPagedCallable;
+  private final UnaryCallable<AddSplitPointsRequest, AddSplitPointsResponse> addSplitPointsCallable;
   private final UnaryCallable<CreateBackupScheduleRequest, BackupSchedule>
       createBackupScheduleCallable;
   private final UnaryCallable<GetBackupScheduleRequest, BackupSchedule> getBackupScheduleCallable;
@@ -396,6 +454,9 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
       listBackupSchedulesCallable;
   private final UnaryCallable<ListBackupSchedulesRequest, ListBackupSchedulesPagedResponse>
       listBackupSchedulesPagedCallable;
+  private final UnaryCallable<
+          InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationCallable;
 
   private final BackgroundResource backgroundResources;
   private final GrpcOperationsStub operationsStub;
@@ -645,6 +706,17 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                       return builder.build();
                     })
                 .build();
+    GrpcCallSettings<AddSplitPointsRequest, AddSplitPointsResponse>
+        addSplitPointsTransportSettings =
+            GrpcCallSettings.<AddSplitPointsRequest, AddSplitPointsResponse>newBuilder()
+                .setMethodDescriptor(addSplitPointsMethodDescriptor)
+                .setParamsExtractor(
+                    request -> {
+                      RequestParamsBuilder builder = RequestParamsBuilder.create();
+                      builder.add("database", String.valueOf(request.getDatabase()));
+                      return builder.build();
+                    })
+                .build();
     GrpcCallSettings<CreateBackupScheduleRequest, BackupSchedule>
         createBackupScheduleTransportSettings =
             GrpcCallSettings.<CreateBackupScheduleRequest, BackupSchedule>newBuilder()
@@ -699,6 +771,13 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
                       builder.add("parent", String.valueOf(request.getParent()));
                       return builder.build();
                     })
+                .build();
+    GrpcCallSettings<InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+        internalUpdateGraphOperationTransportSettings =
+            GrpcCallSettings
+                .<InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+                    newBuilder()
+                .setMethodDescriptor(internalUpdateGraphOperationMethodDescriptor)
                 .build();
 
     this.listDatabasesCallable =
@@ -828,6 +907,9 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
             listDatabaseRolesTransportSettings,
             settings.listDatabaseRolesSettings(),
             clientContext);
+    this.addSplitPointsCallable =
+        callableFactory.createUnaryCallable(
+            addSplitPointsTransportSettings, settings.addSplitPointsSettings(), clientContext);
     this.createBackupScheduleCallable =
         callableFactory.createUnaryCallable(
             createBackupScheduleTransportSettings,
@@ -857,6 +939,11 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
         callableFactory.createPagedCallable(
             listBackupSchedulesTransportSettings,
             settings.listBackupSchedulesSettings(),
+            clientContext);
+    this.internalUpdateGraphOperationCallable =
+        callableFactory.createUnaryCallable(
+            internalUpdateGraphOperationTransportSettings,
+            settings.internalUpdateGraphOperationSettings(),
             clientContext);
 
     this.backgroundResources =
@@ -1037,6 +1124,11 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
   }
 
   @Override
+  public UnaryCallable<AddSplitPointsRequest, AddSplitPointsResponse> addSplitPointsCallable() {
+    return addSplitPointsCallable;
+  }
+
+  @Override
   public UnaryCallable<CreateBackupScheduleRequest, BackupSchedule> createBackupScheduleCallable() {
     return createBackupScheduleCallable;
   }
@@ -1066,6 +1158,12 @@ public class GrpcDatabaseAdminStub extends DatabaseAdminStub {
   public UnaryCallable<ListBackupSchedulesRequest, ListBackupSchedulesPagedResponse>
       listBackupSchedulesPagedCallable() {
     return listBackupSchedulesPagedCallable;
+  }
+
+  @Override
+  public UnaryCallable<InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationCallable() {
+    return internalUpdateGraphOperationCallable;
   }
 
   @Override

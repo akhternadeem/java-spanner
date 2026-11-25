@@ -26,14 +26,24 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import com.google.api.core.ApiFunction;
 import com.google.api.gax.core.GaxProperties;
 import com.google.api.gax.grpc.GrpcCallContext;
+import com.google.api.gax.grpc.GrpcTransportChannel;
+import com.google.api.gax.grpc.InstantiatingGrpcChannelProvider;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.ApiClientHeaderProvider;
 import com.google.api.gax.rpc.HeaderProvider;
+import com.google.api.gax.rpc.TransportChannelProvider;
+import com.google.auth.Credentials;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.OAuth2Credentials;
+import com.google.cloud.NoCredentials;
 import com.google.cloud.ServiceOptions;
+import com.google.cloud.grpc.GcpManagedChannelOptions;
+import com.google.cloud.grpc.GcpManagedChannelOptions.GcpMetricsOptions;
+import com.google.cloud.grpc.fallback.GcpFallbackChannelOptions;
+import com.google.cloud.grpc.fallback.GcpFallbackOpenTelemetry;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Dialect;
@@ -75,20 +85,29 @@ import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 import io.grpc.auth.MoreCallCredentials;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.protobuf.lite.ProtoLiteUtils;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.metrics.data.MetricData;
+import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,7 +115,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.threeten.bp.Duration;
 
 @RunWith(Parameterized.class)
 public class GapicSpannerRpcTest {
@@ -166,13 +184,14 @@ public class GapicSpannerRpcTest {
   }
 
   @Before
-  public void startServer() throws IOException {
+  public void startServer() throws Exception {
     // Enable OpenTelemetry tracing.
     SpannerOptionsHelper.resetActiveTracingFramework();
     SpannerOptions.enableOpenTelemetryTraces();
 
     assumeTrue(
-        "Skip tests when emulator is enabled as this test interferes with the check whether the emulator is running",
+        "Skip tests when emulator is enabled as this test interferes with the check whether the"
+            + " emulator is running",
         System.getenv("SPANNER_EMULATOR_HOST") == null);
 
     defaultUserAgent = "spanner-java/" + GaxProperties.getLibraryVersion(GapicSpannerRpc.class);
@@ -386,7 +405,7 @@ public class GapicSpannerRpcTest {
               // Sequence numbers are only assigned for DML statements, which means that
               // this is an update statement.
               if (sqlRequest.getSeqno() > 0L) {
-                return context.withTimeout(timeoutHolder.timeout);
+                return context.withTimeoutDuration(timeoutHolder.timeout);
               }
             }
             return null;
@@ -646,8 +665,7 @@ public class GapicSpannerRpcTest {
             .build();
 
     final SpannerOptions options =
-        createSpannerOptions()
-            .toBuilder()
+        createSpannerOptions().toBuilder()
             .setOpenTelemetry(openTelemetry)
             .setEnableEndToEndTracing(true)
             .build();
@@ -672,8 +690,7 @@ public class GapicSpannerRpcTest {
             .build();
 
     final SpannerOptions options =
-        createSpannerOptions()
-            .toBuilder()
+        createSpannerOptions().toBuilder()
             .setOpenTelemetry(openTelemetry)
             .setEnableEndToEndTracing(false)
             .build();
@@ -874,13 +891,237 @@ public class GapicSpannerRpcTest {
     rpc.shutdown();
   }
 
+  @Test
+  public void testChannelEndpointCacheFactoryUsedWhenLocationApiEnabled() {
+    AtomicBoolean factoryCalled = new AtomicBoolean(false);
+    ChannelEndpointCacheFactory factory =
+        baseProvider -> {
+          factoryCalled.set(true);
+          return new GrpcChannelEndpointCache(baseProvider);
+        };
+
+    try {
+      SpannerOptions.useEnvironment(
+          new SpannerOptions.SpannerEnvironment() {
+            @Override
+            public boolean isEnableLocationApi() {
+              return true;
+            }
+          });
+      SpannerOptions options =
+          createSpannerOptions().toBuilder().setChannelEndpointCacheFactory(factory).build();
+      GapicSpannerRpc rpc = new GapicSpannerRpc(options, true);
+      rpc.shutdown();
+      assertTrue(factoryCalled.get());
+    } finally {
+      SpannerOptions.useDefaultEnvironment();
+    }
+  }
+
+  @Test
+  public void testLocationApiDoesNotOverrideExplicitChannelProvider() {
+    AtomicBoolean factoryCalled = new AtomicBoolean(false);
+    ChannelEndpointCacheFactory factory =
+        baseProvider -> {
+          factoryCalled.set(true);
+          return new GrpcChannelEndpointCache(baseProvider);
+        };
+
+    AtomicBoolean providerUsed = new AtomicBoolean(false);
+    TransportChannelProvider channelProvider =
+        new RecordingTransportChannelProvider(
+            address.getHostString(), server.getPort(), providerUsed);
+
+    try {
+      SpannerOptions.useEnvironment(
+          new SpannerOptions.SpannerEnvironment() {
+            @Override
+            public boolean isEnableLocationApi() {
+              return true;
+            }
+          });
+      SpannerOptions options =
+          createSpannerOptions().toBuilder()
+              .setChannelProvider(channelProvider)
+              .setChannelEndpointCacheFactory(factory)
+              .build();
+      GapicSpannerRpc rpc = new GapicSpannerRpc(options, true);
+      rpc.shutdown();
+      assertTrue(providerUsed.get());
+      assertFalse(factoryCalled.get());
+    } finally {
+      SpannerOptions.useDefaultEnvironment();
+    }
+  }
+
+  @Test
+  public void testLocationApiDisabledInOptionsDoesNotCreateKeyAwareChannelProvider() {
+    AtomicBoolean factoryCalled = new AtomicBoolean(false);
+    ChannelEndpointCacheFactory factory =
+        baseProvider -> {
+          factoryCalled.set(true);
+          return new GrpcChannelEndpointCache(baseProvider);
+        };
+
+    try {
+      SpannerOptions.useEnvironment(
+          new SpannerOptions.SpannerEnvironment() {
+            @Override
+            public boolean isEnableLocationApi() {
+              return false;
+            }
+          });
+      SpannerOptions options =
+          createSpannerOptions().toBuilder().setChannelEndpointCacheFactory(factory).build();
+      GapicSpannerRpc rpc = new GapicSpannerRpc(options, true);
+      rpc.shutdown();
+      assertFalse(factoryCalled.get());
+    } finally {
+      SpannerOptions.useDefaultEnvironment();
+    }
+  }
+
+  @Test
+  public void testGrpcGcpExtensionPreservesChannelConfigurator() throws Exception {
+    InstantiatingGrpcChannelProvider.Builder channelProviderBuilder =
+        InstantiatingGrpcChannelProvider.newBuilder();
+    AtomicBoolean baseConfiguratorCalled = new AtomicBoolean(false);
+    channelProviderBuilder.setChannelConfigurator(
+        builder -> {
+          baseConfiguratorCalled.set(true);
+          return builder;
+        });
+
+    SpannerOptions options =
+        SpannerOptions.newBuilder().setProjectId("[PROJECT]").enableGrpcGcpExtension().build();
+
+    java.lang.reflect.Method method =
+        GapicSpannerRpc.class.getDeclaredMethod(
+            "maybeEnableGrpcGcpExtension",
+            InstantiatingGrpcChannelProvider.Builder.class,
+            SpannerOptions.class);
+    method.setAccessible(true);
+    method.invoke(null, channelProviderBuilder, options);
+
+    ApiFunction<ManagedChannelBuilder, ManagedChannelBuilder> chainedConfigurator =
+        channelProviderBuilder.getChannelConfigurator();
+    chainedConfigurator.apply(NettyChannelBuilder.forAddress("localhost", 1));
+
+    assertTrue(baseConfiguratorCalled.get());
+  }
+
+  @Test
+  public void testGrpcGcpOtelMetricsDisabledSkipsMeterInjection() throws Exception {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("[PROJECT]")
+            .setGrpcGcpOtelMetricsEnabled(false)
+            .build();
+
+    java.lang.reflect.Method method =
+        GapicSpannerRpc.class.getDeclaredMethod(
+            "grpcGcpOptionsWithMetricsAndDcp", SpannerOptions.class);
+    method.setAccessible(true);
+    GcpManagedChannelOptions grpcGcpOptions =
+        (GcpManagedChannelOptions) method.invoke(null, options);
+    GcpMetricsOptions metricsOptions = grpcGcpOptions.getMetricsOptions();
+
+    assertNotNull(metricsOptions);
+    assertNull(metricsOptions.getOpenTelemetryMeter());
+  }
+
+  private static final class RecordingTransportChannelProvider implements TransportChannelProvider {
+    private final String host;
+    private final int port;
+    private final AtomicBoolean used;
+
+    private RecordingTransportChannelProvider(String host, int port, AtomicBoolean used) {
+      this.host = host;
+      this.port = port;
+      this.used = used;
+    }
+
+    @Override
+    public GrpcTransportChannel getTransportChannel() throws IOException {
+      used.set(true);
+      return GrpcTransportChannel.newBuilder()
+          .setManagedChannel(ManagedChannelBuilder.forAddress(host, port).usePlaintext().build())
+          .build();
+    }
+
+    @Override
+    public String getTransportName() {
+      return GrpcTransportChannel.getGrpcTransportName();
+    }
+
+    @Override
+    public boolean needsEndpoint() {
+      return false;
+    }
+
+    @Override
+    public boolean needsCredentials() {
+      return false;
+    }
+
+    @Override
+    public boolean needsExecutor() {
+      return false;
+    }
+
+    @Override
+    public boolean needsHeaders() {
+      return false;
+    }
+
+    @Override
+    public boolean shouldAutoClose() {
+      return true;
+    }
+
+    @Override
+    public TransportChannelProvider withEndpoint(String endpoint) {
+      return this;
+    }
+
+    @Override
+    public TransportChannelProvider withCredentials(Credentials credentials) {
+      return this;
+    }
+
+    @Override
+    public TransportChannelProvider withHeaders(Map<String, String> headers) {
+      return this;
+    }
+
+    @Override
+    public TransportChannelProvider withPoolSize(int poolSize) {
+      return this;
+    }
+
+    @Override
+    public TransportChannelProvider withExecutor(ScheduledExecutorService executor) {
+      return this;
+    }
+
+    @Override
+    public TransportChannelProvider withExecutor(Executor executor) {
+      return this;
+    }
+
+    @Override
+    public boolean acceptsPoolSize() {
+      return false;
+    }
+  }
+
   private SpannerOptions createSpannerOptions() {
     String endpoint = address.getHostString() + ":" + server.getPort();
     return SpannerOptions.newBuilder()
         .setProjectId("[PROJECT]")
         // Set a custom channel configurator to allow http instead of https.
         .setChannelConfigurator(ManagedChannelBuilder::usePlaintext)
-        .disableDirectPath()
+        .setEnableDirectAccess(false)
         .setHost("http://" + endpoint)
         // Set static credentials that will return the static OAuth test token.
         .setCredentials(STATIC_CREDENTIALS)
@@ -888,5 +1129,194 @@ public class GapicSpannerRpcTest {
         // the static credentials.
         .setCallCredentialsProvider(() -> MoreCallCredentials.from(VARIABLE_CREDENTIALS))
         .build();
+  }
+
+  static class TestableGapicSpannerRpc extends GapicSpannerRpc {
+    public TestableGapicSpannerRpc(SpannerOptions options) {
+      super(options);
+    }
+
+    @Override
+    OpenTelemetry getFallbackOpenTelemetry(SpannerOptions options) {
+      return options.getOpenTelemetry();
+    }
+
+    @Override
+    GcpFallbackChannelOptions createFallbackChannelOptions(
+        GcpFallbackOpenTelemetry fallbackTelemetry, int minFailedCalls) {
+      // Override default 1-minute period to 10ms for instant testing
+      return GcpFallbackChannelOptions.newBuilder()
+          .setPrimaryChannelName("directpath")
+          .setFallbackChannelName("cloudpath")
+          .setMinFailedCalls(10)
+          .setPeriod(Duration.ofMillis(5))
+          .setGcpFallbackOpenTelemetry(fallbackTelemetry)
+          .build();
+    }
+  }
+
+  @Test
+  public void testFallbackIntegration_doesNotSwitchWhenThresholdNotMet() throws Exception {
+    // Setup OpenTelemetry to capture metrics
+    InMemoryMetricReader metricReader = InMemoryMetricReader.create();
+    SdkMeterProvider meterProvider =
+        SdkMeterProvider.builder().registerMetricReader(metricReader).build();
+    OpenTelemetrySdk openTelemetry =
+        OpenTelemetrySdk.builder().setMeterProvider(meterProvider).build();
+
+    SpannerOptions.useEnvironment(
+        new SpannerOptions.SpannerEnvironment() {
+          @Override
+          public boolean isEnableGcpFallback() {
+            return true;
+          }
+        });
+    try {
+      SpannerOptions.Builder builder =
+          SpannerOptions.newBuilder()
+              .setProjectId("test-project")
+              .setEnableDirectAccess(true)
+              .setHost("http://localhost:1") // Closed port
+              .setCredentials(NoCredentials.getInstance())
+              .setOpenTelemetry(openTelemetry);
+      // Make sure the ExecuteBatchDml RPC fails quickly to keep the test fast.
+      // Note that the timeout is actually not used. It is the fact that it does not retry that
+      // makes it fail fast.
+      builder
+          .getSpannerStubSettingsBuilder()
+          .executeBatchDmlSettings()
+          .setSimpleTimeoutNoRetriesDuration(Duration.ofSeconds(10));
+      // Setup Options with invalid host to force error
+      SpannerOptions options = builder.build();
+
+      TestableGapicSpannerRpc rpc = new TestableGapicSpannerRpc(options);
+      try {
+        // Make a call that is expected to fail
+        SpannerException exception =
+            assertThrows(
+                SpannerException.class,
+                () ->
+                    rpc.executeBatchDml(
+                        com.google.spanner.v1.ExecuteBatchDmlRequest.newBuilder()
+                            .setSession("projects/p/instances/i/databases/d/sessions/s")
+                            .build(),
+                        null));
+        assertEquals(ErrorCode.UNAVAILABLE, exception.getErrorCode());
+
+        // Wait briefly for the 10ms period to trigger the fallback check
+        Thread.sleep(10);
+
+        // Verify Fallback via Metrics
+        Collection<MetricData> metrics = metricReader.collectAllMetrics();
+        boolean fallbackOccurred =
+            metrics.stream()
+                .anyMatch(md -> md.getName().contains("fallback_count") && hasValue(md));
+
+        assertFalse("Fallback metric should not be present", fallbackOccurred);
+
+      } finally {
+        rpc.shutdown();
+      }
+    } finally {
+      SpannerOptions.useDefaultEnvironment();
+    }
+  }
+
+  static class TestableGapicSpannerRpcWithLowerMinFailedCalls extends GapicSpannerRpc {
+    public TestableGapicSpannerRpcWithLowerMinFailedCalls(SpannerOptions options) {
+      super(options);
+    }
+
+    @Override
+    OpenTelemetry getFallbackOpenTelemetry(SpannerOptions options) {
+      return options.getOpenTelemetry();
+    }
+
+    @Override
+    GcpFallbackChannelOptions createFallbackChannelOptions(
+        GcpFallbackOpenTelemetry fallbackTelemetry, int minFailedCalls) {
+      // Override default 1-minute period to 10ms for instant testing
+      return GcpFallbackChannelOptions.newBuilder()
+          .setPrimaryChannelName("directpath")
+          .setFallbackChannelName("cloudpath")
+          .setMinFailedCalls(1)
+          .setPeriod(Duration.ofMillis(5))
+          .setGcpFallbackOpenTelemetry(fallbackTelemetry)
+          .build();
+    }
+  }
+
+  @Test
+  public void testFallbackIntegration_switchesToFallbackOnFailure() throws Exception {
+    // Setup OpenTelemetry to capture metrics
+    InMemoryMetricReader metricReader = InMemoryMetricReader.create();
+    SdkMeterProvider meterProvider =
+        SdkMeterProvider.builder().registerMetricReader(metricReader).build();
+    OpenTelemetrySdk openTelemetry =
+        OpenTelemetrySdk.builder().setMeterProvider(meterProvider).build();
+
+    SpannerOptions.useEnvironment(
+        new SpannerOptions.SpannerEnvironment() {
+          @Override
+          public boolean isEnableGcpFallback() {
+            return true;
+          }
+        });
+    try {
+      SpannerOptions.Builder builder =
+          SpannerOptions.newBuilder()
+              .setProjectId("test-project")
+              .setEnableDirectAccess(true)
+              .setHost("http://localhost:1") // Closed port
+              .setCredentials(NoCredentials.getInstance())
+              .setOpenTelemetry(openTelemetry);
+      // Make sure the ExecuteBatchDml RPC fails quickly to keep the test fast.
+      // Note that the timeout is actually not used. It is the fact that it does not retry that
+      // makes it fail fast.
+      builder
+          .getSpannerStubSettingsBuilder()
+          .executeBatchDmlSettings()
+          .setSimpleTimeoutNoRetriesDuration(Duration.ofSeconds(10));
+      // Setup Options with invalid host to force error
+      SpannerOptions options = builder.build();
+
+      TestableGapicSpannerRpcWithLowerMinFailedCalls rpc =
+          new TestableGapicSpannerRpcWithLowerMinFailedCalls(options);
+      try {
+        // Make a call that is expected to fail
+        SpannerException exception =
+            assertThrows(
+                SpannerException.class,
+                () ->
+                    rpc.executeBatchDml(
+                        com.google.spanner.v1.ExecuteBatchDmlRequest.newBuilder()
+                            .setSession("projects/p/instances/i/databases/d/sessions/s")
+                            .build(),
+                        null));
+        assertEquals(ErrorCode.UNAVAILABLE, exception.getErrorCode());
+
+        // Wait briefly for the 10ms period to trigger the fallback check
+        Thread.sleep(10);
+
+        // Verify Fallback via Metrics
+        Collection<MetricData> metrics = metricReader.collectAllMetrics();
+        boolean fallbackOccurred =
+            metrics.stream()
+                .anyMatch(md -> md.getName().contains("fallback_count") && hasValue(md));
+
+        assertTrue(
+            "Fallback metric should be present, indicating GcpFallbackChannel is active",
+            fallbackOccurred);
+
+      } finally {
+        rpc.shutdown();
+      }
+    } finally {
+      SpannerOptions.useDefaultEnvironment();
+    }
+  }
+
+  private boolean hasValue(MetricData metricData) {
+    return metricData.getLongSumData().getPoints().stream().anyMatch(point -> point.getValue() > 0);
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,6 @@ import static io.grpc.MethodDescriptor.generateFullMethodName;
  * Service that executes SpannerActions asynchronously.
  * </pre>
  */
-@javax.annotation.Generated(
-    value = "by gRPC proto compiler",
-    comments = "Source: google/spanner/executor/v1/cloud_executor.proto")
 @io.grpc.stub.annotations.GrpcGenerated
 public final class SpannerExecutorProxyGrpc {
 
@@ -96,6 +93,19 @@ public final class SpannerExecutorProxyGrpc {
           }
         };
     return SpannerExecutorProxyStub.newStub(factory, channel);
+  }
+
+  /** Creates a new blocking-style stub that supports all types of calls on the service */
+  public static SpannerExecutorProxyBlockingV2Stub newBlockingV2Stub(io.grpc.Channel channel) {
+    io.grpc.stub.AbstractStub.StubFactory<SpannerExecutorProxyBlockingV2Stub> factory =
+        new io.grpc.stub.AbstractStub.StubFactory<SpannerExecutorProxyBlockingV2Stub>() {
+          @java.lang.Override
+          public SpannerExecutorProxyBlockingV2Stub newStub(
+              io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
+            return new SpannerExecutorProxyBlockingV2Stub(channel, callOptions);
+          }
+        };
+    return SpannerExecutorProxyBlockingV2Stub.newStub(factory, channel);
   }
 
   /**
@@ -216,6 +226,49 @@ public final class SpannerExecutorProxyGrpc {
 
   /**
    * A stub to allow clients to do synchronous rpc calls to service SpannerExecutorProxy.
+   *
+   * <pre>
+   * Service that executes SpannerActions asynchronously.
+   * </pre>
+   */
+  public static final class SpannerExecutorProxyBlockingV2Stub
+      extends io.grpc.stub.AbstractBlockingStub<SpannerExecutorProxyBlockingV2Stub> {
+    private SpannerExecutorProxyBlockingV2Stub(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
+      super(channel, callOptions);
+    }
+
+    @java.lang.Override
+    protected SpannerExecutorProxyBlockingV2Stub build(
+        io.grpc.Channel channel, io.grpc.CallOptions callOptions) {
+      return new SpannerExecutorProxyBlockingV2Stub(channel, callOptions);
+    }
+
+    /**
+     *
+     *
+     * <pre>
+     * ExecuteActionAsync is a streaming call that starts executing a new Spanner
+     * action.
+     * For each request, the server will reply with one or more responses, but
+     * only the last response will contain status in the outcome.
+     * Responses can be matched to requests by action_id. It is allowed to have
+     * multiple actions in flight--in that case, actions are be executed in
+     * parallel.
+     * </pre>
+     */
+    @io.grpc.ExperimentalApi("https://github.com/grpc/grpc-java/issues/10918")
+    public io.grpc.stub.BlockingClientCall<
+            com.google.spanner.executor.v1.SpannerAsyncActionRequest,
+            com.google.spanner.executor.v1.SpannerAsyncActionResponse>
+        executeActionAsync() {
+      return io.grpc.stub.ClientCalls.blockingBidiStreamingCall(
+          getChannel(), getExecuteActionAsyncMethod(), getCallOptions());
+    }
+  }
+
+  /**
+   * A stub to allow clients to do limited synchronous rpc calls to service SpannerExecutorProxy.
    *
    * <pre>
    * Service that executes SpannerActions asynchronously.

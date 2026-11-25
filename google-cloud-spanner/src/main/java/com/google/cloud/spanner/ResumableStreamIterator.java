@@ -69,8 +69,11 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
   private final ISpan span;
   private final TraceWrapper tracer;
   private CloseableIterator<PartialResultSet> stream;
+  private int attempts;
   private ByteString resumeToken;
   private boolean finished;
+  private final XGoogSpannerRequestId requestId;
+
   /**
    * Indicates whether it is currently safe to retry RPCs. This will be {@code false} if we have
    * reached the maximum buffer size without seeing a restart token; in this case, we will drain the
@@ -85,7 +88,8 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
       TraceWrapper tracer,
       ErrorHandler errorHandler,
       RetrySettings streamingRetrySettings,
-      Set<Code> retryableCodes) {
+      Set<Code> retryableCodes,
+      XGoogSpannerRequestId.RequestIdCreator xGoogRequestIdCreator) {
     this(
         maxBufferSize,
         streamName,
@@ -94,7 +98,8 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
         Attributes.empty(),
         errorHandler,
         streamingRetrySettings,
-        retryableCodes);
+        retryableCodes,
+        xGoogRequestIdCreator);
   }
 
   protected ResumableStreamIterator(
@@ -105,7 +110,8 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
       Attributes attributes,
       ErrorHandler errorHandler,
       RetrySettings streamingRetrySettings,
-      Set<Code> retryableCodes) {
+      Set<Code> retryableCodes,
+      XGoogSpannerRequestId.RequestIdCreator xGoogRequestIdCreator) {
     checkArgument(maxBufferSize >= 0);
     this.maxBufferSize = maxBufferSize;
     this.tracer = tracer;
@@ -113,6 +119,8 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
     this.errorHandler = errorHandler;
     this.streamingRetrySettings = Preconditions.checkNotNull(streamingRetrySettings);
     this.retryableCodes = Preconditions.checkNotNull(retryableCodes);
+    // The channel is automatically updated by the gRPC client when the request is actually sent.
+    this.requestId = xGoogRequestIdCreator.nextRequestId(0);
   }
 
   private ExponentialBackOff newBackOff() {
@@ -199,7 +207,9 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
   }
 
   abstract CloseableIterator<PartialResultSet> startStream(
-      @Nullable ByteString resumeToken, AsyncResultSet.StreamMessageListener streamMessageListener);
+      @Nullable ByteString resumeToken,
+      AsyncResultSet.StreamMessageListener streamMessageListener,
+      XGoogSpannerRequestId requestId);
 
   /**
    * Prepares the iterator for a retry on a different gRPC channel. Returns true if that is
@@ -221,6 +231,11 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
   @Override
   public boolean isWithBeginTransaction() {
     return stream != null && stream.isWithBeginTransaction();
+  }
+
+  @Override
+  public boolean isLastStatement() {
+    return stream != null && stream.isLastStatement();
   }
 
   @Override
@@ -325,7 +340,8 @@ abstract class ResumableStreamIterator extends AbstractIterator<PartialResultSet
       try (IScope scope = tracer.withSpan(span)) {
         // When start a new stream set the Span as current to make the gRPC Span a child of
         // this Span.
-        stream = checkNotNull(startStream(resumeToken, streamMessageListener));
+        stream = checkNotNull(startStream(resumeToken, streamMessageListener, requestId));
+        stream.requestPrefetchChunks();
       }
     }
   }

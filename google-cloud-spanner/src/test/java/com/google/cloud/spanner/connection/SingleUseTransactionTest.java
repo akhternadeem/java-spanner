@@ -17,6 +17,9 @@
 package com.google.cloud.spanner.connection;
 
 import static com.google.cloud.spanner.SpannerApiFutures.get;
+import static com.google.cloud.spanner.connection.ConnectionProperties.AUTOCOMMIT_DML_MODE;
+import static com.google.cloud.spanner.connection.ConnectionProperties.READONLY;
+import static com.google.cloud.spanner.connection.ConnectionProperties.READ_ONLY_STALENESS;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -25,6 +28,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.when;
 import com.google.api.core.ApiFuture;
 import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.AbortedException;
 import com.google.cloud.spanner.AsyncResultSet;
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.CommitResponse;
@@ -55,6 +60,7 @@ import com.google.cloud.spanner.TransactionManager;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.connection.AbstractStatementParser.ParsedStatement;
 import com.google.cloud.spanner.connection.AbstractStatementParser.StatementType;
+import com.google.cloud.spanner.connection.ConnectionProperty.Context;
 import com.google.cloud.spanner.connection.StatementExecutor.StatementTimeout;
 import com.google.cloud.spanner.connection.UnitOfWork.CallType;
 import com.google.common.base.Preconditions;
@@ -66,6 +72,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
@@ -122,6 +129,11 @@ public class SingleUseTransactionTest {
     public TransactionContext begin() {
       state = TransactionState.STARTED;
       return txContext;
+    }
+
+    @Override
+    public TransactionContext begin(AbortedException exception) {
+      return begin();
     }
 
     @Override
@@ -306,6 +318,9 @@ public class SingleUseTransactionTest {
       when(operation.get()).thenReturn(null);
       when(ddlClient.executeDdl(anyString(), any())).thenCallRealMethod();
       when(ddlClient.executeDdl(anyList(), any())).thenReturn(operation);
+      doCallRealMethod()
+          .when(ddlClient)
+          .runWithRetryForMissingDefaultSequenceKind(any(), any(), any(), any());
       return ddlClient;
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -395,6 +410,8 @@ public class SingleUseTransactionTest {
 
     final TransactionContext txContext = mock(TransactionContext.class);
     when(txContext.executeUpdate(Statement.of(VALID_UPDATE))).thenReturn(VALID_UPDATE_COUNT);
+    when(txContext.executeUpdate(Statement.of(VALID_UPDATE), Options.lastStatement()))
+        .thenReturn(VALID_UPDATE_COUNT);
     when(txContext.executeUpdate(Statement.of(SLOW_UPDATE)))
         .thenAnswer(
             invocation -> {
@@ -402,6 +419,9 @@ public class SingleUseTransactionTest {
               return VALID_UPDATE_COUNT;
             });
     when(txContext.executeUpdate(Statement.of(INVALID_UPDATE)))
+        .thenThrow(
+            SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "invalid update"));
+    when(txContext.executeUpdate(Statement.of(INVALID_UPDATE), Options.lastStatement()))
         .thenThrow(
             SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "invalid update"));
     SimpleTransactionManager txManager = new SimpleTransactionManager(txContext, commitBehavior);
@@ -412,6 +432,11 @@ public class SingleUseTransactionTest {
     when(dbClient.executePartitionedUpdate(Statement.of(INVALID_UPDATE)))
         .thenThrow(
             SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "invalid update"));
+
+    ConnectionState connectionState = new ConnectionState(new HashMap<>());
+    connectionState.setValue(AUTOCOMMIT_DML_MODE, dmlMode, Context.STARTUP, false);
+    connectionState.setValue(READONLY, readOnly, Context.STARTUP, false);
+    connectionState.setValue(READ_ONLY_STALENESS, staleness, Context.STARTUP, false);
 
     when(dbClient.readWriteTransaction())
         .thenAnswer(
@@ -468,9 +493,7 @@ public class SingleUseTransactionTest {
         .setDatabaseClient(dbClient)
         .setBatchClient(mock(BatchClient.class))
         .setDdlClient(ddlClient)
-        .setAutocommitDmlMode(dmlMode)
-        .setReadOnly(readOnly)
-        .setReadOnlyStaleness(staleness)
+        .setConnectionState(connectionState)
         .setStatementTimeout(
             timeout == 0L ? nullTimeout() : timeout(timeout, TimeUnit.MILLISECONDS))
         .withStatementExecutor(executor)
@@ -483,7 +506,7 @@ public class SingleUseTransactionTest {
     ParsedStatement statement = mock(ParsedStatement.class);
     when(statement.getType()).thenReturn(StatementType.DDL);
     when(statement.getStatement()).thenReturn(Statement.of(sql));
-    when(statement.getSqlWithoutComments()).thenReturn(sql);
+    when(statement.getSql()).thenReturn(sql);
     return statement;
   }
 
@@ -659,14 +682,18 @@ public class SingleUseTransactionTest {
     when(tx.executeQuery(Statement.of(sql), option)).thenReturn(mock(ResultSet.class));
     when(client.singleUseReadOnlyTransaction(TimestampBound.strong())).thenReturn(tx);
 
+    ConnectionState connectionState = new ConnectionState(new HashMap<>());
+    connectionState.setValue(
+        AUTOCOMMIT_DML_MODE, AutocommitDmlMode.TRANSACTIONAL, Context.STARTUP, false);
+    connectionState.setValue(READ_ONLY_STALENESS, TimestampBound.strong(), Context.STARTUP, false);
+
     SingleUseTransaction transaction =
         SingleUseTransaction.newBuilder()
             .setDatabaseClient(client)
             .setBatchClient(mock(BatchClient.class))
             .setDdlClient(mock(DdlClient.class))
-            .setAutocommitDmlMode(AutocommitDmlMode.TRANSACTIONAL)
+            .setConnectionState(connectionState)
             .withStatementExecutor(executor)
-            .setReadOnlyStaleness(TimestampBound.strong())
             .setSpan(Span.getInvalid())
             .build();
     assertThat(

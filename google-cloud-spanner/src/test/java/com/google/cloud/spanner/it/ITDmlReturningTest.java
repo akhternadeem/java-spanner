@@ -42,7 +42,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.spanner.connection.ConnectionOptions;
-import com.google.cloud.spanner.testing.EmulatorSpannerHelper;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -75,8 +74,6 @@ public final class ITDmlReturningTest {
 
   @BeforeClass
   public static void setUpDatabase() {
-    assumeFalse(
-        "DML Returning is not supported in the emulator", EmulatorSpannerHelper.isUsingEmulator());
     Database googleStandardSQLDatabase =
         env.getTestHelper()
             .createTestDatabase(
@@ -85,18 +82,16 @@ public final class ITDmlReturningTest {
                     + "  V    INT64,"
                     + ") PRIMARY KEY (K)");
     googleStandardSQLClient = env.getTestHelper().getDatabaseClient(googleStandardSQLDatabase);
-    if (!isUsingEmulator()) {
-      Database postgreSQLDatabase =
-          env.getTestHelper()
-              .createTestDatabase(
-                  Dialect.POSTGRESQL,
-                  Collections.singletonList(
-                      "CREATE TABLE T ("
-                          + "  \"K\"    VARCHAR PRIMARY KEY,"
-                          + "  \"V\"    BIGINT"
-                          + ")"));
-      postgreSQLClient = env.getTestHelper().getDatabaseClient(postgreSQLDatabase);
-    }
+    Database postgreSQLDatabase =
+        env.getTestHelper()
+            .createTestDatabase(
+                Dialect.POSTGRESQL,
+                Collections.singletonList(
+                    "CREATE TABLE T ("
+                        + "  \"K\"    VARCHAR PRIMARY KEY,"
+                        + "  \"V\"    BIGINT"
+                        + ")"));
+    postgreSQLClient = env.getTestHelper().getDatabaseClient(postgreSQLDatabase);
   }
 
   @AfterClass
@@ -129,9 +124,11 @@ public final class ITDmlReturningTest {
 
   private String getInsertDmlReturningTemplate() {
     if (dialect.dialect == Dialect.POSTGRESQL) {
-      return "INSERT INTO T (\"K\", \"V\") VALUES ('%d-boo1', 1), ('%d-boo2', 2), ('%d-boo3', 3), ('%d-boo4', 4) RETURNING *";
+      return "INSERT INTO T (\"K\", \"V\") VALUES ('%d-boo1', 1), ('%d-boo2', 2), ('%d-boo3', 3),"
+          + " ('%d-boo4', 4) RETURNING *";
     }
-    return "INSERT INTO T (K, V) VALUES ('%d-boo1', 1), ('%d-boo2', 2), ('%d-boo3', 3), ('%d-boo4', 4) THEN RETURN *";
+    return "INSERT INTO T (K, V) VALUES ('%d-boo1', 1), ('%d-boo2', 2), ('%d-boo3', 3), ('%d-boo4',"
+        + " 4) THEN RETURN *";
   }
 
   private String getUpdateDmlReturningTemplate() {
@@ -222,6 +219,9 @@ public final class ITDmlReturningTest {
 
   @Test
   public void dmlReturningWithExecutePartitionedUpdate() {
+    assumeFalse(
+        "The emulator does not dis-allow THEN RETURN statements for PDML", isUsingEmulator());
+
     SpannerException e =
         assertThrows(
             SpannerException.class,
@@ -274,6 +274,8 @@ public final class ITDmlReturningTest {
     List<Struct> rows = new ArrayList<>();
     final TransactionCallable<Void> callable =
         transaction -> {
+          // Make sure we start with an empty list if the transaction is aborted and retried.
+          rows.clear();
           ResultSet resultSet = transaction.executeQuery(Statement.of(stmt));
           // resultSet.next() returns false, when no more row exists.
           // So, number of times resultSet.next() returns true, is the number of rows
@@ -337,6 +339,7 @@ public final class ITDmlReturningTest {
     List<Struct> rows = new ArrayList<>();
     final TransactionCallable<Void> callable =
         transaction -> {
+          rows.clear();
           AsyncResultSet rs = transaction.executeQueryAsync(Statement.of(stmt));
           rs.setCallback(
               Executors.newSingleThreadExecutor(),

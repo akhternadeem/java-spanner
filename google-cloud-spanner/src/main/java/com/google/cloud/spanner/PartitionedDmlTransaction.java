@@ -16,6 +16,7 @@
 
 package com.google.cloud.spanner;
 
+import static com.google.cloud.spanner.AbstractReadContext.getChannelHintOptions;
 import static com.google.common.base.Preconditions.checkState;
 
 import com.google.api.core.InternalApi;
@@ -39,12 +40,13 @@ import com.google.spanner.v1.Transaction;
 import com.google.spanner.v1.TransactionOptions;
 import com.google.spanner.v1.TransactionSelector;
 import io.grpc.Status;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.threeten.bp.Duration;
-import org.threeten.bp.temporal.ChronoUnit;
 
 @InternalApi
 public class PartitionedDmlTransaction implements SessionImpl.SessionTransaction {
@@ -56,12 +58,16 @@ public class PartitionedDmlTransaction implements SessionImpl.SessionTransaction
   private final Ticker ticker;
   private final IsRetryableInternalError isRetryableInternalErrorPredicate;
   private volatile boolean isValid = true;
+  private final Map<SpannerRpc.Option, ?> channelHintOptions;
 
   PartitionedDmlTransaction(SessionImpl session, SpannerRpc rpc, Ticker ticker) {
     this.session = session;
     this.rpc = rpc;
     this.ticker = ticker;
     this.isRetryableInternalErrorPredicate = new IsRetryableInternalError();
+    this.channelHintOptions =
+        getChannelHintOptions(
+            session.getOptions(), ThreadLocalRandom.current().nextLong(Long.MAX_VALUE));
   }
 
   /**
@@ -83,13 +89,17 @@ public class PartitionedDmlTransaction implements SessionImpl.SessionTransaction
 
     try {
       ExecuteSqlRequest request = newTransactionRequestFrom(statement, options);
+      // The channel ID is set to zero here. It will be filled in later by SpannerRpc when it reads
+      // the channel hint from the options that are passed in.
+      XGoogSpannerRequestId requestId = this.session.getRequestIdCreator().nextRequestId(0);
 
       while (true) {
         final Duration remainingTimeout = tryUpdateTimeout(timeout, stopwatch);
 
         try {
           ServerStream<PartialResultSet> stream =
-              rpc.executeStreamingPartitionedDml(request, session.getOptions(), remainingTimeout);
+              rpc.executeStreamingPartitionedDml(
+                  request, channelHintOptions, requestId, remainingTimeout);
 
           for (PartialResultSet rs : stream) {
             if (rs.getResumeToken() != null && !rs.getResumeToken().isEmpty()) {
@@ -105,6 +115,11 @@ public class PartitionedDmlTransaction implements SessionImpl.SessionTransaction
           LOGGER.log(
               Level.FINER, "Retrying PartitionedDml transaction after UnavailableException", e);
           request = resumeOrRestartRequest(resumeToken, statement, request, options);
+          if (resumeToken.isEmpty()) {
+            // Create a new xGoogSpannerRequestId if there is no resume token, as that means that
+            // the entire transaction will be retried.
+            requestId = session.getRequestIdCreator().nextRequestId(session.getChannel());
+          }
         } catch (InternalException e) {
           if (!isRetryableInternalErrorPredicate.apply(e)) {
             throw e;
@@ -113,12 +128,19 @@ public class PartitionedDmlTransaction implements SessionImpl.SessionTransaction
           LOGGER.log(
               Level.FINER, "Retrying PartitionedDml transaction after InternalException - EOS", e);
           request = resumeOrRestartRequest(resumeToken, statement, request, options);
+          if (resumeToken.isEmpty()) {
+            // Create a new xGoogSpannerRequestId if there is no resume token, as that means that
+            // the entire transaction will be retried.
+            requestId = session.getRequestIdCreator().nextRequestId(session.getChannel());
+          }
         } catch (AbortedException e) {
           LOGGER.log(Level.FINER, "Retrying PartitionedDml transaction after AbortedException", e);
           resumeToken = ByteString.EMPTY;
           foundStats = false;
           updateCount = 0L;
           request = newTransactionRequestFrom(statement, options);
+          // Create a new xGoogSpannerRequestId.
+          requestId = session.getRequestIdCreator().nextRequestId(session.getChannel());
         }
       }
       if (!foundStats) {
@@ -129,7 +151,7 @@ public class PartitionedDmlTransaction implements SessionImpl.SessionTransaction
       LOGGER.log(Level.FINER, "Finished PartitionedUpdate statement");
       return updateCount;
     } catch (Exception e) {
-      throw SpannerExceptionFactory.newSpannerException(e);
+      throw SpannerExceptionFactory.asSpannerException(e);
     }
   }
 
@@ -209,7 +231,7 @@ public class PartitionedDmlTransaction implements SessionImpl.SessionTransaction
                     .setExcludeTxnFromChangeStreams(
                         options.withExcludeTxnFromChangeStreams() == Boolean.TRUE))
             .build();
-    Transaction tx = rpc.beginTransaction(request, session.getOptions(), true);
+    Transaction tx = rpc.beginTransaction(request, channelHintOptions, true);
     if (tx.getId().isEmpty()) {
       throw SpannerExceptionFactory.newSpannerException(
           ErrorCode.INTERNAL,

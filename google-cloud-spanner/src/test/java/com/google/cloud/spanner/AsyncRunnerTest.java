@@ -60,17 +60,51 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
   @Test
   public void testAsyncRunner_doesNotReturnCommitTimestampBeforeCommit() {
     AsyncRunner runner = client().runAsync();
-    IllegalStateException e =
-        assertThrows(IllegalStateException.class, () -> runner.getCommitTimestamp());
-    assertTrue(e.getMessage().contains("runAsync() has not yet been called"));
+    if (isMultiplexedSessionsEnabledForRW()) {
+      Throwable e = assertThrows(Throwable.class, () -> runner.getCommitTimestamp().get());
+      // If the error occurs within the future, it gets wrapped in an ExecutionException.
+      // This happens when DelayedAsyncRunner is invoked while the multiplexed session is not yet
+      // created.
+      // If the error occurs before the future is created, it may throw an IllegalStateException
+      // instead.
+      assertTrue(e instanceof ExecutionException || e instanceof IllegalStateException);
+      if (e instanceof ExecutionException) {
+        Throwable cause = e.getCause();
+        assertTrue(cause instanceof IllegalStateException);
+        assertTrue(cause.getMessage().contains("runAsync() has not yet been called"));
+      } else {
+        assertTrue(e.getMessage().contains("runAsync() has not yet been called"));
+      }
+    } else {
+      IllegalStateException e =
+          assertThrows(IllegalStateException.class, () -> runner.getCommitTimestamp());
+      assertTrue(e.getMessage().contains("runAsync() has not yet been called"));
+    }
   }
 
   @Test
   public void testAsyncRunner_doesNotReturnCommitResponseBeforeCommit() {
     AsyncRunner runner = client().runAsync();
-    IllegalStateException e =
-        assertThrows(IllegalStateException.class, () -> runner.getCommitResponse());
-    assertTrue(e.getMessage().contains("runAsync() has not yet been called"));
+    if (isMultiplexedSessionsEnabledForRW()) {
+      Throwable e = assertThrows(Throwable.class, () -> runner.getCommitResponse().get());
+      // If the error occurs within the future, it gets wrapped in an ExecutionException.
+      // This happens when DelayedAsyncRunner is invoked while the multiplexed session is not yet
+      // created.
+      // If the error occurs before the future is created, it may throw an IllegalStateException
+      // instead.
+      assertTrue(e instanceof ExecutionException || e instanceof IllegalStateException);
+      if (e instanceof ExecutionException) {
+        Throwable cause = e.getCause();
+        assertTrue(cause instanceof IllegalStateException);
+        assertTrue(cause.getMessage().contains("runAsync() has not yet been called"));
+      } else {
+        assertTrue(e.getMessage().contains("runAsync() has not yet been called"));
+      }
+    } else {
+      IllegalStateException e =
+          assertThrows(IllegalStateException.class, () -> runner.getCommitResponse());
+      assertTrue(e.getMessage().contains("runAsync() has not yet been called"));
+    }
   }
 
   @Test
@@ -84,7 +118,7 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
   @Test
   public void asyncRunnerIsNonBlocking() throws Exception {
     mockSpanner.freeze();
-    AsyncRunner runner = clientWithEmptySessionPool().runAsync();
+    AsyncRunner runner = client().runAsync();
     ApiFuture<Void> res =
         runner.runAsync(
             txn -> {
@@ -182,7 +216,7 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
   @Test
   public void asyncRunnerUpdateAbortedWithoutGettingResult() throws Exception {
     final AtomicInteger attempt = new AtomicInteger();
-    AsyncRunner runner = clientWithEmptySessionPool().runAsync();
+    AsyncRunner runner = client().runAsync();
     ApiFuture<Void> result =
         runner.runAsync(
             txn -> {
@@ -201,7 +235,17 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
             executor);
     assertThat(result.get()).isNull();
     assertThat(attempt.get()).isEqualTo(2);
-    if (isMultiplexedSessionsEnabled()) {
+    if (isMultiplexedSessionsEnabledForRW()) {
+      assertThat(mockSpanner.getRequestTypes())
+          .containsExactly(
+              CreateSessionRequest.class,
+              ExecuteSqlRequest.class,
+              // The retry will use an explicit BeginTransaction RPC because the first statement of
+              // the transaction did not return a transaction id during the initial attempt.
+              BeginTransactionRequest.class,
+              ExecuteSqlRequest.class,
+              CommitRequest.class);
+    } else if (isMultiplexedSessionsEnabled()) {
       assertThat(mockSpanner.getRequestTypes())
           .containsExactly(
               CreateSessionRequest.class,
@@ -251,7 +295,7 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
 
   @Test
   public void asyncRunnerWaitsUntilAsyncUpdateHasFinished() throws Exception {
-    AsyncRunner runner = clientWithEmptySessionPool().runAsync();
+    AsyncRunner runner = client().runAsync();
     ApiFuture<Void> res =
         runner.runAsync(
             txn -> {
@@ -260,7 +304,11 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
             },
             executor);
     res.get();
-    if (isMultiplexedSessionsEnabled()) {
+    if (isMultiplexedSessionsEnabledForRW()) {
+      assertThat(mockSpanner.getRequestTypes())
+          .containsAtLeast(
+              CreateSessionRequest.class, ExecuteSqlRequest.class, CommitRequest.class);
+    } else if (isMultiplexedSessionsEnabled()) {
       // The mock server could have received a CreateSession request for a multiplexed session, but
       // it could also be that that request has not yet reached the server.
       assertThat(mockSpanner.getRequestTypes())
@@ -286,7 +334,7 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
   @Test
   public void asyncRunnerIsNonBlockingWithBatchUpdate() throws Exception {
     mockSpanner.freeze();
-    AsyncRunner runner = clientWithEmptySessionPool().runAsync();
+    AsyncRunner runner = client().runAsync();
     ApiFuture<Void> res =
         runner.runAsync(
             txn -> {
@@ -380,7 +428,7 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
   @Test
   public void asyncRunnerBatchUpdateAbortedWithoutGettingResult() throws Exception {
     final AtomicInteger attempt = new AtomicInteger();
-    AsyncRunner runner = clientWithEmptySessionPool().runAsync();
+    AsyncRunner runner = client().runAsync();
     ApiFuture<Void> result =
         runner.runAsync(
             txn -> {
@@ -404,7 +452,17 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
             executor);
     assertThat(result.get()).isNull();
     assertThat(attempt.get()).isEqualTo(2);
-    if (isMultiplexedSessionsEnabled()) {
+    if (isMultiplexedSessionsEnabledForRW()) {
+      assertThat(mockSpanner.getRequestTypes())
+          .containsExactly(
+              CreateSessionRequest.class,
+              ExecuteSqlRequest.class,
+              ExecuteBatchDmlRequest.class,
+              CommitRequest.class,
+              ExecuteSqlRequest.class,
+              ExecuteBatchDmlRequest.class,
+              CommitRequest.class);
+    } else if (isMultiplexedSessionsEnabled()) {
       assertThat(mockSpanner.getRequestTypes())
           .containsExactly(
               CreateSessionRequest.class,
@@ -454,7 +512,7 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
 
   @Test
   public void asyncRunnerWaitsUntilAsyncBatchUpdateHasFinished() throws Exception {
-    AsyncRunner runner = clientWithEmptySessionPool().runAsync();
+    AsyncRunner runner = client().runAsync();
     ApiFuture<Void> res =
         runner.runAsync(
             txn -> {
@@ -463,7 +521,11 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
             },
             executor);
     res.get();
-    if (isMultiplexedSessionsEnabled()) {
+    if (isMultiplexedSessionsEnabledForRW()) {
+      assertThat(mockSpanner.getRequestTypes())
+          .containsExactly(
+              CreateSessionRequest.class, ExecuteBatchDmlRequest.class, CommitRequest.class);
+    } else if (isMultiplexedSessionsEnabled()) {
       assertThat(mockSpanner.getRequestTypes())
           .containsExactly(
               CreateSessionRequest.class,
@@ -482,9 +544,6 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
     final BlockingQueue<String> results = new SynchronousQueue<>();
     final SettableApiFuture<Boolean> finished = SettableApiFuture.create();
     DatabaseClientImpl clientImpl = (DatabaseClientImpl) client();
-
-    // There should currently not be any sessions checked out of the pool.
-    assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(0);
 
     AsyncRunner runner = clientImpl.runAsync();
     final CountDownLatch dataReceived = new CountDownLatch(1);
@@ -530,7 +589,6 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
     // Wait until at least one row has been fetched. At that moment there should be one session
     // checked out.
     dataReceived.await();
-    assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(1);
     assertThat(res.isDone()).isFalse();
     dataChecked.countDown();
     // Get the data from the transaction.
@@ -541,7 +599,6 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
     assertThat(finished.get()).isTrue();
     assertThat(resultList).containsExactly("k1", "k2", "k3");
     assertThat(res.get()).isNull();
-    assertThat(clientImpl.pool.getNumberOfSessionsInUse()).isEqualTo(0);
   }
 
   @Test
@@ -575,5 +632,12 @@ public class AsyncRunnerTest extends AbstractAsyncTransactionTest {
       return false;
     }
     return spanner.getOptions().getSessionPoolOptions().getUseMultiplexedSession();
+  }
+
+  private boolean isMultiplexedSessionsEnabledForRW() {
+    if (spanner.getOptions() == null || spanner.getOptions().getSessionPoolOptions() == null) {
+      return false;
+    }
+    return spanner.getOptions().getSessionPoolOptions().getUseMultiplexedSessionForRW();
   }
 }

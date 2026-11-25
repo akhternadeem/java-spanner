@@ -17,6 +17,7 @@
 package com.google.cloud.spanner.it;
 
 import static com.google.cloud.spanner.testing.EmulatorSpannerHelper.isUsingEmulator;
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -151,7 +152,9 @@ public class ITDatabaseTest {
         }
       }
     }
-    assertThat(notFoundException).isNotNull();
+    if (!isUsingEmulator()) {
+      assertThat(notFoundException).isNotNull();
+    }
 
     // Now get a new DatabaseClient for the database. This should now result in a valid
     // DatabaseClient.
@@ -165,6 +168,8 @@ public class ITDatabaseTest {
 
   @Test
   public void instanceNotFound() {
+    assumeFalse(
+        "experimental hosts only support pre-created default instance", isExperimentalHost());
     InstanceId testId = env.getTestHelper().getInstanceId();
     InstanceId nonExistingInstanceId =
         InstanceId.of(testId.getProject(), testId.getInstance() + "-na");
@@ -182,8 +187,6 @@ public class ITDatabaseTest {
 
   @Test
   public void testNumericPrimaryKey() {
-    assumeFalse("Emulator does not support numeric primary keys", isUsingEmulator());
-
     final String table = "NumericTable";
 
     // Creates table with numeric primary key

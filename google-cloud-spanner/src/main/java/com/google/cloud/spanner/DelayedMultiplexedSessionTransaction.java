@@ -20,11 +20,14 @@ import static com.google.cloud.spanner.SessionImpl.NO_CHANNEL_HINT;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
+import com.google.api.gax.rpc.ServerStream;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DelayedReadContext.DelayedReadOnlyTransaction;
 import com.google.cloud.spanner.MultiplexedSessionDatabaseClient.MultiplexedSessionTransaction;
 import com.google.cloud.spanner.Options.TransactionOption;
+import com.google.cloud.spanner.Options.UpdateOption;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.google.spanner.v1.BatchWriteResponse;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -52,13 +55,18 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
   }
 
   @Override
+  public String getDatabaseRole() {
+    return this.client.getDatabaseRole();
+  }
+
+  @Override
   public ReadContext singleUse() {
     return new DelayedReadContext<>(
         ApiFutures.transform(
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ true)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ true)
                     .singleUse(),
             MoreExecutors.directExecutor()));
   }
@@ -70,7 +78,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ true)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ true)
                     .singleUse(bound),
             MoreExecutors.directExecutor()));
   }
@@ -82,7 +90,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ true)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ true)
                     .singleUseReadOnlyTransaction(),
             MoreExecutors.directExecutor()));
   }
@@ -94,7 +102,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ true)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ true)
                     .singleUseReadOnlyTransaction(bound),
             MoreExecutors.directExecutor()));
   }
@@ -106,7 +114,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)
                     .readOnlyTransaction(),
             MoreExecutors.directExecutor()));
   }
@@ -118,7 +126,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)
                     .readOnlyTransaction(bound),
             MoreExecutors.directExecutor()));
   }
@@ -133,7 +141,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
     SessionReference sessionReference = getSessionReference();
     try (MultiplexedSessionTransaction transaction =
         new MultiplexedSessionTransaction(
-            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ true)) {
+            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ true)) {
       return transaction.writeAtLeastOnceWithOptions(mutations, options);
     }
   }
@@ -145,7 +153,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
     SessionReference sessionReference = getSessionReference();
     try (MultiplexedSessionTransaction transaction =
         new MultiplexedSessionTransaction(
-            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)) {
+            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)) {
       return transaction.write(mutations);
     }
   }
@@ -158,8 +166,24 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
     SessionReference sessionReference = getSessionReference();
     try (MultiplexedSessionTransaction transaction =
         new MultiplexedSessionTransaction(
-            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)) {
+            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)) {
       return transaction.writeWithOptions(mutations, options);
+    }
+  }
+
+  /**
+   * This is a blocking method, as the interface that it implements is also defined as a blocking
+   * method.
+   */
+  @Override
+  public ServerStream<BatchWriteResponse> batchWriteAtLeastOnce(
+      Iterable<MutationGroup> mutationGroups, TransactionOption... options)
+      throws SpannerException {
+    SessionReference sessionReference = getSessionReference();
+    try (MultiplexedSessionTransaction transaction =
+        new MultiplexedSessionTransaction(
+            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ true)) {
+      return transaction.batchWriteAtLeastOnce(mutationGroups, options);
     }
   }
 
@@ -170,7 +194,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)
                     .readWriteTransaction(options),
             MoreExecutors.directExecutor()));
   }
@@ -182,7 +206,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)
                     .transactionManager(options),
             MoreExecutors.directExecutor()));
   }
@@ -194,7 +218,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)
                     .runAsync(options),
             MoreExecutors.directExecutor()));
   }
@@ -206,7 +230,7 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
             this.sessionFuture,
             sessionReference ->
                 new MultiplexedSessionTransaction(
-                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse = */ false)
+                        client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ false)
                     .transactionManagerAsync(options),
             MoreExecutors.directExecutor()));
   }
@@ -223,5 +247,17 @@ class DelayedMultiplexedSessionTransaction extends AbstractMultiplexedSessionDat
     } catch (InterruptedException interruptedException) {
       throw SpannerExceptionFactory.propagateInterrupt(interruptedException);
     }
+  }
+
+  /**
+   * Execute `stmt` within PARTITIONED_DML transaction using multiplexed session. This method is a
+   * blocking call as the interface expects to return the output of the `stmt`.
+   */
+  @Override
+  public long executePartitionedUpdate(Statement stmt, UpdateOption... options) {
+    SessionReference sessionReference = getSessionReference();
+    return new MultiplexedSessionTransaction(
+            client, span, sessionReference, NO_CHANNEL_HINT, /* singleUse= */ true)
+        .executePartitionedUpdate(stmt, options);
   }
 }

@@ -30,9 +30,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.spanner.v1.RollbackRequest;
 import io.grpc.Context;
+import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
-import org.threeten.bp.Duration;
 
 /**
  * Util class for retrying aborted transactions. This class is a wrapper around {@link RetryHelper}
@@ -56,11 +56,8 @@ class SpannerRetryHelper {
    */
   @VisibleForTesting
   static final RetrySettings txRetrySettings =
-      SpannerStubSettings.newBuilder()
-          .rollbackSettings()
-          .getRetrySettings()
-          .toBuilder()
-          .setTotalTimeout(Duration.ofHours(24L))
+      SpannerStubSettings.newBuilder().rollbackSettings().getRetrySettings().toBuilder()
+          .setTotalTimeoutDuration(Duration.ofHours(24L))
           .setMaxAttempts(0)
           .build();
 
@@ -107,9 +104,8 @@ class SpannerRetryHelper {
       if (prevThrowable != null) {
         long retryDelay = SpannerException.extractRetryDelay(prevThrowable);
         if (retryDelay > -1L) {
-          return prevSettings
-              .toBuilder()
-              .setRandomizedRetryDelay(Duration.ofMillis(retryDelay))
+          return prevSettings.toBuilder()
+              .setRandomizedRetryDelayDuration(Duration.ofMillis(retryDelay))
               .build();
         }
       }

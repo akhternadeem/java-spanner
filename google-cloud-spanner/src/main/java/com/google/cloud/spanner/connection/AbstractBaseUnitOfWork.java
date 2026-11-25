@@ -44,11 +44,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.grpc.Context;
+import io.grpc.Deadline;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -75,8 +77,10 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
   private final StatementExecutor statementExecutor;
   private final StatementTimeout statementTimeout;
   protected final String transactionTag;
+  protected final List<TransactionRetryListener> transactionRetryListeners;
   protected final boolean excludeTxnFromChangeStreams;
   protected final RpcPriority rpcPriority;
+  protected final com.google.spanner.v1.RequestOptions.ClientContext clientContext;
   protected final Span span;
 
   /** Class for keeping track of the stacktrace of the caller of an async statement. */
@@ -110,9 +114,11 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
     private StatementExecutor statementExecutor;
     private StatementTimeout statementTimeout = new StatementTimeout();
     private String transactionTag;
+    private List<TransactionRetryListener> transactionRetryListeners;
 
     private boolean excludeTxnFromChangeStreams;
     private RpcPriority rpcPriority;
+    private com.google.spanner.v1.RequestOptions.ClientContext clientContext;
     private Span span;
 
     Builder() {}
@@ -134,6 +140,16 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
       return self();
     }
 
+    B setTransactionRetryListeners(List<TransactionRetryListener> listeners) {
+      Preconditions.checkNotNull(listeners);
+      this.transactionRetryListeners = listeners;
+      return self();
+    }
+
+    boolean hasTransactionRetryListeners() {
+      return this.transactionRetryListeners != null;
+    }
+
     B setTransactionTag(@Nullable String tag) {
       this.transactionTag = tag;
       return self();
@@ -146,6 +162,11 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
 
     B setRpcPriority(@Nullable RpcPriority rpcPriority) {
       this.rpcPriority = rpcPriority;
+      return self();
+    }
+
+    B setClientContext(@Nullable com.google.spanner.v1.RequestOptions.ClientContext clientContext) {
+      this.clientContext = clientContext;
       return self();
     }
 
@@ -162,8 +183,10 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
     this.statementExecutor = builder.statementExecutor;
     this.statementTimeout = builder.statementTimeout;
     this.transactionTag = builder.transactionTag;
+    this.transactionRetryListeners = builder.transactionRetryListeners;
     this.excludeTxnFromChangeStreams = builder.excludeTxnFromChangeStreams;
     this.rpcPriority = builder.rpcPriority;
+    this.clientContext = builder.clientContext;
     this.span = Preconditions.checkNotNull(builder.span);
   }
 
@@ -303,7 +326,7 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
     } catch (TimeoutException e) {
       throw SpannerExceptionFactory.newSpannerException(
           ErrorCode.DEADLINE_EXCEEDED,
-          "Statement execution timeout occurred for " + statement.getSqlWithoutComments(),
+          "Statement execution timeout occurred for " + statement.getSql(),
           e);
     } catch (ExecutionException e) {
       Throwable cause = e.getCause();
@@ -317,7 +340,7 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
       }
       throw SpannerExceptionFactory.newSpannerException(
           ErrorCode.fromGrpcStatus(Status.fromThrowable(e)),
-          "Statement execution failed for " + statement.getSqlWithoutComments(),
+          "Statement execution failed for " + statement.getSql(),
           e);
     } catch (InterruptedException e) {
       throw SpannerExceptionFactory.newSpannerException(
@@ -343,7 +366,14 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
           statement, StatementExecutionStep.EXECUTE_STATEMENT, this);
     }
     Context context = Context.current();
-    if (statementTimeout.hasTimeout() && !applyStatementTimeoutToMethods.isEmpty()) {
+    Deadline transactionDeadline = getTransactionDeadline();
+    Deadline statementDeadline =
+        statementTimeout.hasTimeout()
+            ? Deadline.after(
+                statementTimeout.getTimeoutValue(TimeUnit.NANOSECONDS), TimeUnit.NANOSECONDS)
+            : null;
+    Deadline effectiveDeadline = min(transactionDeadline, statementDeadline);
+    if (effectiveDeadline != null && !applyStatementTimeoutToMethods.isEmpty()) {
       context =
           context.withValue(
               SpannerOptions.CALL_CONTEXT_CONFIGURATOR_KEY,
@@ -351,10 +381,15 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
                 @Override
                 public <ReqT, RespT> ApiCallContext configure(
                     ApiCallContext context, ReqT request, MethodDescriptor<ReqT, RespT> method) {
-                  if (statementTimeout.hasTimeout()
-                      && applyStatementTimeoutToMethods.contains(method)) {
+                  if (applyStatementTimeoutToMethods.contains(method)) {
+                    // Calculate the remaining timeout. This method could be called multiple times
+                    // if the transaction is retried.
+                    long remainingTimeout = effectiveDeadline.timeRemaining(TimeUnit.NANOSECONDS);
+                    if (remainingTimeout <= 0) {
+                      remainingTimeout = 1;
+                    }
                     return GrpcCallContext.createDefault()
-                        .withTimeout(statementTimeout.asDuration());
+                        .withTimeoutDuration(Duration.ofNanos(remainingTimeout));
                   }
                   return null;
                 }
@@ -402,5 +437,24 @@ abstract class AbstractBaseUnitOfWork implements UnitOfWork {
           MoreExecutors.directExecutor());
       return future;
     }
+  }
+
+  @Nullable
+  static Deadline min(@Nullable Deadline a, @Nullable Deadline b) {
+    if (a == null && b == null) {
+      return null;
+    }
+    if (a == null) {
+      return b;
+    }
+    if (b == null) {
+      return a;
+    }
+    return a.minimum(b);
+  }
+
+  @Nullable
+  Deadline getTransactionDeadline() {
+    return null;
   }
 }

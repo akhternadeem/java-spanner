@@ -18,8 +18,12 @@ package com.google.cloud.spanner;
 
 import com.google.common.base.Preconditions;
 import com.google.spanner.v1.DirectedReadOptions;
+import com.google.spanner.v1.ReadRequest.LockHint;
 import com.google.spanner.v1.ReadRequest.OrderBy;
+import com.google.spanner.v1.RequestOptions;
 import com.google.spanner.v1.RequestOptions.Priority;
+import com.google.spanner.v1.TransactionOptions.IsolationLevel;
+import com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
@@ -75,6 +79,25 @@ public final class Options implements Serializable {
     }
   }
 
+  public enum RpcLockHint {
+    UNSPECIFIED(LockHint.LOCK_HINT_UNSPECIFIED),
+    SHARED(LockHint.LOCK_HINT_SHARED),
+    EXCLUSIVE(LockHint.LOCK_HINT_EXCLUSIVE);
+
+    private final LockHint proto;
+
+    RpcLockHint(LockHint proto) {
+      this.proto = Preconditions.checkNotNull(proto);
+    }
+
+    public static RpcLockHint fromProto(LockHint proto) {
+      for (RpcLockHint e : RpcLockHint.values()) {
+        if (e.proto.equals(proto)) return e;
+      }
+      return RpcLockHint.UNSPECIFIED;
+    }
+  }
+
   /** Marker interface to mark options applicable to both Read and Query operations */
   public interface ReadAndQueryOption extends ReadOption, QueryOption {}
 
@@ -87,6 +110,9 @@ public final class Options implements Serializable {
 
   /** Marker interface to mark options applicable to Update and Write operations */
   public interface UpdateTransactionOption extends UpdateOption, TransactionOption {}
+
+  /** Marker interface for options that can be used with both executeQuery and executeUpdate. */
+  public interface QueryUpdateOption extends QueryOption, UpdateOption {}
 
   /**
    * Marker interface to mark options applicable to Create, Update and Delete operations in admin
@@ -131,9 +157,57 @@ public final class Options implements Serializable {
    * process in the commit phase (when any needed locks are acquired). The validation process
    * succeeds only if there are no conflicting committed transactions (that committed mutations to
    * the read data at a commit timestamp after the read timestamp).
+   *
+   * @deprecated Use {@link Options#readLockMode(ReadLockMode)} instead.
    */
+  @Deprecated
   public static TransactionOption optimisticLock() {
-    return OPTIMISTIC_LOCK_OPTION;
+    return Options.readLockMode(ReadLockMode.OPTIMISTIC);
+  }
+
+  /**
+   * Returns a {@link TransactionOption} to set the desired {@link ReadLockMode} for a read-write
+   * transaction.
+   *
+   * <p>This option controls the locking behavior for read operations and queries within a
+   * read-write transaction. It works in conjunction with the transaction's {@link IsolationLevel}.
+   *
+   * <ul>
+   *   <li>{@link ReadLockMode#PESSIMISTIC}: Read locks are acquired immediately on read. This mode
+   *       only applies to {@code SERIALIZABLE} isolation. This mode prevents concurrent
+   *       modifications by locking data throughout the transaction. This reduces commit-time aborts
+   *       due to conflicts but can increase how long transactions wait for locks and the overall
+   *       contention.
+   *   <li>{@link ReadLockMode#OPTIMISTIC}: Locks for reads within the transaction are not acquired
+   *       on read. Instead the locks are acquired on commit to validate that read/queried data has
+   *       not changed since the transaction started. If a conflict is detected, the transaction
+   *       will fail. This mode only applies to {@code SERIALIZABLE} isolation. This mode defers
+   *       locking until commit, which can reduce contention and improve throughput. However, be
+   *       aware that this increases the risk of transaction aborts if there's significant write
+   *       competition on the same data.
+   *   <li>{@link ReadLockMode#READ_LOCK_MODE_UNSPECIFIED}: This is the default if no mode is set.
+   *       The locking behavior depends on the isolation level:
+   *       <ul>
+   *         <li>For {@code REPEATABLE_READ} isolation: Locking semantics default to {@code
+   *             OPTIMISTIC}. However, validation checks at commit are only performed for queries
+   *             using {@code SELECT FOR UPDATE}, statements with {@code LOCK_SCANNED_RANGES} hints,
+   *             and DML statements. <br>
+   *             Note: It is an error to explicitly set {@code ReadLockMode} when the isolation
+   *             level is {@code REPEATABLE_READ}.
+   *         <li>For all other isolation levels: If the read lock mode is not set, it defaults to
+   *             {@code PESSIMISTIC} locking.
+   *       </ul>
+   * </ul>
+   */
+  public static TransactionOption readLockMode(ReadLockMode readLockMode) {
+    return new ReadLockModeOption(readLockMode);
+  }
+
+  /**
+   * Specifying this instructs the transaction to request {@link IsolationLevel} from the backend.
+   */
+  public static TransactionOption isolationLevel(IsolationLevel isolationLevel) {
+    return new IsolationLevelOption(isolationLevel);
   }
 
   /**
@@ -144,6 +218,10 @@ public final class Options implements Serializable {
    */
   public static UpdateTransactionOption excludeTxnFromChangeStreams() {
     return EXCLUDE_TXN_FROM_CHANGE_STREAMS_OPTION;
+  }
+
+  public static RequestIdOption requestId(XGoogSpannerRequestId reqId) {
+    return new RequestIdOption(reqId);
   }
 
   /**
@@ -158,6 +236,10 @@ public final class Options implements Serializable {
   /** Specifies the order_by to use for the RPC. */
   public static ReadOption orderBy(RpcOrderBy orderBy) {
     return new OrderByOption(orderBy);
+  }
+
+  public static ReadOption lockHint(RpcLockHint orderBy) {
+    return new LockHintOption(orderBy);
   }
 
   /**
@@ -182,6 +264,37 @@ public final class Options implements Serializable {
   /** Specifies the priority to use for the RPC. */
   public static ReadQueryUpdateTransactionOption priority(RpcPriority priority) {
     return new PriorityOption(priority);
+  }
+
+  /**
+   * Specifying this will add the given client context to the request. The client context is used to
+   * pass side-channel or configuration information to the backend, such as a user ID for a
+   * parameterized secure view.
+   */
+  public static ReadQueryUpdateTransactionOption clientContext(
+      RequestOptions.ClientContext clientContext) {
+    return new ClientContextOption(clientContext);
+  }
+
+  RequestOptions toRequestOptionsProto(boolean isTransactionOption) {
+    if (!hasPriority() && !hasTag() && !hasClientContext()) {
+      return RequestOptions.getDefaultInstance();
+    }
+    RequestOptions.Builder builder = RequestOptions.newBuilder();
+    if (hasPriority()) {
+      builder.setPriority(priority());
+    }
+    if (hasTag()) {
+      if (isTransactionOption) {
+        builder.setTransactionTag(tag());
+      } else {
+        builder.setRequestTag(tag());
+      }
+    }
+    if (hasClientContext()) {
+      builder.setClientContext(clientContext());
+    }
+    return builder.build();
   }
 
   public static TransactionOption maxCommitDelay(Duration maxCommitDelay) {
@@ -210,6 +323,20 @@ public final class Options implements Serializable {
    */
   public static DataBoostQueryOption dataBoostEnabled(Boolean dataBoostEnabled) {
     return new DataBoostQueryOption(dataBoostEnabled);
+  }
+
+  /**
+   * If set to true, this option marks the end of the transaction. The transaction should be
+   * committed or aborted after this statement executes, and attempts to execute any other requests
+   * against this transaction (including reads and queries) will be rejected. Mixing mutations with
+   * statements that are marked as the last statement is not allowed.
+   *
+   * <p>For DML statements, setting this option may cause some error reporting to be deferred until
+   * commit time (e.g. validation of unique constraints). Given this, successful execution of a DML
+   * statement should not be assumed until the transaction commits.
+   */
+  public static QueryUpdateOption lastStatement() {
+    return new LastStatementUpdateOption();
   }
 
   /**
@@ -314,16 +441,6 @@ public final class Options implements Serializable {
     }
   }
 
-  /** Option to request Optimistic Concurrency Control for read/write transactions. */
-  static final class OptimisticLockOption extends InternalOption implements TransactionOption {
-    @Override
-    void appendToOptions(Options options) {
-      options.withOptimisticLock = true;
-    }
-  }
-
-  static final OptimisticLockOption OPTIMISTIC_LOCK_OPTION = new OptimisticLockOption();
-
   /** Option to request the transaction to be excluded from change streams. */
   static final class ExcludeTxnFromChangeStreamsOption extends InternalOption
       implements UpdateTransactionOption {
@@ -374,6 +491,20 @@ public final class Options implements Serializable {
     @Override
     void appendToOptions(Options options) {
       options.priority = priority;
+    }
+  }
+
+  static final class ClientContextOption extends InternalOption
+      implements ReadQueryUpdateTransactionOption {
+    private final RequestOptions.ClientContext clientContext;
+
+    ClientContextOption(RequestOptions.ClientContext clientContext) {
+      this.clientContext = clientContext;
+    }
+
+    @Override
+    void appendToOptions(Options options) {
+      options.clientContext = clientContext;
     }
   }
 
@@ -449,6 +580,34 @@ public final class Options implements Serializable {
     }
   }
 
+  /** Option to set isolation level for read/write transactions. */
+  static final class IsolationLevelOption extends InternalOption implements TransactionOption {
+    private final IsolationLevel isolationLevel;
+
+    public IsolationLevelOption(IsolationLevel isolationLevel) {
+      this.isolationLevel = isolationLevel;
+    }
+
+    @Override
+    void appendToOptions(Options options) {
+      options.isolationLevel = isolationLevel;
+    }
+  }
+
+  /** Option to set read lock mode for read/write transactions. */
+  static final class ReadLockModeOption extends InternalOption implements TransactionOption {
+    private final ReadLockMode readLockMode;
+
+    public ReadLockModeOption(ReadLockMode readLockMode) {
+      this.readLockMode = readLockMode;
+    }
+
+    @Override
+    void appendToOptions(Options options) {
+      options.readLockMode = readLockMode;
+    }
+  }
+
   private boolean withCommitStats;
 
   private Duration maxCommitDelay;
@@ -461,14 +620,19 @@ public final class Options implements Serializable {
   private String filter;
   private RpcPriority priority;
   private String tag;
+  private RequestOptions.ClientContext clientContext;
   private String etag;
   private Boolean validateOnly;
-  private Boolean withOptimisticLock;
   private Boolean withExcludeTxnFromChangeStreams;
   private Boolean dataBoostEnabled;
   private DirectedReadOptions directedReadOptions;
   private DecodeMode decodeMode;
   private RpcOrderBy orderBy;
+  private RpcLockHint lockHint;
+  private Boolean lastStatement;
+  private IsolationLevel isolationLevel;
+  private XGoogSpannerRequestId reqId;
+  private ReadLockMode readLockMode;
 
   // Construction is via factory methods below.
   private Options() {}
@@ -533,12 +697,28 @@ public final class Options implements Serializable {
     return filter;
   }
 
+  boolean hasReqId() {
+    return reqId != null;
+  }
+
+  XGoogSpannerRequestId reqId() {
+    return reqId;
+  }
+
   boolean hasPriority() {
     return priority != null;
   }
 
   Priority priority() {
     return priority == null ? null : priority.proto;
+  }
+
+  boolean hasClientContext() {
+    return clientContext != null;
+  }
+
+  RequestOptions.ClientContext clientContext() {
+    return clientContext;
   }
 
   boolean hasTag() {
@@ -563,10 +743,6 @@ public final class Options implements Serializable {
 
   Boolean validateOnly() {
     return validateOnly;
-  }
-
-  Boolean withOptimisticLock() {
-    return withOptimisticLock;
   }
 
   Boolean withExcludeTxnFromChangeStreams() {
@@ -605,6 +781,30 @@ public final class Options implements Serializable {
     return orderBy == null ? null : orderBy.proto;
   }
 
+  boolean hasLastStatement() {
+    return lastStatement != null;
+  }
+
+  Boolean isLastStatement() {
+    return lastStatement;
+  }
+
+  boolean hasLockHint() {
+    return lockHint != null;
+  }
+
+  LockHint lockHint() {
+    return lockHint == null ? null : lockHint.proto;
+  }
+
+  IsolationLevel isolationLevel() {
+    return isolationLevel;
+  }
+
+  ReadLockMode readLockMode() {
+    return readLockMode;
+  }
+
   @Override
   public String toString() {
     StringBuilder b = new StringBuilder();
@@ -632,6 +832,9 @@ public final class Options implements Serializable {
     if (priority != null) {
       b.append("priority: ").append(priority).append(' ');
     }
+    if (clientContext != null) {
+      b.append("clientContext: ").append(clientContext).append(' ');
+    }
     if (tag != null) {
       b.append("tag: ").append(tag).append(' ');
     }
@@ -640,9 +843,6 @@ public final class Options implements Serializable {
     }
     if (validateOnly != null) {
       b.append("validateOnly: ").append(validateOnly).append(' ');
-    }
-    if (withOptimisticLock != null) {
-      b.append("withOptimisticLock: ").append(withOptimisticLock).append(' ');
     }
     if (withExcludeTxnFromChangeStreams != null) {
       b.append("withExcludeTxnFromChangeStreams: ")
@@ -660,6 +860,21 @@ public final class Options implements Serializable {
     }
     if (orderBy != null) {
       b.append("orderBy: ").append(orderBy).append(' ');
+    }
+    if (lastStatement != null) {
+      b.append("lastStatement: ").append(lastStatement).append(' ');
+    }
+    if (lockHint != null) {
+      b.append("lockHint: ").append(lockHint).append(' ');
+    }
+    if (isolationLevel != null) {
+      b.append("isolationLevel: ").append(isolationLevel).append(' ');
+    }
+    if (reqId != null) {
+      b.append("requestId: ").append(reqId.toString());
+    }
+    if (readLockMode != null) {
+      b.append("readLockMode: ").append(readLockMode).append(' ');
     }
     return b.toString();
   }
@@ -693,14 +908,19 @@ public final class Options implements Serializable {
         && Objects.equals(pageToken(), that.pageToken())
         && Objects.equals(filter(), that.filter())
         && Objects.equals(priority(), that.priority())
+        && Objects.equals(clientContext(), that.clientContext())
         && Objects.equals(tag(), that.tag())
         && Objects.equals(etag(), that.etag())
         && Objects.equals(validateOnly(), that.validateOnly())
-        && Objects.equals(withOptimisticLock(), that.withOptimisticLock())
         && Objects.equals(withExcludeTxnFromChangeStreams(), that.withExcludeTxnFromChangeStreams())
         && Objects.equals(dataBoostEnabled(), that.dataBoostEnabled())
         && Objects.equals(directedReadOptions(), that.directedReadOptions())
-        && Objects.equals(orderBy(), that.orderBy());
+        && Objects.equals(orderBy(), that.orderBy())
+        && Objects.equals(isLastStatement(), that.isLastStatement())
+        && Objects.equals(lockHint(), that.lockHint())
+        && Objects.equals(isolationLevel(), that.isolationLevel())
+        && Objects.equals(reqId(), that.reqId())
+        && Objects.equals(readLockMode(), that.readLockMode());
   }
 
   @Override
@@ -733,6 +953,9 @@ public final class Options implements Serializable {
     if (priority != null) {
       result = 31 * result + priority.hashCode();
     }
+    if (clientContext != null) {
+      result = 31 * result + clientContext.hashCode();
+    }
     if (tag != null) {
       result = 31 * result + tag.hashCode();
     }
@@ -741,9 +964,6 @@ public final class Options implements Serializable {
     }
     if (validateOnly != null) {
       result = 31 * result + validateOnly.hashCode();
-    }
-    if (withOptimisticLock != null) {
-      result = 31 * result + withOptimisticLock.hashCode();
     }
     if (withExcludeTxnFromChangeStreams != null) {
       result = 31 * result + withExcludeTxnFromChangeStreams.hashCode();
@@ -759,6 +979,21 @@ public final class Options implements Serializable {
     }
     if (orderBy != null) {
       result = 31 * result + orderBy.hashCode();
+    }
+    if (lastStatement != null) {
+      result = 31 * result + lastStatement.hashCode();
+    }
+    if (lockHint != null) {
+      result = 31 * result + lockHint.hashCode();
+    }
+    if (isolationLevel != null) {
+      result = 31 * result + isolationLevel.hashCode();
+    }
+    if (reqId != null) {
+      result = 31 * result + reqId.hashCode();
+    }
+    if (readLockMode != null) {
+      result = 31 * result + readLockMode.hashCode();
     }
     return result;
   }
@@ -853,6 +1088,19 @@ public final class Options implements Serializable {
     }
   }
 
+  static class LockHintOption extends InternalOption implements ReadOption {
+    private final RpcLockHint lockHint;
+
+    LockHintOption(RpcLockHint lockHint) {
+      this.lockHint = lockHint;
+    }
+
+    @Override
+    void appendToOptions(Options options) {
+      options.lockHint = lockHint;
+    }
+  }
+
   static final class DataBoostQueryOption extends InternalOption implements ReadAndQueryOption {
 
     private final Boolean dataBoostEnabled;
@@ -910,6 +1158,55 @@ public final class Options implements Serializable {
       if (o == this) return true;
       if (!(o instanceof FilterOption)) return false;
       return Objects.equals(filter, ((FilterOption) o).filter);
+    }
+  }
+
+  static final class LastStatementUpdateOption extends InternalOption implements QueryUpdateOption {
+
+    LastStatementUpdateOption() {}
+
+    @Override
+    void appendToOptions(Options options) {
+      options.lastStatement = true;
+    }
+
+    @Override
+    public int hashCode() {
+      return LastStatementUpdateOption.class.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return o instanceof LastStatementUpdateOption;
+    }
+  }
+
+  static final class RequestIdOption extends InternalOption
+      implements ReadOption, TransactionOption, UpdateOption {
+    private final XGoogSpannerRequestId reqId;
+
+    RequestIdOption(XGoogSpannerRequestId reqId) {
+      this.reqId = reqId;
+    }
+
+    @Override
+    void appendToOptions(Options options) {
+      options.reqId = this.reqId;
+    }
+
+    @Override
+    public int hashCode() {
+      return this.reqId.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      // instanceof for a null object returns false.
+      if (!(o instanceof RequestIdOption)) {
+        return false;
+      }
+      RequestIdOption other = (RequestIdOption) o;
+      return Objects.equals(this.reqId, other.reqId);
     }
   }
 }

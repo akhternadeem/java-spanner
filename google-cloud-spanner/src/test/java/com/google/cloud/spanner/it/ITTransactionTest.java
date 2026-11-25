@@ -41,7 +41,10 @@ import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.spanner.SpannerOptions.Builder.DefaultReadWriteTransactionOptions;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
@@ -52,10 +55,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
+import com.google.spanner.v1.TransactionOptions.IsolationLevel;
+import com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.Vector;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -74,6 +80,9 @@ public class ITTransactionTest {
   @ClassRule public static IntegrationTestEnv env = new IntegrationTestEnv();
   private static Database db;
   private static DatabaseClient client;
+  private static Database largeMessageDb;
+  private static DatabaseClient largeMessageClient;
+
   /** Sequence for assigning unique keys to test cases. */
   private static int seq;
 
@@ -87,11 +96,31 @@ public class ITTransactionTest {
                     + "  V    INT64,"
                     + ") PRIMARY KEY (K)");
     client = env.getTestHelper().getDatabaseClient(db);
+
+    largeMessageDb =
+        env.getTestHelper()
+            .createTestDatabase(
+                "CREATE TABLE T ("
+                    + "  K    STRING(MAX) NOT NULL,"
+                    + "  col0    BYTES(MAX),"
+                    + "  col1    BYTES(MAX),"
+                    + "  col2    BYTES(MAX),"
+                    + "  col3    BYTES(MAX),"
+                    + "  col4    BYTES(MAX),"
+                    + "  col5    BYTES(MAX),"
+                    + "  col6    BYTES(MAX),"
+                    + "  col7    BYTES(MAX),"
+                    + "  col8    BYTES(MAX),"
+                    + "  col9    BYTES(MAX),"
+                    + ") PRIMARY KEY (K)");
+    largeMessageClient = env.getTestHelper().getDatabaseClient(largeMessageDb);
   }
 
   @Before
   public void removeTestData() {
     client.writeAtLeastOnce(Collections.singletonList(Mutation.delete("T", KeySet.all())));
+    largeMessageClient.writeAtLeastOnce(
+        Collections.singletonList(Mutation.delete("T", KeySet.all())));
   }
 
   private static String uniqueKey() {
@@ -187,6 +216,54 @@ public class ITTransactionTest {
           assertThat(resultSet.next()).isFalse();
           return row;
         });
+  }
+
+  @Test
+  public void isolationLevelAndReadLockModeSetAtClientLevelTest() {
+    SpannerOptions options =
+        env.getTestHelper().getOptions().toBuilder()
+            .setDefaultTransactionOptions(
+                DefaultReadWriteTransactionOptions.newBuilder()
+                    .setIsolationLevel(IsolationLevel.REPEATABLE_READ)
+                    .setReadLockMode(ReadLockMode.OPTIMISTIC)
+                    .build())
+            .build();
+    try (Spanner spanner = options.getService()) {
+      DatabaseClient client = spanner.getDatabaseClient(db.getId());
+      Long updatedRows =
+          client
+              .readWriteTransaction()
+              .run(
+                  transaction ->
+                      transaction.executeUpdate(
+                          Statement.of("INSERT INTO T (K, V) VALUES ('test1', 2)")));
+      assertThat(updatedRows).isEqualTo(1L);
+    }
+  }
+
+  @Test
+  public void isolationLevelAndReadLockModeSetAtClientAndTxnLevelTest() {
+    SpannerOptions options =
+        env.getTestHelper().getOptions().toBuilder()
+            .setDefaultTransactionOptions(
+                DefaultReadWriteTransactionOptions.newBuilder()
+                    .setIsolationLevel(IsolationLevel.REPEATABLE_READ)
+                    .setReadLockMode(ReadLockMode.OPTIMISTIC)
+                    .build())
+            .build();
+    try (Spanner spanner = options.getService()) {
+      DatabaseClient client = spanner.getDatabaseClient(db.getId());
+      Long updatedRows =
+          client
+              .readWriteTransaction(
+                  Options.isolationLevel(IsolationLevel.SERIALIZABLE),
+                  Options.readLockMode(ReadLockMode.PESSIMISTIC))
+              .run(
+                  transaction ->
+                      transaction.executeUpdate(
+                          Statement.of("INSERT INTO T (K, V) VALUES ('test1', 2)")));
+      assertThat(updatedRows).isEqualTo(1L);
+    }
   }
 
   @Test
@@ -464,7 +541,10 @@ public class ITTransactionTest {
   @Test
   public void nestedTxnSucceedsWhenAllowed() {
     assumeFalse("Emulator does not support multiple parallel transactions", isUsingEmulator());
-
+    // TODO(sriharshach): Remove this skip once backend support empty transactions to commit.
+    assumeFalse(
+        "Skipping for multiplexed sessions since it does not allow empty transactions to commit",
+        isUsingMultiplexedSessionsForRW());
     client
         .readWriteTransaction()
         .allowNestedTransaction()
@@ -558,6 +638,25 @@ public class ITTransactionTest {
   }
 
   @Test
+  public void testTxWithLargeMessageSize() {
+    int bytesPerColumn = 10000000; // 10MB
+    String key = uniqueKey();
+    Random random = new Random();
+    List<Mutation> mutations = new ArrayList();
+    Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder("T").set("K").to(key);
+    for (int j = 0; j < 7; j++) {
+      byte[] data = new byte[bytesPerColumn];
+      random.nextBytes(data);
+      builder
+          .set("col" + j)
+          .to(com.google.cloud.spanner.Value.bytes(com.google.cloud.ByteArray.copyFrom(data)));
+    }
+    mutations.add(builder.build());
+    // This large message is under the 100MB limit.
+    largeMessageClient.write(mutations);
+  }
+
+  @Test
   public void testTxWithUncaughtErrorAfterSuccessfulBegin() {
     try {
       client
@@ -587,5 +686,9 @@ public class ITTransactionTest {
     assertNotNull(runner.getCommitResponse().getCommitStats());
     // MutationCount = 2 (2 columns).
     assertEquals(2L, runner.getCommitResponse().getCommitStats().getMutationCount());
+  }
+
+  boolean isUsingMultiplexedSessionsForRW() {
+    return env.getTestHelper().getOptions().getSessionPoolOptions().getUseMultiplexedSessionForRW();
   }
 }

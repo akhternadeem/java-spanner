@@ -19,6 +19,7 @@ package com.google.cloud.spanner;
 import com.google.cloud.Timestamp;
 import com.google.common.base.Preconditions;
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 /** Represents a response from a commit operation. */
 public class CommitResponse {
@@ -41,7 +42,21 @@ public class CommitResponse {
     return Timestamp.fromProto(proto.getCommitTimestamp());
   }
 
-  /** @return true if the {@link CommitResponse} includes {@link CommitStats} */
+  /**
+   * Returns a {@link Timestamp} representing the timestamp at which all reads in the transaction
+   * ran at, if the transaction ran at repeatable read isolation in internal test environments, and
+   * otherwise returns null.
+   */
+  public @Nullable Timestamp getSnapshotTimestamp() {
+    if (proto.getSnapshotTimestamp() == com.google.protobuf.Timestamp.getDefaultInstance()) {
+      return null;
+    }
+    return Timestamp.fromProto(proto.getSnapshotTimestamp());
+  }
+
+  /**
+   * @return true if the {@link CommitResponse} includes {@link CommitStats}
+   */
   public boolean hasCommitStats() {
     return proto.hasCommitStats();
   }

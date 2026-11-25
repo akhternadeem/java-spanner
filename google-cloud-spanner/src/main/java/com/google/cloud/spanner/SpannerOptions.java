@@ -16,6 +16,10 @@
 
 package com.google.cloud.spanner;
 
+import static com.google.api.gax.util.TimeConversionUtils.toJavaTimeDuration;
+import static com.google.api.gax.util.TimeConversionUtils.toThreetenDuration;
+import static com.google.cloud.spanner.spi.v1.GapicSpannerRpc.EXPERIMENTAL_LOCATION_API_ENV_VAR;
+
 import com.google.api.core.ApiFunction;
 import com.google.api.core.BetaApi;
 import com.google.api.core.InternalApi;
@@ -24,21 +28,23 @@ import com.google.api.gax.core.ExecutorProvider;
 import com.google.api.gax.core.GaxProperties;
 import com.google.api.gax.grpc.GrpcCallContext;
 import com.google.api.gax.grpc.GrpcInterceptorProvider;
+import com.google.api.gax.grpc.InstantiatingGrpcChannelProvider;
 import com.google.api.gax.longrunning.OperationTimedPollAlgorithm;
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.api.gax.tracing.ApiTracerFactory;
 import com.google.api.gax.tracing.BaseApiTracerFactory;
-import com.google.api.gax.tracing.MetricsTracerFactory;
-import com.google.api.gax.tracing.OpenTelemetryMetricsRecorder;
 import com.google.api.gax.tracing.OpencensusTracerFactory;
+import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.NoCredentials;
 import com.google.cloud.ServiceDefaults;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.ServiceRpc;
 import com.google.cloud.TransportOptions;
 import com.google.cloud.grpc.GcpManagedChannelOptions;
+import com.google.cloud.grpc.GcpManagedChannelOptions.GcpChannelPoolOptions;
 import com.google.cloud.grpc.GrpcTransportOptions;
 import com.google.cloud.spanner.Options.DirectedReadOption;
 import com.google.cloud.spanner.Options.QueryOption;
@@ -48,6 +54,7 @@ import com.google.cloud.spanner.admin.database.v1.stub.DatabaseAdminStubSettings
 import com.google.cloud.spanner.admin.instance.v1.InstanceAdminSettings;
 import com.google.cloud.spanner.admin.instance.v1.stub.InstanceAdminStubSettings;
 import com.google.cloud.spanner.spi.SpannerRpcFactory;
+import com.google.cloud.spanner.spi.v1.ChannelEndpointCacheFactory;
 import com.google.cloud.spanner.spi.v1.GapicSpannerRpc;
 import com.google.cloud.spanner.spi.v1.SpannerRpc;
 import com.google.cloud.spanner.v1.SpannerSettings;
@@ -55,30 +62,45 @@ import com.google.cloud.spanner.v1.stub.SpannerStubSettings;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.spanner.v1.DirectedReadOptions;
 import com.google.spanner.v1.ExecuteSqlRequest;
 import com.google.spanner.v1.ExecuteSqlRequest.QueryOptions;
+import com.google.spanner.v1.RequestOptions;
 import com.google.spanner.v1.SpannerGrpc;
+import com.google.spanner.v1.TransactionOptions;
+import com.google.spanner.v1.TransactionOptions.IsolationLevel;
+import com.google.spanner.v1.TransactionOptions.ReadWrite.ReadLockMode;
 import io.grpc.CallCredentials;
 import io.grpc.CompressorRegistry;
 import io.grpc.Context;
 import io.grpc.ExperimentalApi;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
+import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
+import io.opencensus.trace.Tracing;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -88,7 +110,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
-import org.threeten.bp.Duration;
 
 /** Options for the Cloud Spanner service. */
 public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
@@ -103,8 +124,11 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
   private static final String PG_ADAPTER_CLIENT_LIB_TOKEN = "pg-adapter";
 
   private static final String API_SHORT_NAME = "Spanner";
-  private static final String DEFAULT_HOST = "https://spanner.googleapis.com";
-  private static final ImmutableSet<String> SCOPES =
+  private static final String SPANNER_SERVICE_NAME = "spanner";
+  private static final String GOOGLE_DEFAULT_UNIVERSE = "googleapis.com";
+  private static final String EXPERIMENTAL_HOST_PROJECT_ID = "default";
+
+  static final ImmutableSet<String> SCOPES =
       ImmutableSet.of(
           "https://www.googleapis.com/auth/spanner.admin",
           "https://www.googleapis.com/auth/spanner.data");
@@ -114,7 +138,74 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
   // is enabled, to make sure there are sufficient channels available to move the sessions to a
   // different channel if a network connection in a particular channel fails.
   @VisibleForTesting static final int GRPC_GCP_ENABLED_DEFAULT_CHANNELS = 8;
+
+  // Dynamic Channel Pool (DCP) default values and bounds
+  /** Default max concurrent RPCs per channel before triggering scale up. */
+  public static final int DEFAULT_DYNAMIC_POOL_MAX_RPC = 25;
+
+  /** Default min concurrent RPCs per channel for scale down check. */
+  public static final int DEFAULT_DYNAMIC_POOL_MIN_RPC = 15;
+
+  /** Default scale down check interval. */
+  public static final Duration DEFAULT_DYNAMIC_POOL_SCALE_DOWN_INTERVAL = Duration.ofMinutes(3);
+
+  /** Default initial number of channels for dynamic pool. */
+  public static final int DEFAULT_DYNAMIC_POOL_INITIAL_SIZE = 4;
+
+  /** Default max number of channels for dynamic pool. */
+  public static final int DEFAULT_DYNAMIC_POOL_MAX_CHANNELS = 10;
+
+  /** Default min number of channels for dynamic pool. */
+  public static final int DEFAULT_DYNAMIC_POOL_MIN_CHANNELS = 2;
+
+  /**
+   * Default affinity key lifetime for dynamic channel pool. This is how long to keep an affinity
+   * key after its last use. Zero means keeping keys forever. Default is 10 minutes, which is
+   * sufficient to ensure that requests within a single transaction use the same channel.
+   */
+  public static final Duration DEFAULT_DYNAMIC_POOL_AFFINITY_KEY_LIFETIME = Duration.ofMinutes(10);
+
+  /**
+   * Default cleanup interval for dynamic channel pool affinity keys. This is how frequently the
+   * affinity key cleanup process runs. Default is 1 minute (1/10 of default affinity key lifetime).
+   */
+  public static final Duration DEFAULT_DYNAMIC_POOL_CLEANUP_INTERVAL = Duration.ofMinutes(1);
+
+  /**
+   * Creates a {@link GcpChannelPoolOptions} instance with Spanner-specific defaults for dynamic
+   * channel pooling. These defaults are optimized for typical Spanner workloads.
+   *
+   * <p>Default values:
+   *
+   * <ul>
+   *   <li>Max size: {@value #DEFAULT_DYNAMIC_POOL_MAX_CHANNELS}
+   *   <li>Min size: {@value #DEFAULT_DYNAMIC_POOL_MIN_CHANNELS}
+   *   <li>Initial size: {@value #DEFAULT_DYNAMIC_POOL_INITIAL_SIZE}
+   *   <li>Max RPC per channel: {@value #DEFAULT_DYNAMIC_POOL_MAX_RPC}
+   *   <li>Min RPC per channel: {@value #DEFAULT_DYNAMIC_POOL_MIN_RPC}
+   *   <li>Scale down interval: 3 minutes
+   *   <li>Affinity key lifetime: 10 minutes
+   *   <li>Cleanup interval: 1 minute
+   * </ul>
+   *
+   * @return a new {@link GcpChannelPoolOptions} instance with Spanner defaults
+   */
+  public static GcpChannelPoolOptions createDefaultDynamicChannelPoolOptions() {
+    return GcpChannelPoolOptions.newBuilder()
+        .setMaxSize(DEFAULT_DYNAMIC_POOL_MAX_CHANNELS)
+        .setMinSize(DEFAULT_DYNAMIC_POOL_MIN_CHANNELS)
+        .setInitSize(DEFAULT_DYNAMIC_POOL_INITIAL_SIZE)
+        .setDynamicScaling(
+            DEFAULT_DYNAMIC_POOL_MIN_RPC,
+            DEFAULT_DYNAMIC_POOL_MAX_RPC,
+            DEFAULT_DYNAMIC_POOL_SCALE_DOWN_INTERVAL)
+        .setAffinityKeyLifetime(DEFAULT_DYNAMIC_POOL_AFFINITY_KEY_LIFETIME)
+        .setCleanupInterval(DEFAULT_DYNAMIC_POOL_CLEANUP_INTERVAL)
+        .build();
+  }
+
   private final TransportChannelProvider channelProvider;
+  private final ChannelEndpointCacheFactory channelEndpointCacheFactory;
 
   @SuppressWarnings("rawtypes")
   private final ApiFunction<ManagedChannelBuilder, ManagedChannelBuilder> channelConfigurator;
@@ -133,17 +224,22 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
   private final Duration partitionedDmlTimeout;
   private final boolean grpcGcpExtensionEnabled;
   private final GcpManagedChannelOptions grpcGcpOptions;
+  private final boolean dynamicChannelPoolEnabled;
+  private final GcpChannelPoolOptions gcpChannelPoolOptions;
   private final boolean autoThrottleAdministrativeRequests;
   private final RetrySettings retryAdministrativeRequestsSettings;
   private final boolean trackTransactionStarter;
-  private final BuiltInOpenTelemetryMetricsProvider builtInOpenTelemetryMetricsProvider =
-      BuiltInOpenTelemetryMetricsProvider.INSTANCE;
+  private final boolean enableGrpcGcpOtelMetrics;
+  private final BuiltInMetricsProvider builtInMetricsProvider = BuiltInMetricsProvider.INSTANCE;
+
   /**
    * These are the default {@link QueryOptions} defined by the user on this {@link SpannerOptions}.
    */
   private final Map<DatabaseId, QueryOptions> defaultQueryOptions;
+
   /** These are the default {@link QueryOptions} defined in environment variables on this system. */
   private final QueryOptions envQueryOptions;
+
   /**
    * These are the merged query options of the {@link QueryOptions} set on this {@link
    * SpannerOptions} and the {@link QueryOptions} in the environment variables. Options specified in
@@ -156,14 +252,19 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
   private final CloseableExecutorProvider asyncExecutorProvider;
   private final String compressorName;
   private final boolean leaderAwareRoutingEnabled;
-  private final boolean attemptDirectPath;
+  private final boolean enableDirectAccess;
+  private final boolean enableGcpFallback;
   private final DirectedReadOptions directedReadOptions;
   private final boolean useVirtualThreads;
   private final OpenTelemetry openTelemetry;
   private final boolean enableApiTracing;
   private final boolean enableBuiltInMetrics;
+  private final boolean enableLocationApi;
   private final boolean enableExtendedTracing;
   private final boolean enableEndToEndTracing;
+  private final String monitoringHost;
+  private final TransactionOptions defaultTransactionOptions;
+  private final RequestOptions.ClientContext clientContext;
 
   enum TracingFramework {
     OPEN_CENSUS,
@@ -379,116 +480,223 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
         case BATCH_UPDATE:
           return batchUpdateTimeout == null
               ? null
-              : GrpcCallContext.createDefault().withTimeout(batchUpdateTimeout);
+              : GrpcCallContext.createDefault().withTimeoutDuration(batchUpdateTimeout);
         case COMMIT:
           return commitTimeout == null
               ? null
-              : GrpcCallContext.createDefault().withTimeout(commitTimeout);
+              : GrpcCallContext.createDefault().withTimeoutDuration(commitTimeout);
         case EXECUTE_QUERY:
           return executeQueryTimeout == null
               ? null
               : GrpcCallContext.createDefault()
-                  .withTimeout(executeQueryTimeout)
-                  .withStreamWaitTimeout(executeQueryTimeout);
+                  .withTimeoutDuration(executeQueryTimeout)
+                  .withStreamWaitTimeoutDuration(executeQueryTimeout);
         case EXECUTE_UPDATE:
           return executeUpdateTimeout == null
               ? null
-              : GrpcCallContext.createDefault().withTimeout(executeUpdateTimeout);
+              : GrpcCallContext.createDefault().withTimeoutDuration(executeUpdateTimeout);
         case PARTITION_QUERY:
           return partitionQueryTimeout == null
               ? null
-              : GrpcCallContext.createDefault().withTimeout(partitionQueryTimeout);
+              : GrpcCallContext.createDefault().withTimeoutDuration(partitionQueryTimeout);
         case PARTITION_READ:
           return partitionReadTimeout == null
               ? null
-              : GrpcCallContext.createDefault().withTimeout(partitionReadTimeout);
+              : GrpcCallContext.createDefault().withTimeoutDuration(partitionReadTimeout);
         case READ:
           return readTimeout == null
               ? null
               : GrpcCallContext.createDefault()
-                  .withTimeout(readTimeout)
-                  .withStreamWaitTimeout(readTimeout);
+                  .withTimeoutDuration(readTimeout)
+                  .withStreamWaitTimeoutDuration(readTimeout);
         case ROLLBACK:
           return rollbackTimeout == null
               ? null
-              : GrpcCallContext.createDefault().withTimeout(rollbackTimeout);
+              : GrpcCallContext.createDefault().withTimeoutDuration(rollbackTimeout);
         default:
       }
       return null;
     }
 
-    public Duration getCommitTimeout() {
+    /** This method is obsolete. Use {@link #getCommitTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getCommitTimeoutDuration() instead.")
+    public org.threeten.bp.Duration getCommitTimeout() {
+      return toThreetenDuration(getCommitTimeoutDuration());
+    }
+
+    public Duration getCommitTimeoutDuration() {
       return commitTimeout;
     }
 
-    public SpannerCallContextTimeoutConfigurator withCommitTimeout(Duration commitTimeout) {
+    /** This method is obsolete. Use {@link #withCommitTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use withCommitTimeoutDuration() instead.")
+    public SpannerCallContextTimeoutConfigurator withCommitTimeout(
+        org.threeten.bp.Duration commitTimeout) {
+      return withCommitTimeoutDuration(toJavaTimeDuration(commitTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withCommitTimeoutDuration(Duration commitTimeout) {
       this.commitTimeout = commitTimeout;
       return this;
     }
 
-    public Duration getRollbackTimeout() {
+    /** This method is obsolete. Use {@link #getRollbackTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getRollbackTimeoutDuration() instead.")
+    public org.threeten.bp.Duration getRollbackTimeout() {
+      return toThreetenDuration(getRollbackTimeoutDuration());
+    }
+
+    public Duration getRollbackTimeoutDuration() {
       return rollbackTimeout;
     }
 
-    public SpannerCallContextTimeoutConfigurator withRollbackTimeout(Duration rollbackTimeout) {
+    /** This method is obsolete. Use {@link #withRollbackTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use withRollbackTimeoutDuration() instead.")
+    public SpannerCallContextTimeoutConfigurator withRollbackTimeout(
+        org.threeten.bp.Duration rollbackTimeout) {
+      return withRollbackTimeoutDuration(toJavaTimeDuration(rollbackTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withRollbackTimeoutDuration(
+        Duration rollbackTimeout) {
       this.rollbackTimeout = rollbackTimeout;
       return this;
     }
 
-    public Duration getExecuteQueryTimeout() {
+    /** This method is obsolete. Use {@link #getExecuteQueryTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getExecuteQueryTimeoutDuration() instead.")
+    public org.threeten.bp.Duration getExecuteQueryTimeout() {
+      return toThreetenDuration(getExecuteQueryTimeoutDuration());
+    }
+
+    public Duration getExecuteQueryTimeoutDuration() {
       return executeQueryTimeout;
     }
 
+    /** This method is obsolete. Use {@link #withExecuteQueryTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use withExecuteQueryTimeoutDuration() instead")
     public SpannerCallContextTimeoutConfigurator withExecuteQueryTimeout(
+        org.threeten.bp.Duration executeQueryTimeout) {
+      return withExecuteQueryTimeoutDuration(toJavaTimeDuration(executeQueryTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withExecuteQueryTimeoutDuration(
         Duration executeQueryTimeout) {
       this.executeQueryTimeout = executeQueryTimeout;
       return this;
     }
 
-    public Duration getExecuteUpdateTimeout() {
+    /** This method is obsolete. Use {@link #getExecuteUpdateTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getExecuteUpdateTimeoutDuration() instead")
+    public org.threeten.bp.Duration getExecuteUpdateTimeout() {
+      return toThreetenDuration(getExecuteUpdateTimeoutDuration());
+    }
+
+    public Duration getExecuteUpdateTimeoutDuration() {
       return executeUpdateTimeout;
     }
 
+    /** This method is obsolete. Use {@link #withExecuteUpdateTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use withExecuteUpdateTimeoutDuration() instead")
     public SpannerCallContextTimeoutConfigurator withExecuteUpdateTimeout(
+        org.threeten.bp.Duration executeUpdateTimeout) {
+      return withExecuteUpdateTimeoutDuration(toJavaTimeDuration(executeUpdateTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withExecuteUpdateTimeoutDuration(
         Duration executeUpdateTimeout) {
       this.executeUpdateTimeout = executeUpdateTimeout;
       return this;
     }
 
-    public Duration getBatchUpdateTimeout() {
+    /** This method is obsolete. Use {@link #getBatchUpdateTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getBatchUpdateTimeoutDuration() instead")
+    public org.threeten.bp.Duration getBatchUpdateTimeout() {
+      return toThreetenDuration(getBatchUpdateTimeoutDuration());
+    }
+
+    public Duration getBatchUpdateTimeoutDuration() {
       return batchUpdateTimeout;
     }
 
+    /** This method is obsolete. Use {@link #withBatchUpdateTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use withBatchUpdateTimeoutDuration() instead")
     public SpannerCallContextTimeoutConfigurator withBatchUpdateTimeout(
+        org.threeten.bp.Duration batchUpdateTimeout) {
+      return withBatchUpdateTimeoutDuration(toJavaTimeDuration(batchUpdateTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withBatchUpdateTimeoutDuration(
         Duration batchUpdateTimeout) {
       this.batchUpdateTimeout = batchUpdateTimeout;
       return this;
     }
 
-    public Duration getReadTimeout() {
+    /** This method is obsolete. Use {@link #getReadTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getReadTimeoutDuration() instead")
+    public org.threeten.bp.Duration getReadTimeout() {
+      return toThreetenDuration(getReadTimeoutDuration());
+    }
+
+    public Duration getReadTimeoutDuration() {
       return readTimeout;
     }
 
-    public SpannerCallContextTimeoutConfigurator withReadTimeout(Duration readTimeout) {
+    /** This method is obsolete. Use {@link #withReadTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use withReadTimeoutDuration() instead")
+    public SpannerCallContextTimeoutConfigurator withReadTimeout(
+        org.threeten.bp.Duration readTimeout) {
+      return withReadTimeoutDuration(toJavaTimeDuration(readTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withReadTimeoutDuration(Duration readTimeout) {
       this.readTimeout = readTimeout;
       return this;
     }
 
-    public Duration getPartitionQueryTimeout() {
+    /** This method is obsolete. Use {@link #getPartitionQueryTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getPartitionQueryTimeoutDuration() instead")
+    public org.threeten.bp.Duration getPartitionQueryTimeout() {
+      return toThreetenDuration(getPartitionQueryTimeoutDuration());
+    }
+
+    public Duration getPartitionQueryTimeoutDuration() {
       return partitionQueryTimeout;
     }
 
+    /**
+     * This method is obsolete. Use {@link #withPartitionQueryTimeoutDuration(Duration)} instead.
+     */
+    @ObsoleteApi("Use withPartitionQueryTimeoutDuration() instead")
     public SpannerCallContextTimeoutConfigurator withPartitionQueryTimeout(
+        org.threeten.bp.Duration partitionQueryTimeout) {
+      return withPartitionQueryTimeoutDuration(toJavaTimeDuration(partitionQueryTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withPartitionQueryTimeoutDuration(
         Duration partitionQueryTimeout) {
       this.partitionQueryTimeout = partitionQueryTimeout;
       return this;
     }
 
-    public Duration getPartitionReadTimeout() {
+    /** This method is obsolete. Use {@link #getPartitionReadTimeoutDuration()} instead. */
+    @ObsoleteApi("Use getPartitionReadTimeoutDuration() instead")
+    public org.threeten.bp.Duration getPartitionReadTimeout() {
+      return toThreetenDuration(getPartitionReadTimeoutDuration());
+    }
+
+    public Duration getPartitionReadTimeoutDuration() {
       return partitionReadTimeout;
     }
 
+    /** This method is obsolete. Use {@link #withPartitionReadTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use withPartitionReadTimeoutDuration() instead")
     public SpannerCallContextTimeoutConfigurator withPartitionReadTimeout(
+        org.threeten.bp.Duration partitionReadTimeout) {
+      return withPartitionReadTimeoutDuration(toJavaTimeDuration(partitionReadTimeout));
+    }
+
+    public SpannerCallContextTimeoutConfigurator withPartitionReadTimeoutDuration(
         Duration partitionReadTimeout) {
       this.partitionReadTimeout = partitionReadTimeout;
       return this;
@@ -585,7 +793,8 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       throw SpannerExceptionFactory.newSpannerException(
           ErrorCode.INVALID_ARGUMENT,
           String.format(
-              "The %s system property must be a valid integer. The value %s could not be parsed as an integer.",
+              "The %s system property must be a valid integer. The value %s could not be parsed as"
+                  + " an integer.",
               propertyName, propertyValue));
     }
   }
@@ -625,7 +834,21 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
 
     transportChannelExecutorThreadNameFormat = builder.transportChannelExecutorThreadNameFormat;
     channelProvider = builder.channelProvider;
-    channelConfigurator = builder.channelConfigurator;
+    channelEndpointCacheFactory = builder.channelEndpointCacheFactory;
+    if (builder.mTLSContext != null) {
+      channelConfigurator =
+          channelBuilder -> {
+            if (builder.channelConfigurator != null) {
+              channelBuilder = builder.channelConfigurator.apply(channelBuilder);
+            }
+            if (channelBuilder instanceof NettyChannelBuilder) {
+              ((NettyChannelBuilder) channelBuilder).sslContext(builder.mTLSContext);
+            }
+            return channelBuilder;
+          };
+    } else {
+      channelConfigurator = builder.channelConfigurator;
+    }
     interceptorProvider = builder.interceptorProvider;
     sessionPoolOptions =
         builder.sessionPoolOptions != null
@@ -636,18 +859,49 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     databaseRole = builder.databaseRole;
     sessionLabels = builder.sessionLabels;
     try {
-      spannerStubSettings = builder.spannerStubSettingsBuilder.build();
-      instanceAdminStubSettings = builder.instanceAdminStubSettingsBuilder.build();
-      databaseAdminStubSettings = builder.databaseAdminStubSettingsBuilder.build();
+      String resolvedUniversalDomain = getResolvedUniverseDomain();
+      spannerStubSettings =
+          builder.spannerStubSettingsBuilder.setUniverseDomain(resolvedUniversalDomain).build();
+      instanceAdminStubSettings =
+          builder
+              .instanceAdminStubSettingsBuilder
+              .setUniverseDomain(resolvedUniversalDomain)
+              .build();
+      databaseAdminStubSettings =
+          builder
+              .databaseAdminStubSettingsBuilder
+              .setUniverseDomain(resolvedUniversalDomain)
+              .build();
     } catch (IOException e) {
       throw SpannerExceptionFactory.newSpannerException(e);
     }
     partitionedDmlTimeout = builder.partitionedDmlTimeout;
     grpcGcpExtensionEnabled = builder.grpcGcpExtensionEnabled;
     grpcGcpOptions = builder.grpcGcpOptions;
+
+    // Dynamic channel pooling is disabled by default.
+    // It is only enabled when:
+    // 1. enableDynamicChannelPool() was explicitly called, AND
+    // 2. grpc-gcp extension is enabled, AND
+    // 3. numChannels was not explicitly set
+    if (builder.dynamicChannelPoolEnabled != null && builder.dynamicChannelPoolEnabled) {
+      // DCP was explicitly enabled, but respect numChannels if set
+      dynamicChannelPoolEnabled = grpcGcpExtensionEnabled && !builder.numChannelsExplicitlySet;
+    } else {
+      // DCP is disabled by default, or was explicitly disabled
+      dynamicChannelPoolEnabled = false;
+    }
+
+    // Use user-provided GcpChannelPoolOptions or create Spanner-specific defaults
+    gcpChannelPoolOptions =
+        builder.gcpChannelPoolOptions != null
+            ? builder.gcpChannelPoolOptions
+            : createDefaultDynamicChannelPoolOptions();
+
     autoThrottleAdministrativeRequests = builder.autoThrottleAdministrativeRequests;
     retryAdministrativeRequestsSettings = builder.retryAdministrativeRequestsSettings;
     trackTransactionStarter = builder.trackTransactionStarter;
+    enableGrpcGcpOtelMetrics = builder.enableGrpcGcpOtelMetrics;
     defaultQueryOptions = builder.defaultQueryOptions;
     envQueryOptions = builder.getEnvironmentQueryOptions();
     if (envQueryOptions.equals(QueryOptions.getDefaultInstance())) {
@@ -664,14 +918,33 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     asyncExecutorProvider = builder.asyncExecutorProvider;
     compressorName = builder.compressorName;
     leaderAwareRoutingEnabled = builder.leaderAwareRoutingEnabled;
-    attemptDirectPath = builder.attemptDirectPath;
+    enableDirectAccess = builder.enableDirectAccess;
+    enableGcpFallback = builder.enableGcpFallback;
     directedReadOptions = builder.directedReadOptions;
     useVirtualThreads = builder.useVirtualThreads;
     openTelemetry = builder.openTelemetry;
     enableApiTracing = builder.enableApiTracing;
     enableExtendedTracing = builder.enableExtendedTracing;
-    enableBuiltInMetrics = builder.enableBuiltInMetrics;
+    if (builder.experimentalHost != null) {
+      enableBuiltInMetrics = false;
+    } else {
+      enableBuiltInMetrics = builder.enableBuiltInMetrics;
+    }
+    enableLocationApi = builder.enableLocationApi;
     enableEndToEndTracing = builder.enableEndToEndTracing;
+    monitoringHost = builder.monitoringHost;
+    defaultTransactionOptions = builder.defaultTransactionOptions;
+    clientContext = builder.clientContext;
+  }
+
+  private String getResolvedUniverseDomain() {
+    String universeDomain = getUniverseDomain();
+    return Strings.isNullOrEmpty(universeDomain) ? GOOGLE_DEFAULT_UNIVERSE : universeDomain;
+  }
+
+  /** Returns the default {@link RequestOptions.ClientContext} for this {@link SpannerOptions}. */
+  public RequestOptions.ClientContext getClientContext() {
+    return clientContext;
   }
 
   /**
@@ -705,14 +978,49 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       return false;
     }
 
+    default boolean isEnableDirectAccess() {
+      return false;
+    }
+
+    default boolean isEnableGcpFallback() {
+      return false;
+    }
+
     default boolean isEnableBuiltInMetrics() {
+      return true;
+    }
+
+    default boolean isEnableGRPCBuiltInMetrics() {
+      return false;
+    }
+
+    default boolean isEnableGrpcGcpOtelMetrics() {
       return true;
     }
 
     default boolean isEnableEndToEndTracing() {
       return false;
     }
+
+    default boolean isEnableLocationApi() {
+      return false;
+    }
+
+    @Deprecated
+    @ObsoleteApi(
+        "This will be removed in an upcoming version without a major version bump. You should use"
+            + " universalDomain to configure the built-in metrics endpoint for a partner universe.")
+    default String getMonitoringHost() {
+      return null;
+    }
+
+    default GoogleCredentials getDefaultExperimentalHostCredentials() {
+      return null;
+    }
   }
+
+  static final String DEFAULT_SPANNER_EXPERIMENTAL_HOST_CREDENTIALS =
+      "SPANNER_EXPERIMENTAL_HOST_AUTH_TOKEN";
 
   /**
    * Default implementation of {@link SpannerEnvironment}. Reads all configuration from environment
@@ -725,9 +1033,18 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
         "SPANNER_OPTIMIZER_STATISTICS_PACKAGE";
     private static final String SPANNER_ENABLE_EXTENDED_TRACING = "SPANNER_ENABLE_EXTENDED_TRACING";
     private static final String SPANNER_ENABLE_API_TRACING = "SPANNER_ENABLE_API_TRACING";
+    private static final String GOOGLE_SPANNER_ENABLE_DIRECT_ACCESS =
+        "GOOGLE_SPANNER_ENABLE_DIRECT_ACCESS";
+    private static final String GOOGLE_SPANNER_ENABLE_GCP_FALLBACK =
+        "GOOGLE_SPANNER_ENABLE_GCP_FALLBACK";
     private static final String SPANNER_ENABLE_END_TO_END_TRACING =
         "SPANNER_ENABLE_END_TO_END_TRACING";
     private static final String SPANNER_DISABLE_BUILTIN_METRICS = "SPANNER_DISABLE_BUILTIN_METRICS";
+    private static final String SPANNER_DISABLE_DIRECT_ACCESS_GRPC_BUILTIN_METRICS =
+        "SPANNER_DISABLE_DIRECT_ACCESS_GRPC_BUILTIN_METRICS";
+    private static final String SPANNER_DISABLE_GRPC_GCP_OTEL_METRICS =
+        "SPANNER_DISABLE_GRPC_GCP_OTEL_METRICS";
+    private static final String SPANNER_MONITORING_HOST = "SPANNER_MONITORING_HOST";
 
     private SpannerEnvironmentImpl() {}
 
@@ -755,13 +1072,51 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     }
 
     @Override
+    public boolean isEnableDirectAccess() {
+      return Boolean.parseBoolean(System.getenv(GOOGLE_SPANNER_ENABLE_DIRECT_ACCESS));
+    }
+
+    @Override
+    public boolean isEnableGcpFallback() {
+      return Boolean.parseBoolean(System.getenv(GOOGLE_SPANNER_ENABLE_GCP_FALLBACK));
+    }
+
+    @Override
     public boolean isEnableBuiltInMetrics() {
       return !Boolean.parseBoolean(System.getenv(SPANNER_DISABLE_BUILTIN_METRICS));
     }
 
     @Override
+    public boolean isEnableGRPCBuiltInMetrics() {
+      // Enable gRPC built-in metrics as default unless explicitly
+      // disabled via env.
+      return !Boolean.parseBoolean(
+          System.getenv(SPANNER_DISABLE_DIRECT_ACCESS_GRPC_BUILTIN_METRICS));
+    }
+
+    @Override
+    public boolean isEnableGrpcGcpOtelMetrics() {
+      return !Boolean.parseBoolean(System.getenv(SPANNER_DISABLE_GRPC_GCP_OTEL_METRICS));
+    }
+
+    @Override
     public boolean isEnableEndToEndTracing() {
       return Boolean.parseBoolean(System.getenv(SPANNER_ENABLE_END_TO_END_TRACING));
+    }
+
+    @Override
+    public boolean isEnableLocationApi() {
+      return Boolean.parseBoolean(System.getenv(EXPERIMENTAL_LOCATION_API_ENV_VAR));
+    }
+
+    @Override
+    public String getMonitoringHost() {
+      return System.getenv(SPANNER_MONITORING_HOST);
+    }
+
+    @Override
+    public GoogleCredentials getDefaultExperimentalHostCredentials() {
+      return getOAuthTokenFromFile(System.getenv(DEFAULT_SPANNER_EXPERIMENTAL_HOST_CREDENTIALS));
     }
   }
 
@@ -773,9 +1128,9 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     static final DecodeMode DEFAULT_DECODE_MODE = DecodeMode.DIRECT;
     static final RetrySettings DEFAULT_ADMIN_REQUESTS_LIMIT_EXCEEDED_RETRY_SETTINGS =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofSeconds(5L))
+            .setInitialRetryDelayDuration(Duration.ofSeconds(5L))
             .setRetryDelayMultiplier(2.0)
-            .setMaxRetryDelay(Duration.ofSeconds(60L))
+            .setMaxRetryDelayDuration(Duration.ofSeconds(60L))
             .setMaxAttempts(10)
             .build();
     private final ImmutableSet<String> allowedClientLibTokens =
@@ -786,6 +1141,7 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
             createCustomClientLibToken(LIQUIBASE_API_CLIENT_LIB_TOKEN),
             createCustomClientLibToken(PG_ADAPTER_CLIENT_LIB_TOKEN));
     private TransportChannelProvider channelProvider;
+    private ChannelEndpointCacheFactory channelEndpointCacheFactory;
 
     @SuppressWarnings("rawtypes")
     private ApiFunction<ManagedChannelBuilder, ManagedChannelBuilder> channelConfigurator;
@@ -793,6 +1149,7 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     private GrpcInterceptorProvider interceptorProvider;
 
     private Integer numChannels;
+    private boolean numChannelsExplicitlySet = false;
 
     private String transportChannelExecutorThreadNameFormat = "Cloud-Spanner-TransportChannel-%d";
 
@@ -808,19 +1165,24 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     private DatabaseAdminStubSettings.Builder databaseAdminStubSettingsBuilder =
         DatabaseAdminStubSettings.newBuilder();
     private Duration partitionedDmlTimeout = Duration.ofHours(2L);
-    private boolean grpcGcpExtensionEnabled = false;
+    private boolean grpcGcpExtensionEnabled = true;
     private GcpManagedChannelOptions grpcGcpOptions;
+    private Boolean dynamicChannelPoolEnabled;
+    private GcpChannelPoolOptions gcpChannelPoolOptions;
     private RetrySettings retryAdministrativeRequestsSettings =
         DEFAULT_ADMIN_REQUESTS_LIMIT_EXCEEDED_RETRY_SETTINGS;
     private boolean autoThrottleAdministrativeRequests = false;
     private boolean trackTransactionStarter = false;
     private Map<DatabaseId, QueryOptions> defaultQueryOptions = new HashMap<>();
+    private boolean enableGrpcGcpOtelMetrics =
+        SpannerOptions.environment.isEnableGrpcGcpOtelMetrics();
     private CallCredentialsProvider callCredentialsProvider;
     private CloseableExecutorProvider asyncExecutorProvider;
     private String compressorName;
     private String emulatorHost = System.getenv("SPANNER_EMULATOR_HOST");
     private boolean leaderAwareRoutingEnabled = true;
-    private boolean attemptDirectPath = true;
+    private boolean enableDirectAccess = SpannerOptions.environment.isEnableDirectAccess();
+    private boolean enableGcpFallback = SpannerOptions.environment.isEnableGcpFallback();
     private DirectedReadOptions directedReadOptions;
     private boolean useVirtualThreads = false;
     private OpenTelemetry openTelemetry;
@@ -828,6 +1190,13 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     private boolean enableExtendedTracing = SpannerOptions.environment.isEnableExtendedTracing();
     private boolean enableEndToEndTracing = SpannerOptions.environment.isEnableEndToEndTracing();
     private boolean enableBuiltInMetrics = SpannerOptions.environment.isEnableBuiltInMetrics();
+    private boolean enableLocationApi = SpannerOptions.environment.isEnableLocationApi();
+    private String monitoringHost = SpannerOptions.environment.getMonitoringHost();
+    private SslContext mTLSContext = null;
+    private String experimentalHost = null;
+    private boolean usePlainText = false;
+    private TransactionOptions defaultTransactionOptions = TransactionOptions.getDefaultInstance();
+    private RequestOptions.ClientContext clientContext;
 
     private static String createCustomClientLibToken(String token) {
       return token + " " + ServiceOptions.getGoogApiClientLibName();
@@ -835,26 +1204,56 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
 
     protected Builder() {
       // Manually set retry and polling settings that work.
-      OperationTimedPollAlgorithm longRunningPollingAlgorithm =
+      RetrySettings baseRetrySettings =
+          RetrySettings.newBuilder()
+              .setInitialRpcTimeoutDuration(Duration.ofSeconds(60L))
+              .setMaxRpcTimeoutDuration(Duration.ofSeconds(600L))
+              .setMaxRetryDelayDuration(Duration.ofSeconds(45L))
+              .setRetryDelayMultiplier(1.5)
+              .setRpcTimeoutMultiplier(1.5)
+              .setTotalTimeoutDuration(Duration.ofHours(48L))
+              .build();
+
+      // The polling setting with a short initial delay as we expect
+      // it to return soon.
+      OperationTimedPollAlgorithm shortInitialPollingDelayAlgorithm =
           OperationTimedPollAlgorithm.create(
-              RetrySettings.newBuilder()
-                  .setInitialRpcTimeout(Duration.ofSeconds(60L))
-                  .setMaxRpcTimeout(Duration.ofSeconds(600L))
-                  .setInitialRetryDelay(Duration.ofSeconds(20L))
-                  .setMaxRetryDelay(Duration.ofSeconds(45L))
-                  .setRetryDelayMultiplier(1.5)
-                  .setRpcTimeoutMultiplier(1.5)
-                  .setTotalTimeout(Duration.ofHours(48L))
+              baseRetrySettings.toBuilder()
+                  .setInitialRetryDelayDuration(Duration.ofSeconds(1L))
                   .build());
       databaseAdminStubSettingsBuilder
           .createDatabaseOperationSettings()
-          .setPollingAlgorithm(longRunningPollingAlgorithm);
+          .setPollingAlgorithm(shortInitialPollingDelayAlgorithm);
+
+      // The polling setting with a long initial delay as we expect
+      // the operation to take a bit long time to return.
+      OperationTimedPollAlgorithm longInitialPollingDelayAlgorithm =
+          OperationTimedPollAlgorithm.create(
+              baseRetrySettings.toBuilder()
+                  .setInitialRetryDelayDuration(Duration.ofSeconds(20L))
+                  .build());
       databaseAdminStubSettingsBuilder
           .createBackupOperationSettings()
-          .setPollingAlgorithm(longRunningPollingAlgorithm);
+          .setPollingAlgorithm(longInitialPollingDelayAlgorithm);
       databaseAdminStubSettingsBuilder
           .restoreDatabaseOperationSettings()
-          .setPollingAlgorithm(longRunningPollingAlgorithm);
+          .setPollingAlgorithm(longInitialPollingDelayAlgorithm);
+
+      // updateDatabaseDdl requires a separate setting because
+      // it has no existing overrides on RPC timeouts for LRO polling.
+      databaseAdminStubSettingsBuilder
+          .updateDatabaseDdlOperationSettings()
+          .setPollingAlgorithm(
+              OperationTimedPollAlgorithm.create(
+                  RetrySettings.newBuilder()
+                      .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
+                      .setRetryDelayMultiplier(1.5)
+                      .setMaxRetryDelayDuration(Duration.ofMillis(45000L))
+                      .setInitialRpcTimeoutDuration(Duration.ZERO)
+                      .setRpcTimeoutMultiplier(1.0)
+                      .setMaxRpcTimeoutDuration(Duration.ZERO)
+                      .setTotalTimeoutDuration(Duration.ofHours(48L))
+                      .build()));
     }
 
     Builder(SpannerOptions options) {
@@ -878,23 +1277,32 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       this.partitionedDmlTimeout = options.partitionedDmlTimeout;
       this.grpcGcpExtensionEnabled = options.grpcGcpExtensionEnabled;
       this.grpcGcpOptions = options.grpcGcpOptions;
+      this.dynamicChannelPoolEnabled = options.dynamicChannelPoolEnabled;
+      this.gcpChannelPoolOptions = options.gcpChannelPoolOptions;
       this.autoThrottleAdministrativeRequests = options.autoThrottleAdministrativeRequests;
       this.retryAdministrativeRequestsSettings = options.retryAdministrativeRequestsSettings;
       this.trackTransactionStarter = options.trackTransactionStarter;
+      this.enableGrpcGcpOtelMetrics = options.enableGrpcGcpOtelMetrics;
       this.defaultQueryOptions = options.defaultQueryOptions;
       this.callCredentialsProvider = options.callCredentialsProvider;
       this.asyncExecutorProvider = options.asyncExecutorProvider;
       this.compressorName = options.compressorName;
       this.channelProvider = options.channelProvider;
+      this.channelEndpointCacheFactory = options.channelEndpointCacheFactory;
       this.channelConfigurator = options.channelConfigurator;
       this.interceptorProvider = options.interceptorProvider;
-      this.attemptDirectPath = options.attemptDirectPath;
+      this.enableDirectAccess = options.enableDirectAccess;
+      this.enableGcpFallback = options.enableGcpFallback;
       this.directedReadOptions = options.directedReadOptions;
       this.useVirtualThreads = options.useVirtualThreads;
       this.enableApiTracing = options.enableApiTracing;
       this.enableExtendedTracing = options.enableExtendedTracing;
       this.enableBuiltInMetrics = options.enableBuiltInMetrics;
+      this.enableLocationApi = options.enableLocationApi;
       this.enableEndToEndTracing = options.enableEndToEndTracing;
+      this.monitoringHost = options.monitoringHost;
+      this.defaultTransactionOptions = options.defaultTransactionOptions;
+      this.clientContext = options.clientContext;
     }
 
     @Override
@@ -940,6 +1348,13 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       return this;
     }
 
+    @InternalApi
+    public Builder setChannelEndpointCacheFactory(
+        ChannelEndpointCacheFactory channelEndpointCacheFactory) {
+      this.channelEndpointCacheFactory = channelEndpointCacheFactory;
+      return this;
+    }
+
     /**
      * Sets an {@link ApiFunction} that will be used to configure the transport channel. This will
      * only be used if no custom {@link TransportChannelProvider} has been set.
@@ -966,6 +1381,7 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
      */
     public Builder setNumChannels(int numChannels) {
       this.numChannels = numChannels;
+      this.numChannelsExplicitlySet = true;
       return this;
     }
 
@@ -1024,8 +1440,9 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     @Override
     public Builder setRetrySettings(RetrySettings retrySettings) {
       throw new UnsupportedOperationException(
-          "SpannerOptions does not support setting global retry settings. "
-              + "Call spannerStubSettingsBuilder().<method-name>Settings().setRetrySettings(RetrySettings) instead.");
+          "SpannerOptions does not support setting global retry settings. Call"
+              + " spannerStubSettingsBuilder().<method-name>Settings().setRetrySettings(RetrySettings)"
+              + " instead.");
     }
 
     /**
@@ -1112,11 +1529,17 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       return databaseAdminStubSettingsBuilder;
     }
 
+    /** This method is obsolete. Use {@link #setPartitionedDmlTimeoutDuration(Duration)} instead. */
+    @ObsoleteApi("Use setPartitionedDmlTimeoutDuration(Duration) instead")
+    public Builder setPartitionedDmlTimeout(org.threeten.bp.Duration timeout) {
+      return setPartitionedDmlTimeoutDuration(toJavaTimeDuration(timeout));
+    }
+
     /**
      * Sets a timeout specifically for Partitioned DML statements executed through {@link
      * DatabaseClient#executePartitionedUpdate(Statement, UpdateOption...)}. The default is 2 hours.
      */
-    public Builder setPartitionedDmlTimeout(Duration timeout) {
+    public Builder setPartitionedDmlTimeoutDuration(Duration timeout) {
       this.partitionedDmlTimeout = timeout;
       return this;
     }
@@ -1318,20 +1741,32 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       return this;
     }
 
-    /**
-     * Enables gRPC-GCP extension with the default settings. Do not set
-     * GOOGLE_CLOUD_SPANNER_MULTIPLEXED_SESSIONS to true in combination with this option, as
-     * Multiplexed sessions are not supported for gRPC-GCP.
-     */
+    @ExperimentalApi("https://github.com/googleapis/java-spanner/pull/3676")
+    public Builder setExperimentalHost(String host) {
+      if (this.usePlainText) {
+        Preconditions.checkArgument(
+            !host.startsWith("https:"),
+            "Please remove the 'https:' protocol prefix from the host string when using plain text"
+                + " communication");
+        if (!host.startsWith("http")) {
+          host = "http://" + host;
+        }
+      }
+      super.setHost(host);
+      super.setProjectId(EXPERIMENTAL_HOST_PROJECT_ID);
+      setSessionPoolOption(SessionPoolOptions.newBuilder().setExperimentalHost().build());
+      this.experimentalHost = host;
+      return this;
+    }
+
+    /** Enables gRPC-GCP extension with the default settings. This option is enabled by default. */
     public Builder enableGrpcGcpExtension() {
       return this.enableGrpcGcpExtension(null);
     }
 
     /**
      * Enables gRPC-GCP extension and uses provided options for configuration. The metric registry
-     * and default Spanner metric labels will be added automatically. Do not set
-     * GOOGLE_CLOUD_SPANNER_MULTIPLEXED_SESSIONS to true in combination with this option, as
-     * Multiplexed sessions are not supported for gRPC-GCP.
+     * and default Spanner metric labels will be added automatically.
      */
     public Builder enableGrpcGcpExtension(GcpManagedChannelOptions options) {
       this.grpcGcpExtensionEnabled = true;
@@ -1339,9 +1774,76 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       return this;
     }
 
-    /** Disables gRPC-GCP extension. */
+    /** Disables gRPC-GCP extension and uses GAX channel pool instead. */
     public Builder disableGrpcGcpExtension() {
       this.grpcGcpExtensionEnabled = false;
+      return this;
+    }
+
+    /**
+     * Enables dynamic channel pooling. When enabled, the client will automatically scale the number
+     * of channels based on load. This requires the gRPC-GCP extension to be enabled.
+     *
+     * <p>Dynamic channel pooling is disabled by default. Use this method to explicitly enable it.
+     * Note that calling {@link #setNumChannels(int)} will disable dynamic channel pooling even if
+     * this method was called.
+     */
+    public Builder enableDynamicChannelPool() {
+      this.dynamicChannelPoolEnabled = true;
+      return this;
+    }
+
+    /**
+     * Disables dynamic channel pooling. When disabled, the client will use a static number of
+     * channels as configured by {@link #setNumChannels(int)}.
+     *
+     * <p>Dynamic channel pooling is disabled by default, so this method is typically not needed
+     * unless you want to explicitly disable it after enabling it.
+     */
+    public Builder disableDynamicChannelPool() {
+      this.dynamicChannelPoolEnabled = false;
+      return this;
+    }
+
+    /**
+     * Sets whether to enable or disable grpc-gcp OpenTelemetry metrics injection. When disabled,
+     * Spanner will not automatically inject an OpenTelemetry {@link
+     * io.opentelemetry.api.metrics.Meter} into grpc-gcp. If a Meter or MetricRegistry is explicitly
+     * provided via {@link GcpManagedChannelOptions}, those settings will still be honored.
+     */
+    public Builder setGrpcGcpOtelMetricsEnabled(boolean enableGrpcGcpOtelMetrics) {
+      this.enableGrpcGcpOtelMetrics = enableGrpcGcpOtelMetrics;
+      return this;
+    }
+
+    /**
+     * Sets the channel pool options for dynamic channel pooling. Use this to configure the dynamic
+     * channel pool behavior when {@link #enableDynamicChannelPool()} is enabled.
+     *
+     * <p>If not set, Spanner-specific defaults will be used (see {@link
+     * #createDefaultDynamicChannelPoolOptions()}).
+     *
+     * <p>Example usage:
+     *
+     * <pre>{@code
+     * SpannerOptions options = SpannerOptions.newBuilder()
+     *     .setProjectId("my-project")
+     *     .enableDynamicChannelPool()
+     *     .setGcpChannelPoolOptions(
+     *         GcpChannelPoolOptions.newBuilder()
+     *             .setMaxSize(15)
+     *             .setMinSize(3)
+     *             .setInitSize(5)
+     *             .setDynamicScaling(10, 30, Duration.ofMinutes(5))
+     *             .build())
+     *     .build();
+     * }</pre>
+     *
+     * @param gcpChannelPoolOptions the channel pool options to use
+     * @return this builder for chaining
+     */
+    public Builder setGcpChannelPoolOptions(GcpChannelPoolOptions gcpChannelPoolOptions) {
+      this.gcpChannelPoolOptions = Preconditions.checkNotNull(gcpChannelPoolOptions);
       return this;
     }
 
@@ -1351,6 +1853,44 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
      */
     public Builder setEmulatorHost(String emulatorHost) {
       this.emulatorHost = emulatorHost;
+      return this;
+    }
+
+    /**
+     * Configures mTLS authentication using the provided client certificate and key files. mTLS is
+     * only supported for experimental spanner hosts.
+     *
+     * @param clientCertificate Path to the client certificate file.
+     * @param clientCertificateKey Path to the client private key file.
+     * @throws SpannerException If an error occurs while configuring the mTLS context
+     */
+    @ExperimentalApi("https://github.com/googleapis/java-spanner/pull/3574")
+    public Builder useClientCert(String clientCertificate, String clientCertificateKey) {
+      try {
+        this.mTLSContext =
+            GrpcSslContexts.forClient()
+                .keyManager(new File(clientCertificate), new File(clientCertificateKey))
+                .build();
+      } catch (Exception e) {
+        throw SpannerExceptionFactory.asSpannerException(e);
+      }
+      return this;
+    }
+
+    /**
+     * {@code usePlainText} will configure the transport to use plaintext (no TLS) and will set
+     * credentials to {@link com.google.cloud.NoCredentials} to avoid sending authentication over an
+     * unsecured channel.
+     */
+    @ExperimentalApi("https://github.com/googleapis/java-spanner/pull/4264")
+    public Builder usePlainText() {
+      this.usePlainText = true;
+      this.setChannelConfigurator(ManagedChannelBuilder::usePlaintext)
+          .setCredentials(NoCredentials.getInstance());
+      if (this.experimentalHost != null) {
+        // Re-apply host settings to ensure http:// is prepended.
+        setExperimentalHost(this.experimentalHost);
+      }
       return this;
     }
 
@@ -1382,8 +1922,15 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     }
 
     @BetaApi
+    public Builder setEnableDirectAccess(boolean enableDirectAccess) {
+      this.enableDirectAccess = enableDirectAccess;
+      return this;
+    }
+
+    @ObsoleteApi("Use setEnableDirectAccess(false) instead")
+    @Deprecated
     public Builder disableDirectPath() {
-      this.attemptDirectPath = false;
+      this.enableDirectAccess = false;
       return this;
     }
 
@@ -1417,6 +1964,16 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       return this;
     }
 
+    /** Sets the monitoring host to be used for Built-in client side metrics */
+    @Deprecated
+    @ObsoleteApi(
+        "This will be removed in an upcoming version without a major version bump. You should use"
+            + " universalDomain to configure the built-in metrics endpoint for a partner universe.")
+    public Builder setMonitoringHost(String monitoringHost) {
+      this.monitoringHost = monitoringHost;
+      return this;
+    }
+
     /**
      * Sets whether to enable extended OpenTelemetry tracing. Enabling this option will add the
      * following additional attributes to the traces that are generated by the client:
@@ -1442,11 +1999,73 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       return this;
     }
 
+    /**
+     * Provides the default read-write transaction options for all databases. These defaults are
+     * overridden by any explicit {@link com.google.cloud.spanner.Options.TransactionOption}
+     * provided through {@link DatabaseClient}.
+     *
+     * <p>Example Usage:
+     *
+     * <pre>{@code
+     * DefaultReadWriteTransactionOptions options = DefaultReadWriteTransactionOptions.newBuilder()
+     * .setIsolationLevel(IsolationLevel.SERIALIZABLE)
+     * .setReadLockMode(ReadLockMode.OPTIMISTIC)
+     * .build();
+     * }</pre>
+     */
+    public static class DefaultReadWriteTransactionOptions {
+      private final TransactionOptions defaultTransactionOptions;
+
+      private DefaultReadWriteTransactionOptions(TransactionOptions defaultTransactionOptions) {
+        this.defaultTransactionOptions = defaultTransactionOptions;
+      }
+
+      public static DefaultReadWriteTransactionOptionsBuilder newBuilder() {
+        return new DefaultReadWriteTransactionOptionsBuilder();
+      }
+
+      public static class DefaultReadWriteTransactionOptionsBuilder {
+        private final TransactionOptions.Builder transactionOptionsBuilder =
+            TransactionOptions.newBuilder();
+
+        public DefaultReadWriteTransactionOptionsBuilder setIsolationLevel(
+            IsolationLevel isolationLevel) {
+          transactionOptionsBuilder.setIsolationLevel(isolationLevel);
+          return this;
+        }
+
+        public DefaultReadWriteTransactionOptionsBuilder setReadLockMode(
+            ReadLockMode readLockMode) {
+          transactionOptionsBuilder.getReadWriteBuilder().setReadLockMode(readLockMode);
+          return this;
+        }
+
+        public DefaultReadWriteTransactionOptions build() {
+          return new DefaultReadWriteTransactionOptions(transactionOptionsBuilder.build());
+        }
+      }
+    }
+
+    /** Sets the {@link DefaultReadWriteTransactionOptions} for read-write transactions. */
+    public Builder setDefaultTransactionOptions(
+        DefaultReadWriteTransactionOptions defaultReadWriteTransactionOptions) {
+      Preconditions.checkNotNull(
+          defaultReadWriteTransactionOptions, "DefaultReadWriteTransactionOptions cannot be null");
+      this.defaultTransactionOptions = defaultReadWriteTransactionOptions.defaultTransactionOptions;
+      return this;
+    }
+
+    /** Sets the default {@link RequestOptions.ClientContext} for all requests. */
+    public Builder setDefaultClientContext(RequestOptions.ClientContext clientContext) {
+      this.clientContext = clientContext;
+      return this;
+    }
+
     @SuppressWarnings("rawtypes")
     @Override
     public SpannerOptions build() {
       // Set the host of emulator has been set.
-      if (emulatorHost != null) {
+      if (emulatorHost != null && experimentalHost == null) {
         if (!emulatorHost.startsWith("http")) {
           emulatorHost = "http://" + emulatorHost;
         }
@@ -1456,6 +2075,8 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
         this.setChannelConfigurator(ManagedChannelBuilder::usePlaintext);
         // As we are using plain text, we should never send any credentials.
         this.setCredentials(NoCredentials.getInstance());
+      } else if (experimentalHost != null && credentials == null) {
+        credentials = environment.getDefaultExperimentalHostCredentials();
       }
       if (this.numChannels == null) {
         this.numChannels =
@@ -1496,6 +2117,24 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     SpannerOptions.environment = SpannerEnvironmentImpl.INSTANCE;
   }
 
+  @InternalApi
+  public static GoogleCredentials getDefaultExperimentalCredentialsFromSysEnv() {
+    return getOAuthTokenFromFile(System.getenv(DEFAULT_SPANNER_EXPERIMENTAL_HOST_CREDENTIALS));
+  }
+
+  private static @Nullable GoogleCredentials getOAuthTokenFromFile(@Nullable String file) {
+    if (!Strings.isNullOrEmpty(file)) {
+      String token;
+      try {
+        token = Base64.getEncoder().encodeToString(Files.readAllBytes(Paths.get(file)));
+      } catch (IOException e) {
+        throw SpannerExceptionFactory.newSpannerException(e);
+      }
+      return GoogleCredentials.create(new AccessToken(token, null));
+    }
+    return null;
+  }
+
   /**
    * Enables OpenTelemetry traces. Enabling OpenTelemetry traces will disable OpenCensus traces. By
    * default, OpenCensus traces are enabled.
@@ -1505,7 +2144,8 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
       if (activeTracingFramework != null
           && activeTracingFramework != TracingFramework.OPEN_TELEMETRY) {
         throw new IllegalStateException(
-            "ActiveTracingFramework is set to OpenCensus and cannot be reset after SpannerOptions object is created.");
+            "ActiveTracingFramework is set to OpenCensus and cannot be reset after SpannerOptions"
+                + " object is created.");
       }
       activeTracingFramework = TracingFramework.OPEN_TELEMETRY;
     }
@@ -1513,13 +2153,15 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
 
   /** Enables OpenCensus traces. Enabling OpenCensus traces will disable OpenTelemetry traces. */
   @ObsoleteApi(
-      "The OpenCensus project is deprecated. Use enableOpenTelemetryTraces to switch to OpenTelemetry traces")
+      "The OpenCensus project is deprecated. Use enableOpenTelemetryTraces to switch to"
+          + " OpenTelemetry traces")
   public static void enableOpenCensusTraces() {
     synchronized (lock) {
       if (activeTracingFramework != null
           && activeTracingFramework != TracingFramework.OPEN_CENSUS) {
         throw new IllegalStateException(
-            "ActiveTracingFramework is set to OpenTelemetry and cannot be reset after SpannerOptions object is created.");
+            "ActiveTracingFramework is set to OpenTelemetry and cannot be reset after"
+                + " SpannerOptions object is created.");
       }
       activeTracingFramework = TracingFramework.OPEN_CENSUS;
     }
@@ -1530,7 +2172,8 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
    * not a valid production scenario
    */
   @ObsoleteApi(
-      "The OpenCensus project is deprecated. Use enableOpenTelemetryTraces to switch to OpenTelemetry traces")
+      "The OpenCensus project is deprecated. Use enableOpenTelemetryTraces to switch to"
+          + " OpenTelemetry traces")
   @VisibleForTesting
   static void resetActiveTracingFramework() {
     activeTracingFramework = null;
@@ -1582,6 +2225,11 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     return channelProvider;
   }
 
+  @InternalApi
+  public ChannelEndpointCacheFactory getChannelEndpointCacheFactory() {
+    return channelEndpointCacheFactory;
+  }
+
   @SuppressWarnings("rawtypes")
   public ApiFunction<ManagedChannelBuilder, ManagedChannelBuilder> getChannelConfigurator() {
     return channelConfigurator;
@@ -1623,7 +2271,11 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     return databaseAdminStubSettings;
   }
 
-  public Duration getPartitionedDmlTimeout() {
+  public org.threeten.bp.Duration getPartitionedDmlTimeout() {
+    return toThreetenDuration(getPartitionedDmlTimeoutDuration());
+  }
+
+  public Duration getPartitionedDmlTimeoutDuration() {
     return partitionedDmlTimeout;
   }
 
@@ -1631,8 +2283,32 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     return grpcGcpExtensionEnabled;
   }
 
+  public boolean isGrpcGcpOtelMetricsEnabled() {
+    return enableGrpcGcpOtelMetrics;
+  }
+
   public GcpManagedChannelOptions getGrpcGcpOptions() {
     return grpcGcpOptions;
+  }
+
+  /**
+   * Returns whether dynamic channel pooling is enabled. Dynamic channel pooling is disabled by
+   * default. Use {@link Builder#enableDynamicChannelPool()} to explicitly enable it. Note that
+   * calling {@link Builder#setNumChannels(int)} will disable dynamic channel pooling even if it was
+   * explicitly enabled.
+   */
+  public boolean isDynamicChannelPoolEnabled() {
+    return dynamicChannelPoolEnabled;
+  }
+
+  /**
+   * Returns the channel pool options for dynamic channel pooling. If no options were explicitly
+   * set, returns the Spanner-specific defaults.
+   *
+   * @see #createDefaultDynamicChannelPoolOptions()
+   */
+  public GcpChannelPoolOptions getGcpChannelPoolOptions() {
+    return gcpChannelPoolOptions;
   }
 
   public boolean isAutoThrottleAdministrativeRequests() {
@@ -1651,6 +2327,15 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     return callCredentialsProvider;
   }
 
+  private boolean usesNoCredentials() {
+    // When JMH is enabled, we need to enable built-in metrics
+    if (System.getProperty("jmh.enabled") != null
+        && System.getProperty("jmh.enabled").equals("true")) {
+      return false;
+    }
+    return Objects.equals(getCredentials(), NoCredentials.getInstance());
+  }
+
   public String getCompressorName() {
     return compressorName;
   }
@@ -1664,8 +2349,18 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
   }
 
   @BetaApi
+  public Boolean isEnableDirectAccess() {
+    return enableDirectAccess;
+  }
+
+  public Boolean isEnableGcpFallback() {
+    return enableGcpFallback;
+  }
+
+  @ObsoleteApi("Use isEnableDirectAccess() instead")
+  @Deprecated
   public boolean isAttemptDirectPath() {
-    return attemptDirectPath;
+    return enableDirectAccess;
   }
 
   /**
@@ -1685,6 +2380,24 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
     return createApiTracerFactory(false, false);
   }
 
+  /** Returns the internal OpenTelemetry instance used for built-in metrics. */
+  @InternalApi
+  public OpenTelemetry getBuiltInOpenTelemetry() {
+    return this.builtInMetricsProvider.getOrCreateOpenTelemetry(
+        this.getProjectId(), getCredentials(), this.monitoringHost, getUniverseDomain());
+  }
+
+  public void enablegRPCMetrics(InstantiatingGrpcChannelProvider.Builder channelProviderBuilder) {
+    if (SpannerOptions.environment.isEnableGRPCBuiltInMetrics()) {
+      this.builtInMetricsProvider.enableGrpcMetrics(
+          channelProviderBuilder,
+          this.getProjectId(),
+          getCredentials(),
+          this.monitoringHost,
+          getUniverseDomain());
+    }
+  }
+
   public ApiTracerFactory getApiTracerFactory(boolean isAdminClient, boolean isEmulatorEnabled) {
     return createApiTracerFactory(isAdminClient, isEmulatorEnabled);
   }
@@ -1698,7 +2411,7 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
 
     // Add Metrics Tracer factory if built in metrics are enabled and if the client is data client
     // and if emulator is not enabled.
-    if (isEnableBuiltInMetrics() && !isAdminClient && !isEmulatorEnabled) {
+    if (isEnableBuiltInMetrics() && !isAdminClient && !isEmulatorEnabled && !usesNoCredentials()) {
       ApiTracerFactory metricsTracerFactory = createMetricsApiTracerFactory();
       if (metricsTracerFactory != null) {
         apiTracerFactories.add(metricsTracerFactory);
@@ -1726,14 +2439,21 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
 
   private ApiTracerFactory createMetricsApiTracerFactory() {
     OpenTelemetry openTelemetry =
-        this.builtInOpenTelemetryMetricsProvider.getOrCreateOpenTelemetry(
-            this.getProjectId(), getCredentials());
+        this.builtInMetricsProvider.getOrCreateOpenTelemetry(
+            this.getProjectId(), getCredentials(), this.monitoringHost, getUniverseDomain());
 
     return openTelemetry != null
-        ? new MetricsTracerFactory(
-            new OpenTelemetryMetricsRecorder(openTelemetry, BuiltInMetricsConstant.METER_NAME),
-            builtInOpenTelemetryMetricsProvider.createClientAttributes(
-                this.getProjectId(), "spanner-java/" + GaxProperties.getLibraryVersion(getClass())))
+        ? new BuiltInMetricsTracerFactory(
+            new BuiltInMetricsRecorder(openTelemetry, BuiltInMetricsConstant.METER_NAME),
+            new HashMap<>(),
+            new TraceWrapper(
+                Tracing.getTracer(),
+                // Using the OpenTelemetry object set in Spanner Options, will be NoOp if not set
+                this.getOpenTelemetry()
+                    .getTracer(
+                        MetricRegistryConstants.INSTRUMENTATION_SCOPE,
+                        GaxProperties.getLibraryVersion(getClass())),
+                true))
         : null;
   }
 
@@ -1752,6 +2472,20 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
    */
   public boolean isEnableBuiltInMetrics() {
     return enableBuiltInMetrics;
+  }
+
+  @InternalApi
+  public boolean isEnableLocationApi() {
+    return enableLocationApi;
+  }
+
+  /** Returns the override metrics Host. */
+  String getMonitoringHost() {
+    return monitoringHost;
+  }
+
+  public TransactionOptions getDefaultTransactionOptions() {
+    return defaultTransactionOptions;
   }
 
   @BetaApi
@@ -1811,7 +2545,11 @@ public class SpannerOptions extends ServiceOptions<Spanner, SpannerOptions> {
 
   @Override
   protected String getDefaultHost() {
-    return DEFAULT_HOST;
+    String universeDomain = getUniverseDomain();
+    if (Strings.isNullOrEmpty(universeDomain)) {
+      universeDomain = GOOGLE_DEFAULT_UNIVERSE;
+    }
+    return String.format("https://%s.%s", SPANNER_SERVICE_NAME, universeDomain);
   }
 
   private static class SpannerDefaults implements ServiceDefaults<Spanner, SpannerOptions> {

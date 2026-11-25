@@ -16,6 +16,7 @@
 
 package com.google.cloud.spanner;
 
+import com.google.api.core.InternalApi;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.cloud.spanner.AbstractResultSet.CloseableIterator;
 import com.google.cloud.spanner.spi.v1.SpannerRpc;
@@ -24,6 +25,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.util.concurrent.Uninterruptibles;
 import com.google.spanner.v1.PartialResultSet;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -31,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
-import org.threeten.bp.Duration;
 
 /** Adapts a streaming read/query call into an iterator over partial result sets. */
 @VisibleForTesting
@@ -39,6 +40,7 @@ class GrpcStreamIterator extends AbstractIterator<PartialResultSet>
     implements CloseableIterator<PartialResultSet> {
   private static final Logger logger = Logger.getLogger(GrpcStreamIterator.class.getName());
   static final PartialResultSet END_OF_STREAM = PartialResultSet.newBuilder().build();
+  private final int prefetchChunks;
   private AsyncResultSet.StreamMessageListener streamMessageListener;
 
   private final ConsumerImpl consumer;
@@ -47,19 +49,27 @@ class GrpcStreamIterator extends AbstractIterator<PartialResultSet>
 
   private SpannerRpc.StreamingCall call;
   private volatile boolean withBeginTransaction;
+  private final boolean lastStatement;
   private TimeUnit streamWaitTimeoutUnit;
   private long streamWaitTimeoutValue;
   private SpannerException error;
+  private boolean done;
 
   @VisibleForTesting
-  GrpcStreamIterator(int prefetchChunks, boolean cancelQueryWhenClientIsClosed) {
-    this(null, prefetchChunks, cancelQueryWhenClientIsClosed);
+  GrpcStreamIterator(
+      boolean lastStatement, int prefetchChunks, boolean cancelQueryWhenClientIsClosed) {
+    this(null, lastStatement, prefetchChunks, cancelQueryWhenClientIsClosed);
   }
 
   @VisibleForTesting
   GrpcStreamIterator(
-      Statement statement, int prefetchChunks, boolean cancelQueryWhenClientIsClosed) {
+      Statement statement,
+      boolean lastStatement,
+      int prefetchChunks,
+      boolean cancelQueryWhenClientIsClosed) {
     this.statement = statement;
+    this.lastStatement = lastStatement;
+    this.prefetchChunks = prefetchChunks;
     this.consumer = new ConsumerImpl(cancelQueryWhenClientIsClosed);
     // One extra to allow for END_OF_STREAM message.
     this.stream = new LinkedBlockingQueue<>(prefetchChunks + 1);
@@ -77,7 +87,8 @@ class GrpcStreamIterator extends AbstractIterator<PartialResultSet>
     this.call = call;
     this.withBeginTransaction = withBeginTransaction;
     ApiCallContext callContext = call.getCallContext();
-    Duration streamWaitTimeout = callContext == null ? null : callContext.getStreamWaitTimeout();
+    Duration streamWaitTimeout =
+        callContext == null ? null : callContext.getStreamWaitTimeoutDuration();
     if (streamWaitTimeout != null) {
       // Determine the timeout unit to use. This reduces the precision to seconds if the timeout
       // value is more than 1 second, which is lower than the precision that would normally be
@@ -102,8 +113,20 @@ class GrpcStreamIterator extends AbstractIterator<PartialResultSet>
   }
 
   @Override
+  @InternalApi
+  public void requestPrefetchChunks() {
+    Preconditions.checkState(call != null, "The StreamingCall object is not initialized");
+    call.request(prefetchChunks);
+  }
+
+  @Override
   public boolean isWithBeginTransaction() {
     return withBeginTransaction;
+  }
+
+  @Override
+  public boolean isLastStatement() {
+    return lastStatement;
   }
 
   @Override
@@ -132,7 +155,7 @@ class GrpcStreamIterator extends AbstractIterator<PartialResultSet>
     call = null;
 
     if (error != null) {
-      throw SpannerExceptionFactory.newSpannerException(error);
+      throw SpannerExceptionFactory.asSpannerException(error);
     }
 
     endOfData();
@@ -155,33 +178,31 @@ class GrpcStreamIterator extends AbstractIterator<PartialResultSet>
     @Override
     public void onPartialResultSet(PartialResultSet results) {
       addToStream(results);
+      if (results.getLast()) {
+        done = true;
+        addToStream(END_OF_STREAM);
+      }
     }
 
     @Override
     public void onCompleted() {
-      addToStream(END_OF_STREAM);
+      if (!done) {
+        addToStream(END_OF_STREAM);
+      }
     }
 
     @Override
-    public void onError(SpannerException e) {
+    public void onError(SpannerException exception) {
       if (statement != null) {
         if (logger.isLoggable(Level.FINEST)) {
           // Include parameter values if logging level is set to FINEST or higher.
-          e =
-              SpannerExceptionFactory.newSpannerExceptionPreformatted(
-                  e.getErrorCode(),
-                  String.format("%s - Statement: '%s'", e.getMessage(), statement.toString()),
-                  e);
-          logger.log(Level.FINEST, "Error executing statement", e);
+          exception.setStatement(statement.toString());
+          logger.log(Level.FINEST, "Error executing statement", exception);
         } else {
-          e =
-              SpannerExceptionFactory.newSpannerExceptionPreformatted(
-                  e.getErrorCode(),
-                  String.format("%s - Statement: '%s'", e.getMessage(), statement.getSql()),
-                  e);
+          exception.setStatement(statement.getSql());
         }
       }
-      error = e;
+      error = exception;
       addToStream(END_OF_STREAM);
     }
 

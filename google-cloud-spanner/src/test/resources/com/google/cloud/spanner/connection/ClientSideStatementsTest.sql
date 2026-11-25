@@ -1130,6 +1130,205 @@ NEW_CONNECTION;
 @EXPECT EXCEPTION UNIMPLEMENTED
 show variable/-statement_timeout;
 NEW_CONNECTION;
+show variable transaction_timeout;
+NEW_CONNECTION;
+SHOW VARIABLE TRANSACTION_TIMEOUT;
+NEW_CONNECTION;
+show variable transaction_timeout;
+NEW_CONNECTION;
+   show variable transaction_timeout;
+NEW_CONNECTION;
+			show variable transaction_timeout;
+NEW_CONNECTION;
+
+
+
+show variable transaction_timeout;
+NEW_CONNECTION;
+show variable transaction_timeout  ;
+NEW_CONNECTION;
+show variable transaction_timeout		;
+NEW_CONNECTION;
+show variable transaction_timeout
+
+;
+NEW_CONNECTION;
+show   variable   transaction_timeout;
+NEW_CONNECTION;
+show	variable	transaction_timeout;
+NEW_CONNECTION;
+show
+variable
+transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable%transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable_transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable&transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable$transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable@transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable!transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable*transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable(transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout);
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable)transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable-transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable+transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable-#transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable/transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable\transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable?transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable-/transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable/#transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-show variable transaction_timeout;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable transaction_timeout/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable/-transaction_timeout;
+NEW_CONNECTION;
 set readonly = true;
 SELECT 1 AS TEST;
 show variable read_timestamp;
@@ -6233,6 +6432,1614 @@ NEW_CONNECTION;
 @EXPECT EXCEPTION INVALID_ARGUMENT
 start/-transaction;
 NEW_CONNECTION;
+begin isolation level repeatable read;
+NEW_CONNECTION;
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+NEW_CONNECTION;
+begin isolation level repeatable read;
+NEW_CONNECTION;
+   begin isolation level repeatable read;
+NEW_CONNECTION;
+			begin isolation level repeatable read;
+NEW_CONNECTION;
+
+
+
+begin isolation level repeatable read;
+NEW_CONNECTION;
+begin isolation level repeatable read  ;
+NEW_CONNECTION;
+begin isolation level repeatable read		;
+NEW_CONNECTION;
+begin isolation level repeatable read
+
+;
+NEW_CONNECTION;
+begin   isolation   level   repeatable   read;
+NEW_CONNECTION;
+begin	isolation	level	repeatable	read;
+NEW_CONNECTION;
+begin
+isolation
+level
+repeatable
+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable%read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable_read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable&read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable$read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable@read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable!read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable*read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable(read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable)read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable-read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable-#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable\read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable?read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable-/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable/#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-begin isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable read/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level repeatable/-read;
+NEW_CONNECTION;
+begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+NEW_CONNECTION;
+begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+   begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+			begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+
+
+
+begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+begin transaction isolation level repeatable read  ;
+NEW_CONNECTION;
+begin transaction isolation level repeatable read		;
+NEW_CONNECTION;
+begin transaction isolation level repeatable read
+
+;
+NEW_CONNECTION;
+begin   transaction   isolation   level   repeatable   read;
+NEW_CONNECTION;
+begin	transaction	isolation	level	repeatable	read;
+NEW_CONNECTION;
+begin
+transaction
+isolation
+level
+repeatable
+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable%read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable_read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable&read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable$read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable@read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable!read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable*read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable(read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable)read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable-read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable-#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable\read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable?read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable-/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable/#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-begin transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable read/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level repeatable/-read;
+NEW_CONNECTION;
+begin isolation level serializable;
+NEW_CONNECTION;
+BEGIN ISOLATION LEVEL SERIALIZABLE;
+NEW_CONNECTION;
+begin isolation level serializable;
+NEW_CONNECTION;
+   begin isolation level serializable;
+NEW_CONNECTION;
+			begin isolation level serializable;
+NEW_CONNECTION;
+
+
+
+begin isolation level serializable;
+NEW_CONNECTION;
+begin isolation level serializable  ;
+NEW_CONNECTION;
+begin isolation level serializable		;
+NEW_CONNECTION;
+begin isolation level serializable
+
+;
+NEW_CONNECTION;
+begin   isolation   level   serializable;
+NEW_CONNECTION;
+begin	isolation	level	serializable;
+NEW_CONNECTION;
+begin
+isolation
+level
+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level%serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level_serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level&serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level$serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level@serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level!serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level*serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level(serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level)serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level-serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level-#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level\serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level?serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level-/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level/#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-begin isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level serializable/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin isolation level/-serializable;
+NEW_CONNECTION;
+begin transaction isolation level serializable;
+NEW_CONNECTION;
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+NEW_CONNECTION;
+begin transaction isolation level serializable;
+NEW_CONNECTION;
+   begin transaction isolation level serializable;
+NEW_CONNECTION;
+			begin transaction isolation level serializable;
+NEW_CONNECTION;
+
+
+
+begin transaction isolation level serializable;
+NEW_CONNECTION;
+begin transaction isolation level serializable  ;
+NEW_CONNECTION;
+begin transaction isolation level serializable		;
+NEW_CONNECTION;
+begin transaction isolation level serializable
+
+;
+NEW_CONNECTION;
+begin   transaction   isolation   level   serializable;
+NEW_CONNECTION;
+begin	transaction	isolation	level	serializable;
+NEW_CONNECTION;
+begin
+transaction
+isolation
+level
+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level%serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level_serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level&serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level$serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level@serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level!serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level*serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level(serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level)serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level-serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level-#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level\serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level?serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level-/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level/#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-begin transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level serializable/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+begin transaction isolation level/-serializable;
+NEW_CONNECTION;
+start isolation level repeatable read;
+NEW_CONNECTION;
+START ISOLATION LEVEL REPEATABLE READ;
+NEW_CONNECTION;
+start isolation level repeatable read;
+NEW_CONNECTION;
+   start isolation level repeatable read;
+NEW_CONNECTION;
+			start isolation level repeatable read;
+NEW_CONNECTION;
+
+
+
+start isolation level repeatable read;
+NEW_CONNECTION;
+start isolation level repeatable read  ;
+NEW_CONNECTION;
+start isolation level repeatable read		;
+NEW_CONNECTION;
+start isolation level repeatable read
+
+;
+NEW_CONNECTION;
+start   isolation   level   repeatable   read;
+NEW_CONNECTION;
+start	isolation	level	repeatable	read;
+NEW_CONNECTION;
+start
+isolation
+level
+repeatable
+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable%read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable_read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable&read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable$read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable@read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable!read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable*read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable(read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable)read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable-read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable-#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable\read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable?read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable-/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable/#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-start isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable read/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level repeatable/-read;
+NEW_CONNECTION;
+start transaction isolation level repeatable read;
+NEW_CONNECTION;
+START TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+NEW_CONNECTION;
+start transaction isolation level repeatable read;
+NEW_CONNECTION;
+   start transaction isolation level repeatable read;
+NEW_CONNECTION;
+			start transaction isolation level repeatable read;
+NEW_CONNECTION;
+
+
+
+start transaction isolation level repeatable read;
+NEW_CONNECTION;
+start transaction isolation level repeatable read  ;
+NEW_CONNECTION;
+start transaction isolation level repeatable read		;
+NEW_CONNECTION;
+start transaction isolation level repeatable read
+
+;
+NEW_CONNECTION;
+start   transaction   isolation   level   repeatable   read;
+NEW_CONNECTION;
+start	transaction	isolation	level	repeatable	read;
+NEW_CONNECTION;
+start
+transaction
+isolation
+level
+repeatable
+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable%read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable_read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable&read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable$read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable@read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable!read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable*read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable(read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable)read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable-read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable+read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable-#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable\read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable?read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable-/read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable/#read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-start transaction isolation level repeatable read;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable read/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level repeatable/-read;
+NEW_CONNECTION;
+start isolation level serializable;
+NEW_CONNECTION;
+START ISOLATION LEVEL SERIALIZABLE;
+NEW_CONNECTION;
+start isolation level serializable;
+NEW_CONNECTION;
+   start isolation level serializable;
+NEW_CONNECTION;
+			start isolation level serializable;
+NEW_CONNECTION;
+
+
+
+start isolation level serializable;
+NEW_CONNECTION;
+start isolation level serializable  ;
+NEW_CONNECTION;
+start isolation level serializable		;
+NEW_CONNECTION;
+start isolation level serializable
+
+;
+NEW_CONNECTION;
+start   isolation   level   serializable;
+NEW_CONNECTION;
+start	isolation	level	serializable;
+NEW_CONNECTION;
+start
+isolation
+level
+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level%serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level_serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level&serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level$serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level@serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level!serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level*serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level(serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level)serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level-serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level-#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level\serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level?serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level-/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level/#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-start isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level serializable/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start isolation level/-serializable;
+NEW_CONNECTION;
+start transaction isolation level serializable;
+NEW_CONNECTION;
+START TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+NEW_CONNECTION;
+start transaction isolation level serializable;
+NEW_CONNECTION;
+   start transaction isolation level serializable;
+NEW_CONNECTION;
+			start transaction isolation level serializable;
+NEW_CONNECTION;
+
+
+
+start transaction isolation level serializable;
+NEW_CONNECTION;
+start transaction isolation level serializable  ;
+NEW_CONNECTION;
+start transaction isolation level serializable		;
+NEW_CONNECTION;
+start transaction isolation level serializable
+
+;
+NEW_CONNECTION;
+start   transaction   isolation   level   serializable;
+NEW_CONNECTION;
+start	transaction	isolation	level	serializable;
+NEW_CONNECTION;
+start
+transaction
+isolation
+level
+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level%serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level_serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level&serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level$serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level@serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level!serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level*serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level(serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level)serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level-serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level+serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level-#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level\serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level?serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level-/serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level/#serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-start transaction isolation level serializable;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level serializable/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+start transaction isolation level/-serializable;
+NEW_CONNECTION;
 begin transaction;
 commit;
 NEW_CONNECTION;
@@ -9895,6 +11702,680 @@ set autocommit = false;
 @EXPECT EXCEPTION INVALID_ARGUMENT
 set retry_aborts_internally =/-false;
 NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+SET LOCAL RETRY_ABORTS_INTERNALLY = TRUE;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+   set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+			set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+
+
+
+set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = true  ;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = true		;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = true
+
+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set   local   retry_aborts_internally   =   true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set	local	retry_aborts_internally	=	true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set
+local
+retry_aborts_internally
+=
+true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true bar;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true%;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =%true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true_;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =_true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true&;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =&true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true$;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =$true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true@;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =@true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true!;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =!true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true*;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =*true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true(;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =(true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true);
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =)true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =-true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =+true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true-#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =-#true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =/true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true\;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =\true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true?;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =?true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true-/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =-/true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true/#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =/#true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set local retry_aborts_internally = true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = true/-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =/-true;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+SET LOCAL RETRY_ABORTS_INTERNALLY = FALSE;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+   set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+			set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+
+
+
+set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = false  ;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = false		;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local retry_aborts_internally = false
+
+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set   local   retry_aborts_internally   =   false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set	local	retry_aborts_internally	=	false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set
+local
+retry_aborts_internally
+=
+false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false bar;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false%;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =%false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false_;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =_false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false&;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =&false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false$;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =$false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false@;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =@false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false!;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =!false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false*;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =*false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false(;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =(false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false);
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =)false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =-false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =+false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false-#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =-#false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =/false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false\;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =\false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false?;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =?false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false-/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =-/false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false/#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =/#false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set local retry_aborts_internally = false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally = false/-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local retry_aborts_internally =/-false;
+NEW_CONNECTION;
 set autocommit_dml_mode='PARTITIONED_NON_ATOMIC';
 NEW_CONNECTION;
 SET AUTOCOMMIT_DML_MODE='PARTITIONED_NON_ATOMIC';
@@ -10290,6 +12771,204 @@ set autocommit_dml_mode='TRANSACTIONAL'/-;
 NEW_CONNECTION;
 @EXPECT EXCEPTION INVALID_ARGUMENT
 set/-autocommit_dml_mode='TRANSACTIONAL';
+NEW_CONNECTION;
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+SET AUTOCOMMIT_DML_MODE='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+set autocommit_dml_mode='transactional_with_fallback_to_partitioned_non_atomic';
+NEW_CONNECTION;
+   set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+			set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+
+
+
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'  ;
+NEW_CONNECTION;
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'		;
+NEW_CONNECTION;
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'
+
+;
+NEW_CONNECTION;
+set   autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+set	autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+set
+autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-autocommit_dml_mode='TRANSACTIONAL_WITH_FALLBACK_TO_PARTITIONED_NON_ATOMIC';
 NEW_CONNECTION;
 set statement_timeout=null;
 NEW_CONNECTION;
@@ -12081,6 +14760,1797 @@ set statement_timeout='9223372036854775807ns'/-;
 NEW_CONNECTION;
 @EXPECT EXCEPTION INVALID_ARGUMENT
 set/-statement_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+set transaction_timeout=null;
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT=NULL;
+NEW_CONNECTION;
+set transaction_timeout=null;
+NEW_CONNECTION;
+   set transaction_timeout=null;
+NEW_CONNECTION;
+			set transaction_timeout=null;
+NEW_CONNECTION;
+
+
+
+set transaction_timeout=null;
+NEW_CONNECTION;
+set transaction_timeout=null  ;
+NEW_CONNECTION;
+set transaction_timeout=null		;
+NEW_CONNECTION;
+set transaction_timeout=null
+
+;
+NEW_CONNECTION;
+set   transaction_timeout=null;
+NEW_CONNECTION;
+set	transaction_timeout=null;
+NEW_CONNECTION;
+set
+transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout=null;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=null/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-transaction_timeout=null;
+NEW_CONNECTION;
+set transaction_timeout = null ;
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT = NULL ;
+NEW_CONNECTION;
+set transaction_timeout = null ;
+NEW_CONNECTION;
+   set transaction_timeout = null ;
+NEW_CONNECTION;
+			set transaction_timeout = null ;
+NEW_CONNECTION;
+
+
+
+set transaction_timeout = null ;
+NEW_CONNECTION;
+set transaction_timeout = null   ;
+NEW_CONNECTION;
+set transaction_timeout = null 		;
+NEW_CONNECTION;
+set transaction_timeout = null 
+
+;
+NEW_CONNECTION;
+set   transaction_timeout   =   null   ;
+NEW_CONNECTION;
+set	transaction_timeout	=	null	;
+NEW_CONNECTION;
+set
+transaction_timeout
+=
+null
+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null  bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null %;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null _;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null &;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null $;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null @;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null !;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null *;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null (;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null );
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null -;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null +;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null -#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null /;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null \;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null ?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null -/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null /#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout = null ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null /-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = null/-;
+NEW_CONNECTION;
+set transaction_timeout='1s';
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT='1S';
+NEW_CONNECTION;
+set transaction_timeout='1s';
+NEW_CONNECTION;
+   set transaction_timeout='1s';
+NEW_CONNECTION;
+			set transaction_timeout='1s';
+NEW_CONNECTION;
+
+
+
+set transaction_timeout='1s';
+NEW_CONNECTION;
+set transaction_timeout='1s'  ;
+NEW_CONNECTION;
+set transaction_timeout='1s'		;
+NEW_CONNECTION;
+set transaction_timeout='1s'
+
+;
+NEW_CONNECTION;
+set   transaction_timeout='1s';
+NEW_CONNECTION;
+set	transaction_timeout='1s';
+NEW_CONNECTION;
+set
+transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout='1s';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='1s'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-transaction_timeout='1s';
+NEW_CONNECTION;
+set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT = '1S' ;
+NEW_CONNECTION;
+set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+   set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+			set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+
+
+
+set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+set transaction_timeout = '1s'   ;
+NEW_CONNECTION;
+set transaction_timeout = '1s' 		;
+NEW_CONNECTION;
+set transaction_timeout = '1s' 
+
+;
+NEW_CONNECTION;
+set   transaction_timeout   =   '1s'   ;
+NEW_CONNECTION;
+set	transaction_timeout	=	'1s'	;
+NEW_CONNECTION;
+set
+transaction_timeout
+=
+'1s'
+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'  bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' %;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' _;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' &;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' $;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' @;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' !;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' *;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' (;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' );
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' -;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' +;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' -#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' /;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' \;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' ?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' -/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' /#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout = '1s' ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s' /-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = '1s'/-;
+NEW_CONNECTION;
+set transaction_timeout=100;
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT=100;
+NEW_CONNECTION;
+set transaction_timeout=100;
+NEW_CONNECTION;
+   set transaction_timeout=100;
+NEW_CONNECTION;
+			set transaction_timeout=100;
+NEW_CONNECTION;
+
+
+
+set transaction_timeout=100;
+NEW_CONNECTION;
+set transaction_timeout=100  ;
+NEW_CONNECTION;
+set transaction_timeout=100		;
+NEW_CONNECTION;
+set transaction_timeout=100
+
+;
+NEW_CONNECTION;
+set   transaction_timeout=100;
+NEW_CONNECTION;
+set	transaction_timeout=100;
+NEW_CONNECTION;
+set
+transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100 bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout=100;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout=100/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-transaction_timeout=100;
+NEW_CONNECTION;
+set transaction_timeout = 100 ;
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT = 100 ;
+NEW_CONNECTION;
+set transaction_timeout = 100 ;
+NEW_CONNECTION;
+   set transaction_timeout = 100 ;
+NEW_CONNECTION;
+			set transaction_timeout = 100 ;
+NEW_CONNECTION;
+
+
+
+set transaction_timeout = 100 ;
+NEW_CONNECTION;
+set transaction_timeout = 100   ;
+NEW_CONNECTION;
+set transaction_timeout = 100 		;
+NEW_CONNECTION;
+set transaction_timeout = 100 
+
+;
+NEW_CONNECTION;
+set   transaction_timeout   =   100   ;
+NEW_CONNECTION;
+set	transaction_timeout	=	100	;
+NEW_CONNECTION;
+set
+transaction_timeout
+=
+100
+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100  bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 %;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 _;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 &;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 $;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 @;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 !;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 *;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 (;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 );
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100);
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 -;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 +;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 -#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 /;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 \;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 ?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 -/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 /#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout = 100 ;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100 /-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout = 100/-;
+NEW_CONNECTION;
+set transaction_timeout='100ms';
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT='100MS';
+NEW_CONNECTION;
+set transaction_timeout='100ms';
+NEW_CONNECTION;
+   set transaction_timeout='100ms';
+NEW_CONNECTION;
+			set transaction_timeout='100ms';
+NEW_CONNECTION;
+
+
+
+set transaction_timeout='100ms';
+NEW_CONNECTION;
+set transaction_timeout='100ms'  ;
+NEW_CONNECTION;
+set transaction_timeout='100ms'		;
+NEW_CONNECTION;
+set transaction_timeout='100ms'
+
+;
+NEW_CONNECTION;
+set   transaction_timeout='100ms';
+NEW_CONNECTION;
+set	transaction_timeout='100ms';
+NEW_CONNECTION;
+set
+transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout='100ms';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='100ms'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-transaction_timeout='100ms';
+NEW_CONNECTION;
+set transaction_timeout='10000us';
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT='10000US';
+NEW_CONNECTION;
+set transaction_timeout='10000us';
+NEW_CONNECTION;
+   set transaction_timeout='10000us';
+NEW_CONNECTION;
+			set transaction_timeout='10000us';
+NEW_CONNECTION;
+
+
+
+set transaction_timeout='10000us';
+NEW_CONNECTION;
+set transaction_timeout='10000us'  ;
+NEW_CONNECTION;
+set transaction_timeout='10000us'		;
+NEW_CONNECTION;
+set transaction_timeout='10000us'
+
+;
+NEW_CONNECTION;
+set   transaction_timeout='10000us';
+NEW_CONNECTION;
+set	transaction_timeout='10000us';
+NEW_CONNECTION;
+set
+transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout='10000us';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='10000us'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-transaction_timeout='10000us';
+NEW_CONNECTION;
+set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+SET TRANSACTION_TIMEOUT='9223372036854775807NS';
+NEW_CONNECTION;
+set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+   set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+			set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+
+
+
+set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+set transaction_timeout='9223372036854775807ns'  ;
+NEW_CONNECTION;
+set transaction_timeout='9223372036854775807ns'		;
+NEW_CONNECTION;
+set transaction_timeout='9223372036854775807ns'
+
+;
+NEW_CONNECTION;
+set   transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+set	transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+set
+transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set transaction_timeout='9223372036854775807ns';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set transaction_timeout='9223372036854775807ns'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-transaction_timeout='9223372036854775807ns';
 NEW_CONNECTION;
 set autocommit = false;
 set transaction read only;
@@ -25596,6 +30066,2145 @@ set auto_batch_dml_update_count_verification = false/-;
 NEW_CONNECTION;
 @EXPECT EXCEPTION INVALID_ARGUMENT
 set auto_batch_dml_update_count_verification =/-false;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+SET LOCAL BATCH_DML_UPDATE_COUNT = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+   set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+			set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+
+
+
+set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 0  ;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 0		;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 0
+
+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set   local   batch_dml_update_count   =   0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set	local	batch_dml_update_count	=	0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set
+local
+batch_dml_update_count
+=
+0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0 bar;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0%;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =%0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0_;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =_0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0&;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =&0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0$;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =$0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0@;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =@0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0!;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =!0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0*;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =*0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0(;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =(0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0);
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =)0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =-0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =+0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0-#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =-#0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =/0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0\;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =\0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0?;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =?0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0-/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =-/0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0/#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =/#0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set local batch_dml_update_count = 0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 0/-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =/-0;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+SET LOCAL BATCH_DML_UPDATE_COUNT = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+   set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+			set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+
+
+
+set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 100  ;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 100		;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set local batch_dml_update_count = 100
+
+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set   local   batch_dml_update_count   =   100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set	local	batch_dml_update_count	=	100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set
+local
+batch_dml_update_count
+=
+100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100 bar;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100%;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =%100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100_;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =_100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100&;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =&100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100$;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =$100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100@;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =@100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100!;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =!100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100*;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =*100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100(;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =(100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100);
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =)100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =-100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =+100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100-#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =-#100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =/100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100\;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =\100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100?;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =?100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100-/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =-/100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100/#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =/#100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set local batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count = 100/-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set local batch_dml_update_count =/-100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+SET BATCH_DML_UPDATE_COUNT = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+   set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+			set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+
+
+
+set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 1  ;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 1		;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 1
+
+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set   batch_dml_update_count   =   1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set	batch_dml_update_count	=	1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set
+batch_dml_update_count
+=
+1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1 bar;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1%;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =%1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1_;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =_1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1&;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =&1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1$;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =$1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1@;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =@1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1!;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =!1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1*;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =*1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1(;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =(1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1);
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =)1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =-1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =+1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1-#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =-#1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =/1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1\;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =\1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1?;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =?1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1-/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =-/1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1/#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =/#1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set batch_dml_update_count = 1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 1/-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =/-1;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+SET BATCH_DML_UPDATE_COUNT = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+   set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+			set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+
+
+
+set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 100  ;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 100		;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set batch_dml_update_count = 100
+
+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set   batch_dml_update_count   =   100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set	batch_dml_update_count	=	100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+set
+batch_dml_update_count
+=
+100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100 bar;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100%;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =%100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100_;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =_100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100&;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =&100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100$;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =$100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100@;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =@100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100!;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =!100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100*;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =*100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100(;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =(100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100);
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =)100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =-100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100+;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =+100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100-#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =-#100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =/100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100\;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =\100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100?;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =?100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100-/;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =-/100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100/#;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =/#100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set batch_dml_update_count = 100;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count = 100/-;
+NEW_CONNECTION;
+set readonly = false;
+set autocommit = false;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set batch_dml_update_count =/-100;
+NEW_CONNECTION;
+show variable read_lock_mode;
+NEW_CONNECTION;
+SHOW VARIABLE READ_LOCK_MODE;
+NEW_CONNECTION;
+show variable read_lock_mode;
+NEW_CONNECTION;
+   show variable read_lock_mode;
+NEW_CONNECTION;
+			show variable read_lock_mode;
+NEW_CONNECTION;
+
+
+
+show variable read_lock_mode;
+NEW_CONNECTION;
+show variable read_lock_mode  ;
+NEW_CONNECTION;
+show variable read_lock_mode		;
+NEW_CONNECTION;
+show variable read_lock_mode
+
+;
+NEW_CONNECTION;
+show   variable   read_lock_mode;
+NEW_CONNECTION;
+show	variable	read_lock_mode;
+NEW_CONNECTION;
+show
+variable
+read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable%read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable_read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable&read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable$read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable@read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable!read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable*read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable(read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode);
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable)read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable-read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable+read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable-#read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable/read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable\read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable?read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable-/read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable/#read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-show variable read_lock_mode;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable read_lock_mode/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION UNIMPLEMENTED
+show variable/-read_lock_mode;
+NEW_CONNECTION;
+set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+SET READ_LOCK_MODE='OPTIMISTIC';
+NEW_CONNECTION;
+set read_lock_mode='optimistic';
+NEW_CONNECTION;
+   set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+			set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+
+
+
+set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+set read_lock_mode='OPTIMISTIC'  ;
+NEW_CONNECTION;
+set read_lock_mode='OPTIMISTIC'		;
+NEW_CONNECTION;
+set read_lock_mode='OPTIMISTIC'
+
+;
+NEW_CONNECTION;
+set   read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+set	read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+set
+read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='OPTIMISTIC'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-read_lock_mode='OPTIMISTIC';
+NEW_CONNECTION;
+set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+SET READ_LOCK_MODE='PESSIMISTIC';
+NEW_CONNECTION;
+set read_lock_mode='pessimistic';
+NEW_CONNECTION;
+   set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+			set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+
+
+
+set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+set read_lock_mode='PESSIMISTIC'  ;
+NEW_CONNECTION;
+set read_lock_mode='PESSIMISTIC'		;
+NEW_CONNECTION;
+set read_lock_mode='PESSIMISTIC'
+
+;
+NEW_CONNECTION;
+set   read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+set	read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+set
+read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='PESSIMISTIC'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-read_lock_mode='PESSIMISTIC';
+NEW_CONNECTION;
+set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+SET READ_LOCK_MODE='UNSPECIFIED';
+NEW_CONNECTION;
+set read_lock_mode='unspecified';
+NEW_CONNECTION;
+   set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+			set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+
+
+
+set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+set read_lock_mode='UNSPECIFIED'  ;
+NEW_CONNECTION;
+set read_lock_mode='UNSPECIFIED'		;
+NEW_CONNECTION;
+set read_lock_mode='UNSPECIFIED'
+
+;
+NEW_CONNECTION;
+set   read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+set	read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+set
+read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+foo set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED' bar;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+%set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'%;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set%read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+_set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'_;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set_read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+&set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'&;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set&read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+$set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'$;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set$read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+@set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'@;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set@read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+!set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'!;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set!read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+*set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'*;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set*read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+(set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'(;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set(read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+)set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED');
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set)read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
++set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'+;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set+read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-#set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'-#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-#read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+\set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'\;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set\read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+?set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'?;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set?read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+-/set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'-/;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set-/read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/#set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'/#;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/#read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+/-set read_lock_mode='UNSPECIFIED';
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set read_lock_mode='UNSPECIFIED'/-;
+NEW_CONNECTION;
+@EXPECT EXCEPTION INVALID_ARGUMENT
+set/-read_lock_mode='UNSPECIFIED';
 NEW_CONNECTION;
 show variable data_boost_enabled;
 NEW_CONNECTION;

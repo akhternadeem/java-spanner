@@ -17,6 +17,7 @@
 package com.google.cloud.spanner.it.slow;
 
 import static com.google.cloud.spanner.testing.EmulatorSpannerHelper.isUsingEmulator;
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
 import static com.google.cloud.spanner.testing.TimestampHelper.afterDays;
 import static com.google.cloud.spanner.testing.TimestampHelper.afterMinutes;
 import static com.google.cloud.spanner.testing.TimestampHelper.daysAgo;
@@ -129,11 +130,13 @@ public class ITBackupTest {
 
   @BeforeClass
   public static void setup() {
+    assumeFalse("backups are not supported on experimental host yet", isExperimentalHost());
     assumeFalse("backups are not supported on the emulator", isUsingEmulator());
     keyName = System.getProperty(KMS_KEY_NAME_PROPERTY);
     Preconditions.checkNotNull(
         keyName,
-        "Key name is null, please set a key to be used for this test. The necessary permissions should be grant to the spanner service account according to the CMEK user guide.");
+        "Key name is null, please set a key to be used for this test. The necessary permissions"
+            + " should be grant to the spanner service account according to the CMEK user guide.");
 
     logger.info("Setting up tests");
     testHelper = env.getTestHelper();
@@ -443,9 +446,7 @@ public class ITBackupTest {
       InjectErrorInterceptorProvider restoreBackupInterceptor =
           new InjectErrorInterceptorProvider("RestoreDatabase");
       options =
-          testHelper
-              .getOptions()
-              .toBuilder()
+          testHelper.getOptions().toBuilder()
               .setInterceptorProvider(restoreBackupInterceptor)
               .build();
       try (Spanner spanner = options.getService()) {
@@ -717,7 +718,7 @@ public class ITBackupTest {
     Page<Backup> page = dbAdminClient.listBackups(instanceId, Options.pageSize(1));
     assertEquals(1, Iterables.size(page.getValues()));
     numBackups++;
-    assertTrue(page.hasNextPage());
+    assertFalse(page.hasNextPage());
     Set<String> seenPageTokens = new HashSet<>();
     seenPageTokens.add("");
     while (page.hasNextPage()) {
@@ -779,13 +780,15 @@ public class ITBackupTest {
           attempts++;
           if (attempts == 10) {
             logger.info(
-                "Restore operation failed 10 times because of other pending restores. Skipping restore test.");
+                "Restore operation failed 10 times because of other pending restores. Skipping"
+                    + " restore test.");
             return;
           }
           // wait and then retry.
           logger.info(
               String.format(
-                  "Restoring backup %s to database %s must wait because of other pending restore operation",
+                  "Restoring backup %s to database %s must wait because of other pending restore"
+                      + " operation",
                   backup.getId().getBackup(), restoredDb));
           //noinspection BusyWait
           Thread.sleep(60_000L);

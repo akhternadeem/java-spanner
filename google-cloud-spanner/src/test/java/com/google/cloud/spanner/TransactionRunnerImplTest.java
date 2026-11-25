@@ -23,7 +23,6 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -36,6 +35,7 @@ import com.google.cloud.grpc.GrpcTransportOptions.ExecutorFactory;
 import com.google.cloud.spanner.ErrorHandler.DefaultErrorHandler;
 import com.google.cloud.spanner.SessionClient.SessionId;
 import com.google.cloud.spanner.TransactionRunnerImpl.TransactionContextImpl;
+import com.google.cloud.spanner.XGoogSpannerRequestId.NoopRequestIdCreator;
 import com.google.cloud.spanner.spi.v1.SpannerRpc;
 import com.google.cloud.spanner.v1.stub.SpannerStubSettings;
 import com.google.common.base.Preconditions;
@@ -52,12 +52,14 @@ import com.google.spanner.v1.ExecuteBatchDmlRequest;
 import com.google.spanner.v1.ExecuteBatchDmlResponse;
 import com.google.spanner.v1.ExecuteSqlRequest;
 import com.google.spanner.v1.ExecuteSqlRequest.QueryOptions;
+import com.google.spanner.v1.RequestOptions;
 import com.google.spanner.v1.ResultSet;
 import com.google.spanner.v1.ResultSetMetadata;
 import com.google.spanner.v1.ResultSetStats;
 import com.google.spanner.v1.RollbackRequest;
 import com.google.spanner.v1.Session;
 import com.google.spanner.v1.Transaction;
+import com.google.spanner.v1.TransactionOptions;
 import io.grpc.Metadata;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -77,6 +79,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -120,6 +123,12 @@ public class TransactionRunnerImplTest {
     when(session.getErrorHandler()).thenReturn(DefaultErrorHandler.INSTANCE);
     when(session.newTransaction(eq(Options.fromTransactionOptions()), any())).thenReturn(txn);
     when(session.getTracer()).thenReturn(tracer);
+    when(session.getRequestIdCreator()).thenReturn(NoopRequestIdCreator.INSTANCE);
+    when(rpc.getRequestIdCreator()).thenReturn(NoopRequestIdCreator.INSTANCE);
+    SpannerImpl spanner = mock(SpannerImpl.class);
+    SpannerOptions spannerOptions = mock(SpannerOptions.class);
+    when(spanner.getOptions()).thenReturn(spannerOptions);
+    when(session.getSpanner()).thenReturn(spanner);
     when(rpc.executeQuery(Mockito.any(ExecuteSqlRequest.class), Mockito.anyMap(), eq(true)))
         .thenAnswer(
             invocation -> {
@@ -155,11 +164,44 @@ public class TransactionRunnerImplTest {
     transactionRunner.setSpan(span);
   }
 
+  @Test
+  public void testCommitWithClientContext() {
+    RequestOptions.ClientContext clientContext =
+        RequestOptions.ClientContext.newBuilder()
+            .putSecureContext(
+                "key", com.google.protobuf.Value.newBuilder().setStringValue("value").build())
+            .build();
+    when(session.getName()).thenReturn("projects/p/instances/i/databases/d/sessions/s");
+    when(session.newTransaction(any(Options.class), any())).thenReturn(txn);
+    Mockito.clearInvocations(session);
+    transactionRunner =
+        new TransactionRunnerImpl(
+            session,
+            Options.priority(Options.RpcPriority.HIGH),
+            Options.tag("tag"),
+            Options.clientContext(clientContext));
+    transactionRunner.setSpan(span);
+
+    transactionRunner.run(
+        transaction -> {
+          return null;
+        });
+
+    ArgumentCaptor<Options> optionsCaptor = ArgumentCaptor.forClass(Options.class);
+    verify(session).newTransaction(optionsCaptor.capture(), any());
+    Options capturedOptions = optionsCaptor.getValue();
+    assertEquals(RequestOptions.Priority.PRIORITY_HIGH, capturedOptions.priority());
+    assertEquals("tag", capturedOptions.tag());
+    assertEquals(clientContext, capturedOptions.clientContext());
+  }
+
   @SuppressWarnings("unchecked")
   @Test
   public void usesPreparedTransaction() {
     SpannerOptions options = mock(SpannerOptions.class);
     when(options.getNumChannels()).thenReturn(4);
+    when(options.getDefaultTransactionOptions())
+        .thenReturn(TransactionOptions.getDefaultInstance());
     GrpcTransportOptions transportOptions = mock(GrpcTransportOptions.class);
     when(transportOptions.getExecutorFactory()).thenReturn(new TestExecutorFactory());
     when(options.getTransportOptions()).thenReturn(transportOptions);
@@ -186,6 +228,21 @@ public class TransactionRunnerImplTest {
                         .setCreateTime(
                             Timestamp.newBuilder().setSeconds(System.currentTimeMillis() * 1000))
                         .build()));
+    when(rpc.createSession(
+            Mockito.anyString(),
+            Mockito.anyString(),
+            Mockito.anyMap(),
+            Mockito.eq(null),
+            Mockito.eq(true)))
+        .thenAnswer(
+            invocation ->
+                Session.newBuilder()
+                    .setName(invocation.getArguments()[0] + "/sessions/1")
+                    .setMultiplexed(true)
+                    .setCreateTime(
+                        com.google.protobuf.Timestamp.newBuilder()
+                            .setSeconds(System.currentTimeMillis() * 1000))
+                    .build());
     when(rpc.beginTransactionAsync(
             Mockito.any(BeginTransactionRequest.class), Mockito.anyMap(), eq(true)))
         .thenAnswer(
@@ -301,7 +358,8 @@ public class TransactionRunnerImplTest {
   public void inlineBegin() {
     SpannerImpl spanner = mock(SpannerImpl.class);
     SpannerOptions options = mock(SpannerOptions.class);
-
+    when(options.getDefaultTransactionOptions())
+        .thenReturn(TransactionOptions.getDefaultInstance());
     when(spanner.getRpc()).thenReturn(rpc);
     when(spanner.getDefaultQueryOptions(Mockito.any(DatabaseId.class)))
         .thenReturn(QueryOptions.getDefaultInstance());
@@ -314,7 +372,7 @@ public class TransactionRunnerImplTest {
         new SessionImpl(
             spanner,
             new SessionReference(
-                "projects/p/instances/i/databases/d/sessions/s", Collections.EMPTY_MAP)) {};
+                "projects/p/instances/i/databases/d/sessions/s", null, Collections.EMPTY_MAP)) {};
     session.setCurrentSpan(new OpenTelemetrySpan(mock(io.opentelemetry.api.trace.Span.class)));
     TransactionRunnerImpl runner = new TransactionRunnerImpl(session);
     runner.setSpan(span);

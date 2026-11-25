@@ -27,6 +27,8 @@ import com.google.cloud.ServiceRpc;
 import com.google.cloud.spanner.BackupId;
 import com.google.cloud.spanner.Restore;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.XGoogSpannerRequestId;
+import com.google.cloud.spanner.XGoogSpannerRequestId.RequestIdCreator;
 import com.google.cloud.spanner.admin.database.v1.stub.DatabaseAdminStub;
 import com.google.cloud.spanner.admin.database.v1.stub.DatabaseAdminStubSettings;
 import com.google.cloud.spanner.admin.instance.v1.stub.InstanceAdminStub;
@@ -37,6 +39,7 @@ import com.google.iam.v1.GetPolicyOptions;
 import com.google.iam.v1.Policy;
 import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
 import com.google.protobuf.FieldMask;
 import com.google.spanner.admin.database.v1.Backup;
@@ -56,11 +59,11 @@ import com.google.spanner.admin.instance.v1.InstanceConfig;
 import com.google.spanner.admin.instance.v1.UpdateInstanceConfigMetadata;
 import com.google.spanner.admin.instance.v1.UpdateInstanceMetadata;
 import com.google.spanner.v1.*;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
-import org.threeten.bp.Duration;
 
 /**
  * Abstracts remote calls to the Cloud Spanner service. Typically end-consumer code will never use
@@ -188,6 +191,13 @@ public interface SpannerRpc extends ServiceRpc {
     void cancel(@Nullable String message);
   }
 
+  default RequestIdCreator getRequestIdCreator() {
+    throw new UnsupportedOperationException("Not implemented");
+  }
+
+  /** Clears any client-side affinity associated with the given transaction id. */
+  default void clearTransactionAffinity(ByteString transactionId) {}
+
   // Instance admin APIs.
   Paginated<InstanceConfig> listInstanceConfigs(int pageSize, @Nullable String pageToken)
       throws SpannerException;
@@ -269,6 +279,7 @@ public interface SpannerRpc extends ServiceRpc {
       Database database, FieldMask fieldMask) throws SpannerException;
 
   GetDatabaseDdlResponse getDatabaseDdl(String databaseName) throws SpannerException;
+
   /** Lists the backups in the specified instance. */
   Paginated<Backup> listBackups(
       String instanceName, int pageSize, @Nullable String filter, @Nullable String pageToken)
@@ -387,6 +398,7 @@ public interface SpannerRpc extends ServiceRpc {
       ReadRequest request,
       ResultStreamConsumer consumer,
       @Nullable Map<Option, ?> options,
+      XGoogSpannerRequestId requestId,
       boolean routeToLeader);
 
   /** Returns the retry settings for streaming query operations. */
@@ -426,7 +438,10 @@ public interface SpannerRpc extends ServiceRpc {
   RetrySettings getPartitionedDmlRetrySettings();
 
   ServerStream<PartialResultSet> executeStreamingPartitionedDml(
-      ExecuteSqlRequest request, @Nullable Map<Option, ?> options, Duration timeout);
+      ExecuteSqlRequest request,
+      @Nullable Map<Option, ?> options,
+      XGoogSpannerRequestId requestId,
+      Duration timeout);
 
   ServerStream<BatchWriteResponse> batchWriteAtLeastOnce(
       BatchWriteRequest request, @Nullable Map<Option, ?> options);
@@ -443,6 +458,7 @@ public interface SpannerRpc extends ServiceRpc {
       ExecuteSqlRequest request,
       ResultStreamConsumer consumer,
       @Nullable Map<Option, ?> options,
+      XGoogSpannerRequestId requestId,
       boolean routeToLeader);
 
   ExecuteBatchDmlResponse executeBatchDml(ExecuteBatchDmlRequest build, Map<Option, ?> options);

@@ -16,10 +16,16 @@
 
 package com.google.cloud.spanner.connection;
 
+import static com.google.cloud.spanner.ErrorCode.INVALID_ARGUMENT;
 import static com.google.cloud.spanner.connection.StatementParserTest.assertUnclosedLiteral;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.connection.StatementParserTest.CommentInjector;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -40,6 +46,55 @@ public class SpannerStatementParserTest {
   }
 
   @Test
+  public void testRemoveCommentsAndTrim() {
+    AbstractStatementParser parser =
+        AbstractStatementParser.getInstance(Dialect.GOOGLE_STANDARD_SQL);
+
+    // Statements that should parse correctly
+    String[] validStatements =
+        new String[] {
+          "SELECT '\\\\'", // SELECT '\\' (escaped backslash, followed by quote)
+          "SELECT '\\''", // SELECT '\'' (escaped quote, followed by an actual closing quote)
+          "SELECT '\\\\\\\\'" // SELECT '\\\\' (two escaped backslashes)
+        };
+    for (String sql : validStatements) {
+      assertEquals(sql, parser.removeCommentsAndTrim(sql));
+    }
+
+    // Statements that contain an unclosed literal because the final quote is
+    // escaped
+    String[] invalidStatements =
+        new String[] {
+          "SELECT '\\'" // SELECT '\' (escaped closing quote)
+        };
+
+    for (String sql : invalidStatements) {
+      try {
+        parser.removeCommentsAndTrim(sql);
+        fail("Expected SpannerException for unclosed literal: " + sql);
+      } catch (SpannerException e) {
+        assertEquals(INVALID_ARGUMENT, e.getErrorCode());
+      }
+    }
+  }
+
+  @Test
+  public void testReturningClauseWithBackslashes() {
+    AbstractStatementParser parser =
+        AbstractStatementParser.getInstance(Dialect.GOOGLE_STANDARD_SQL);
+
+    // Valid returning clause, double backslash in string literal should be handled
+    // correctly.
+    String sqlWithReturning = "INSERT INTO my_table (value) VALUES ('foo \\\\ bar') THEN RETURN id";
+    assertTrue(parser.parse(Statement.of(sqlWithReturning)).hasReturningClause());
+
+    // No returning clause, `then return` is inside a string literal with a double
+    // backslash.
+    String sqlWithoutReturning = "INSERT INTO my_table (value) VALUES ('then \\\\ return')";
+    assertFalse(parser.parse(Statement.of(sqlWithoutReturning)).hasReturningClause());
+  }
+
+  @Test
   public void testSkip() {
     assertEquals("", skip(""));
     assertEquals("1", skip("1 "));
@@ -54,6 +109,7 @@ public class SpannerStatementParserTest {
     assertEquals("'foo\"bar\"'", skip("'foo\"bar\"'  ", 0));
     assertEquals("\"foo'bar'\"", skip("\"foo'bar'\"  ", 0));
     assertEquals("`foo'bar'`", skip("`foo'bar'`  ", 0));
+    assertEquals("'test\\\\'", skip("'test\\\\'", 0));
 
     assertEquals("'''foo'bar'''", skip("'''foo'bar'''  ", 0));
     assertEquals("'''foo\\'bar'''", skip("'''foo\\'bar'''  ", 0));
@@ -163,12 +219,15 @@ public class SpannerStatementParserTest {
 
         assertEquals(
             injector.inject(
-                "select 1, @p1, 'test?test', \"test?test\", %sfoo.* from `foo` where col1=@p2 and col2='test' and col3=@p3 and col4='?' and col5=\"?\" and col6='?''?''?'",
+                "select 1, @p1, 'test?test', \"test?test\", %sfoo.* from `foo` where col1=@p2 and"
+                    + " col2='test' and col3=@p3 and col4='?' and col5=\"?\" and col6='?''?''?'",
                 comment),
             parser.convertPositionalParametersToNamedParameters(
                     '?',
                     injector.inject(
-                        "select 1, ?, 'test?test', \"test?test\", %sfoo.* from `foo` where col1=? and col2='test' and col3=? and col4='?' and col5=\"?\" and col6='?''?''?'",
+                        "select 1, ?, 'test?test', \"test?test\", %sfoo.* from `foo` where col1=?"
+                            + " and col2='test' and col3=? and col4='?' and col5=\"?\" and"
+                            + " col6='?''?''?'",
                         comment))
                 .sqlWithNamedParameters);
 

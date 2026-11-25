@@ -1,3 +1,5 @@
+**_THIS REPOSITORY IS DEPRECATED. ALL OF ITS CONTENT AND HISTORY HAS BEEN MOVED TO [GOOGLE-CLOUD-JAVA](https://github.com/googleapis/google-cloud-java/tree/main/java-spanner)_**
+
 # Google Cloud Spanner Client for Java
 
 Java idiomatic client for [Cloud Spanner][product-docs].
@@ -19,7 +21,7 @@ If you are using Maven with [BOM][libraries-bom], add this to your pom.xml file:
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>libraries-bom</artifactId>
-      <version>26.50.0</version>
+      <version>26.78.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -41,7 +43,7 @@ If you are using Maven without the BOM, add this to your dependencies:
 <dependency>
   <groupId>com.google.cloud</groupId>
   <artifactId>google-cloud-spanner</artifactId>
-  <version>6.81.0</version>
+  <version>6.112.0</version>
 </dependency>
 
 ```
@@ -49,20 +51,20 @@ If you are using Maven without the BOM, add this to your dependencies:
 If you are using Gradle 5.x or later, add this to your dependencies:
 
 ```Groovy
-implementation platform('com.google.cloud:libraries-bom:26.50.0')
+implementation platform('com.google.cloud:libraries-bom:26.78.0')
 
 implementation 'com.google.cloud:google-cloud-spanner'
 ```
 If you are using Gradle without BOM, add this to your dependencies:
 
 ```Groovy
-implementation 'com.google.cloud:google-cloud-spanner:6.81.1'
+implementation 'com.google.cloud:google-cloud-spanner:6.113.0'
 ```
 
 If you are using SBT, add this to your dependencies:
 
 ```Scala
-libraryDependencies += "com.google.cloud" % "google-cloud-spanner" % "6.81.1"
+libraryDependencies += "com.google.cloud" % "google-cloud-spanner" % "6.113.0"
 ```
 
 ## Authentication
@@ -91,7 +93,7 @@ to add `google-cloud-spanner` as a dependency in your code.
 ## About Cloud Spanner
 
 
-[Cloud Spanner][product-docs] is a fully managed, mission-critical,  relational database service that offers transactional consistency at global scale, \nschemas, SQL (ANSI 2011 with extensions), and automatic, synchronous replication \nfor high availability.\n\nBe sure to activate the Cloud Spanner API on the Developer's Console to\nuse Cloud Spanner from your project.
+[Cloud Spanner][product-docs] is a fully managed, mission-critical,  relational database service that offers transactional consistency at global scale, schemas, SQL (ANSI 2011 with extensions), and automatic, synchronous replication for high availability. Be sure to activate the Cloud Spanner API on the Developer's Console to use Cloud Spanner from your project.
 
 See the [Cloud Spanner client library docs][javadocs] to learn how to
 use this Cloud Spanner Client Library.
@@ -150,216 +152,29 @@ the Cloud Spanner Java client.
 
 ## Metrics
 
-### Available client-side metrics:
+Cloud Spanner client supports [client-side metrics](https://cloud.google.com/spanner/docs/view-manage-client-side-metrics) that you can use along with server-side metrics to optimize performance and troubleshoot performance issues if they occur.
 
-* `spanner/max_in_use_sessions`: This returns the maximum
-  number of sessions that have been in use during the last maintenance window
-  interval, so as to provide an indication of the amount of activity currently
-  in the database.
+Client-side metrics are measured from the time a request leaves your application to the time your application receives the response. 
+In contrast, server-side metrics are measured from the time Spanner receives a request until the last byte of data is sent to the client.
 
-* `spanner/max_allowed_sessions`: This shows the maximum
-  number of sessions allowed.
-
-* `spanner/num_sessions_in_pool`: This metric allows users to
-  see instance-level and database-level data for the total number of sessions in
-  the pool at this very moment.
-
-* `spanner/num_acquired_sessions`: This metric allows
-  users to see the total number of acquired sessions.
-
-* `spanner/num_released_sessions`: This metric allows
-  users to see the total number of released (destroyed) sessions.
-
-* `spanner/get_session_timeouts`: This gives you an
-  indication of the total number of get session timed-out instead of being
-  granted (the thread that requested the session is placed in a wait queue where
-  it waits until a session is released into the pool by another thread) due to
-  pool exhaustion since the server process started.
-
-* `spanner/gfe_latency`: This metric shows latency between
-  Google's network receiving an RPC and reading back the first byte of the response.
-
-* `spanner/gfe_header_missing_count`: This metric shows the
-  number of RPC responses received without the server-timing header, most likely
-  indicating that the RPC never reached Google's network.
-
-### Instrument with OpenTelemetry
-
-Cloud Spanner client supports [OpenTelemetry Metrics](https://opentelemetry.io/),
-which gives insight into the client internals and aids in debugging/troubleshooting
-production issues. OpenTelemetry metrics will provide you with enough data to enable you to
-spot, and investigate the cause of any unusual deviations from normal behavior.
-
-All Cloud Spanner Metrics are prefixed with `spanner/` and uses `cloud.google.com/java` as [Instrumentation Scope](https://opentelemetry.io/docs/concepts/instrumentation-scope/). The
-metrics will be tagged with:
-* `database`: the target database name.
-* `instance_id`: the instance id of the target Spanner instance.
-* `client_id`: the user defined database client id.
-
-By default, the functionality is disabled. You need to add OpenTelemetry dependencies, enable OpenTelemetry metrics and must configure the OpenTelemetry with appropriate exporters at the startup of your application:
-
-#### OpenTelemetry Dependencies
-If you are using Maven, add this to your pom.xml file
-```xml
-<dependency>
-      <groupId>io.opentelemetry</groupId>
-      <artifactId>opentelemetry-sdk</artifactId>
-      <version>{opentelemetry.version}</version>
-</dependency>
-<dependency>
-      <groupId>io.opentelemetry</groupId>
-      <artifactId>opentelemetry-sdk-metrics</artifactId>
-      <version>{opentelemetry.version}</version>
-</dependency>
-<dependency>
-    <groupId>io.opentelemetry</groupId>
-    <artifactId>opentelemetry-exporter-otlp</artifactId>
-    <version>{opentelemetry.version}</version>
-</dependency>
-```
-If you are using Gradle, add this to your dependencies
-```Groovy
-compile 'io.opentelemetry:opentelemetry-sdk:{opentelemetry.version}'
-compile 'io.opentelemetry:opentelemetry-sdk-metrics:{opentelemetry.version}'
-compile 'io.opentelemetry:opentelemetry-exporter-oltp:{opentelemetry.version}'
-```
-
-#### OpenTelemetry Configuration
-By default, all metrics are disabled. To enable metrics and configure the OpenTelemetry follow below:
-
-```java
-// Enable OpenTelemetry metrics before injecting OpenTelemetry object.
-SpannerOptions.enableOpenTelemetryMetrics();
-
-SdkMeterProvider sdkMeterProvider = SdkMeterProvider.builder()
-// Use Otlp exporter or any other exporter of your choice.
-  .registerMetricReader(PeriodicMetricReader.builder(OtlpGrpcMetricExporter.builder().build())
-  .build())
-  .build();
-
-OpenTelemetry openTelemetry = OpenTelemetrySdk.builder()
-        .setMeterProvider(sdkMeterProvider)
-        .build()
-
-SpannerOptions options = SpannerOptions.newBuilder()
-// Inject OpenTelemetry object via Spanner Options or register OpenTelemetry object as Global
-  .setOpenTelemetry(openTelemetry)
-  .build();
-
-Spanner spanner = options.getService();
-```
-
-#### OpenTelemetry SQL Statement Tracing
-The OpenTelemetry traces that are generated by the Java client include any request and transaction
-tags that have been set. The traces can also include the SQL statements that are executed and the
-name of the thread that executes the statement. Enable this with the `enableExtendedTracing`
-option:
+These metrics are enabled by default. You can opt out of using client-side metrics with the following code:
 
 ```
 SpannerOptions options = SpannerOptions.newBuilder()
-  .setOpenTelemetry(openTelemetry)
-  .setEnableExtendedTracing(true)
+  .setBuiltInMetricsEnabled(false)
   .build();
 ```
 
-This option can also be enabled by setting the environment variable
-`SPANNER_ENABLE_EXTENDED_TRACING=true`.
+You can also disable these metrics by setting `SPANNER_DISABLE_BUILTIN_METRICS` to `true`.
 
-#### OpenTelemetry API Tracing
-You can enable tracing of each API call that the Spanner client executes with the `enableApiTracing`
-option. These traces also include any retry attempts for an API call:
-  
-```
-SpannerOptions options = SpannerOptions.newBuilder()
-.setOpenTelemetry(openTelemetry)
-.setEnableApiTracing(true)
-.build();
-```
-  
-This option can also be enabled by setting the environment variable
-`SPANNER_ENABLE_API_TRACING=true`.
-
-> Note: The attribute keys that are used for additional information about retry attempts and the number of requests might change in a future release.
-
-
-### Instrument with OpenCensus
-
-> Note: OpenCensus project is deprecated. See [Sunsetting OpenCensus](https://opentelemetry.io/blog/2023/sunsetting-opencensus/).
-We recommend migrating to OpenTelemetry, the successor project.
-
-Cloud Spanner client supports [Opencensus Metrics](https://opencensus.io/stats/),
-which gives insight into the client internals and aids in debugging/troubleshooting
-production issues. OpenCensus metrics will provide you with enough data to enable you to
-spot, and investigate the cause of any unusual deviations from normal behavior.
-
-All Cloud Spanner Metrics are prefixed with `cloud.google.com/java/spanner` 
-
-The metrics are tagged with:
-* `database`: the target database name.
-* `instance_id`: the instance id of the target Spanner instance.
-* `client_id`: the user defined database client id.
-* `library_version`: the version of the library that you're using.
-
-
-By default, the functionality is disabled. You need to include opencensus-impl
-dependency to collect the data and exporter dependency to export to backend.
-
-[Click here](https://medium.com/google-cloud/troubleshooting-cloud-spanner-applications-with-opencensus-2cf424c4c590) for more information.
-
-#### OpenCensus Dependencies
-
-If you are using Maven, add this to your pom.xml file
-```xml
-<dependency>
-  <groupId>io.opencensus</groupId>
-  <artifactId>opencensus-impl</artifactId>
-  <version>0.30.0</version>
-  <scope>runtime</scope>
-</dependency>
-<dependency>
-  <groupId>io.opencensus</groupId>
-  <artifactId>opencensus-exporter-stats-stackdriver</artifactId>
-  <version>0.30.0</version>
-</dependency>
-```
-If you are using Gradle, add this to your dependencies
-```Groovy
-compile 'io.opencensus:opencensus-impl:0.30.0'
-compile 'io.opencensus:opencensus-exporter-stats-stackdriver:0.30.0'
-```
-
-#### Configure the OpenCensus Exporter
-
-At the start of your application configure the exporter:
-
-```java
-import io.opencensus.exporter.stats.stackdriver.StackdriverStatsExporter;
-// Enable OpenCensus exporters to export metrics to Stackdriver Monitoring.
-// Exporters use Application Default Credentials to authenticate.
-// See https://developers.google.com/identity/protocols/application-default-credentials
-// for more details.
-// The minimum reporting period for Stackdriver is 1 minute.
-StackdriverStatsExporter.createAndRegister();
-```
-#### Enable RPC Views
-
-By default, all session metrics are enabled. To enable RPC views, use either of the following method:
-
-```java
-// Register views for GFE metrics, including gfe_latency and gfe_header_missing_count.
-SpannerRpcViews.registerGfeLatencyAndHeaderMissingCountViews();
-
-// Register GFE Latency view. 
-SpannerRpcViews.registerGfeLatencyView();
-
-// Register GFE Header Missing Count view.
-SpannerRpcViews.registerGfeHeaderMissingCountView();
-```
+> Note: Client-side metrics needs `monitoring.timeSeries.create` IAM permission to export metrics data. Ask your administrator to grant your service account the [Monitoring Metric Writer](https://cloud.google.com/iam/docs/roles-permissions/monitoring#monitoring.metricWriter) (roles/monitoring.metricWriter) IAM role on the project.
 
 ## Traces
 Cloud Spanner client supports OpenTelemetry Traces, which gives insight into the client internals and aids in debugging/troubleshooting production issues. 
 
 By default, the functionality is disabled. You need to add OpenTelemetry dependencies, enable OpenTelemetry traces and must configure the OpenTelemetry with appropriate exporters at the startup of your application.
+
+See [Configure client-side tracing](https://cloud.google.com/spanner/docs/set-up-tracing#configure-client-side-tracing) for more details on configuring traces.
 
 #### OpenTelemetry Dependencies
 
@@ -447,9 +262,32 @@ This option can also be enabled by setting the environment variable
 
 > Note: The attribute keys that are used for additional information about retry attempts and the number of requests might change in a future release.
 
+#### End-to-end Tracing 
+            
+In addition to client-side tracing, you can opt in for [end-to-end tracing](https://cloud.google.com/spanner/docs/tracing-overview#end-to-end-side-tracing). End-to-end tracing helps you understand and debug latency issues that are specific to Spanner such as the following:
+* Identify whether the latency is due to network latency between your application and Spanner, or if the latency is occurring within Spanner.
+* Identify the Google Cloud regions that your application requests are being routed through and if there is a cross-region request. A cross-region request usually means higher latencies between your application and Spanner.
+
+```
+SpannerOptions options = SpannerOptions.newBuilder()
+.setOpenTelemetry(openTelemetry)
+.setEnableEndToEndTracing(true)
+.build();
+```
+
+Refer to [Configure end-to-end tracing](https://cloud.google.com/spanner/docs/set-up-tracing#configure-end-to-end-tracing) to configure end-to-end tracing and to understand its attributes.
+
+> Note: End-to-end traces can only be exported to [Cloud Trace](https://cloud.google.com/trace/docs).
+
+
+## Instrument with OpenCensus
+
+> Note: OpenCensus project is deprecated. See [Sunsetting OpenCensus](https://opentelemetry.io/blog/2023/sunsetting-opencensus/).
+We recommend migrating to OpenTelemetry, the successor project.
+
 ## Migrate from OpenCensus to OpenTelemetry
 
-> Using the [OpenTelemetry OpenCensus Bridge](https://mvnrepository.com/artifact/io.opentelemetry/opentelemetry-opencensus-shim), you can immediately begin exporting your metrics and traces with OpenTelemetry
+> Using the [OpenTelemetry OpenCensus Bridge](https://mvnrepository.com/artifact/io.opentelemetry/opentelemetry-opencensus-shim), you can immediately begin exporting your metrics and traces with OpenTelemetry.
 
 #### Disable OpenCensus metrics
 Disable OpenCensus metrics for Spanner by including the following code if you still possess OpenCensus dependencies and exporter.
@@ -504,21 +342,28 @@ Samples are in the [`samples/`](https://github.com/googleapis/java-spanner/tree/
 | Async Transaction Manager Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/AsyncTransactionManagerExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/AsyncTransactionManagerExample.java) |
 | Batch Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/BatchSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/BatchSample.java) |
 | Batch Write At Least Once Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/BatchWriteAtLeastOnceSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/BatchWriteAtLeastOnceSample.java) |
+| Change Streams Txn Exclusion Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/ChangeStreamsTxnExclusionSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/ChangeStreamsTxnExclusionSample.java) |
 | Copy Backup Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CopyBackupSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CopyBackupSample.java) |
+| Copy Backup With Multi Region Encryption Key | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CopyBackupWithMultiRegionEncryptionKey.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CopyBackupWithMultiRegionEncryptionKey.java) |
 | Create Backup With Encryption Key | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateBackupWithEncryptionKey.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateBackupWithEncryptionKey.java) |
+| Create Backup With Multi Region Encryption Key | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateBackupWithMultiRegionEncryptionKey.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateBackupWithMultiRegionEncryptionKey.java) |
 | Create Database With Default Leader Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithDefaultLeaderSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithDefaultLeaderSample.java) |
 | Create Database With Encryption Key | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithEncryptionKey.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithEncryptionKey.java) |
+| Create Database With Multi Region Encryption Key | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithMultiRegionEncryptionKey.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithMultiRegionEncryptionKey.java) |
 | Create Database With Version Retention Period Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithVersionRetentionPeriodSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateDatabaseWithVersionRetentionPeriodSample.java) |
 | Create Full Backup Schedule Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateFullBackupScheduleSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateFullBackupScheduleSample.java) |
 | Create Incremental Backup Schedule Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateIncrementalBackupScheduleSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateIncrementalBackupScheduleSample.java) |
 | Create Instance Config Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateInstanceConfigSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateInstanceConfigSample.java) |
 | Create Instance Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateInstanceExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateInstanceExample.java) |
 | Create Instance Partition Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateInstancePartitionSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateInstancePartitionSample.java) |
+| Create Instance With Asymmetric Autoscaling Config Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithAsymmetricAutoscalingConfigExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithAsymmetricAutoscalingConfigExample.java) |
 | Create Instance With Autoscaling Config Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithAutoscalingConfigExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithAutoscalingConfigExample.java) |
 | Create Instance With Processing Units Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithProcessingUnitsExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithProcessingUnitsExample.java) |
+| Create Instance Without Default Backup Schedules Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithoutDefaultBackupSchedulesExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateInstanceWithoutDefaultBackupSchedulesExample.java) |
 | Create Sequence Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateSequenceSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateSequenceSample.java) |
 | Create Table With Foreign Key Delete Cascade Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CreateTableWithForeignKeyDeleteCascadeSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CreateTableWithForeignKeyDeleteCascadeSample.java) |
 | Custom Timeout And Retry Settings Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/CustomTimeoutAndRetrySettingsExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/CustomTimeoutAndRetrySettingsExample.java) |
+| Database Add Split Points Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/DatabaseAddSplitPointsSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/DatabaseAddSplitPointsSample.java) |
 | Delete Backup Schedule Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/DeleteBackupScheduleSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/DeleteBackupScheduleSample.java) |
 | Delete Instance Config Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/DeleteInstanceConfigSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/DeleteInstanceConfigSample.java) |
 | Delete Using Dml Returning Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/DeleteUsingDmlReturningSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/DeleteUsingDmlReturningSample.java) |
@@ -531,6 +376,8 @@ Samples are in the [`samples/`](https://github.com/googleapis/java-spanner/tree/
 | Get Database Ddl Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/GetDatabaseDdlSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/GetDatabaseDdlSample.java) |
 | Get Instance Config Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/GetInstanceConfigSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/GetInstanceConfigSample.java) |
 | Insert Using Dml Returning Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/InsertUsingDmlReturningSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/InsertUsingDmlReturningSample.java) |
+| Isolation Level And Read Lock Mode Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/IsolationLevelAndReadLockModeSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/IsolationLevelAndReadLockModeSample.java) |
+| Last Statement Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/LastStatementSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/LastStatementSample.java) |
 | List Backup Schedules Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/ListBackupSchedulesSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/ListBackupSchedulesSample.java) |
 | List Database Roles | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/ListDatabaseRoles.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/ListDatabaseRoles.java) |
 | List Databases Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/ListDatabasesSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/ListDatabasesSample.java) |
@@ -547,6 +394,7 @@ Samples are in the [`samples/`](https://github.com/googleapis/java-spanner/tree/
 | Pg Drop Sequence Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/PgDropSequenceSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/PgDropSequenceSample.java) |
 | Pg Insert Using Dml Returning Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/PgInsertUsingDmlReturningSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/PgInsertUsingDmlReturningSample.java) |
 | Pg Interleaved Table Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/PgInterleavedTableSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/PgInterleavedTableSample.java) |
+| Pg Last Statement Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/PgLastStatementSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/PgLastStatementSample.java) |
 | Pg Partitioned Dml Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/PgPartitionedDmlSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/PgPartitionedDmlSample.java) |
 | Pg Query With Numeric Parameter Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/PgQueryWithNumericParameterSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/PgQueryWithNumericParameterSample.java) |
 | Pg Spanner Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/PgSpannerSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/PgSpannerSample.java) |
@@ -559,6 +407,7 @@ Samples are in the [`samples/`](https://github.com/googleapis/java-spanner/tree/
 | Quickstart Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/QuickstartSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/QuickstartSample.java) |
 | Read Data With Database Role | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/ReadDataWithDatabaseRole.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/ReadDataWithDatabaseRole.java) |
 | Restore Backup With Encryption Key | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/RestoreBackupWithEncryptionKey.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/RestoreBackupWithEncryptionKey.java) |
+| Restore Backup With Multi Region Encryption Key | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/RestoreBackupWithMultiRegionEncryptionKey.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/RestoreBackupWithMultiRegionEncryptionKey.java) |
 | Set Max Commit Delay Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/SetMaxCommitDelaySample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/SetMaxCommitDelaySample.java) |
 | Singer Proto | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/SingerProto.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/SingerProto.java) |
 | Spanner Graph Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/SpannerGraphSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/SpannerGraphSample.java) |
@@ -567,10 +416,12 @@ Samples are in the [`samples/`](https://github.com/googleapis/java-spanner/tree/
 | Tag Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/TagSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/TagSample.java) |
 | Tracing Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/TracingSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/TracingSample.java) |
 | Transaction Timeout Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/TransactionTimeoutExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/TransactionTimeoutExample.java) |
+| Unnamed Parameters Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UnnamedParametersExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UnnamedParametersExample.java) |
 | Update Backup Schedule Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateBackupScheduleSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateBackupScheduleSample.java) |
 | Update Database Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateDatabaseSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateDatabaseSample.java) |
 | Update Database With Default Leader Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateDatabaseWithDefaultLeaderSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateDatabaseWithDefaultLeaderSample.java) |
 | Update Instance Config Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateInstanceConfigSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateInstanceConfigSample.java) |
+| Update Instance Default Backup Schedule Type Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateInstanceDefaultBackupScheduleTypeExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateInstanceDefaultBackupScheduleTypeExample.java) |
 | Update Instance Example | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateInstanceExample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateInstanceExample.java) |
 | Update Json Data Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateJsonDataSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateJsonDataSample.java) |
 | Update Jsonb Data Sample | [source code](https://github.com/googleapis/java-spanner/blob/main/samples/snippets/src/main/java/com/example/spanner/UpdateJsonbDataSample.java) | [![Open in Cloud Shell][shell_img]](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/googleapis/java-spanner&page=editor&open_in_editor=samples/snippets/src/main/java/com/example/spanner/UpdateJsonbDataSample.java) |
@@ -694,32 +545,13 @@ information.
 
 Apache 2.0 - See [LICENSE][license] for more information.
 
-## CI Status
-
-Java Version | Status
------------- | ------
-Java 8 | [![Kokoro CI][kokoro-badge-image-2]][kokoro-badge-link-2]
-Java 8 OSX | [![Kokoro CI][kokoro-badge-image-3]][kokoro-badge-link-3]
-Java 8 Windows | [![Kokoro CI][kokoro-badge-image-4]][kokoro-badge-link-4]
-Java 11 | [![Kokoro CI][kokoro-badge-image-5]][kokoro-badge-link-5]
-
 Java is a registered trademark of Oracle and/or its affiliates.
 
 [product-docs]: https://cloud.google.com/spanner/docs/
 [javadocs]: https://cloud.google.com/java/docs/reference/google-cloud-spanner/latest/history
-[kokoro-badge-image-1]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java7.svg
-[kokoro-badge-link-1]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java7.html
-[kokoro-badge-image-2]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java8.svg
-[kokoro-badge-link-2]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java8.html
-[kokoro-badge-image-3]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java8-osx.svg
-[kokoro-badge-link-3]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java8-osx.html
-[kokoro-badge-image-4]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java8-win.svg
-[kokoro-badge-link-4]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java8-win.html
-[kokoro-badge-image-5]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java11.svg
-[kokoro-badge-link-5]: http://storage.googleapis.com/cloud-devrel-public/java/badges/java-spanner/java11.html
 [stability-image]: https://img.shields.io/badge/stability-stable-green
 [maven-version-image]: https://img.shields.io/maven-central/v/com.google.cloud/google-cloud-spanner.svg
-[maven-version-link]: https://central.sonatype.com/artifact/com.google.cloud/google-cloud-spanner/6.81.1
+[maven-version-link]: https://central.sonatype.com/artifact/com.google.cloud/google-cloud-spanner/6.113.0
 [authentication]: https://github.com/googleapis/google-cloud-java#authentication
 [auth-scopes]: https://developers.google.com/identity/protocols/oauth2/scopes
 [predefined-iam-roles]: https://cloud.google.com/iam/docs/understanding-roles#predefined_roles

@@ -16,8 +16,7 @@
 
 package com.google.cloud.spanner.spi.v1;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.OAuth2Credentials;
@@ -48,17 +47,13 @@ import io.opencensus.stats.View;
 import io.opencensus.stats.ViewData;
 import io.opencensus.tags.TagKey;
 import io.opencensus.tags.TagValue;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -132,7 +127,7 @@ public class GfeLatencyTest {
       Statement.of("UPDATE FOO SET BAR=1 WHERE BAZ=2");
 
   @BeforeClass
-  public static void startServer() throws IOException {
+  public static void startServer() throws Exception {
     //noinspection deprecation
     SpannerRpcViews.registerGfeLatencyAndHeaderMissingCountViews();
 
@@ -258,7 +253,7 @@ public class GfeLatencyTest {
             SpannerRpcViews.SPANNER_GFE_HEADER_MISSING_COUNT_VIEW,
             "google.spanner.v1.Spanner/ExecuteStreamingSql",
             true);
-    assertEquals(1, count1);
+    assertTrue(count1 >= 1);
   }
 
   @Test
@@ -269,7 +264,7 @@ public class GfeLatencyTest {
     long count =
         getMetric(
             SpannerRpcViews.SPANNER_GFE_HEADER_MISSING_COUNT_VIEW,
-            "google.spanner.v1.Spanner/ExecuteSql",
+            "google.spanner.v1.Spanner/Commit",
             false);
     assertEquals(0, count);
 
@@ -279,7 +274,7 @@ public class GfeLatencyTest {
     long count1 =
         getMetric(
             SpannerRpcViews.SPANNER_GFE_HEADER_MISSING_COUNT_VIEW,
-            "google.spanner.v1.Spanner/ExecuteSql",
+            "google.spanner.v1.Spanner/Commit",
             true);
     assertEquals(1, count1);
   }
@@ -290,7 +285,7 @@ public class GfeLatencyTest {
         .setProjectId("[PROJECT]")
         // Set a custom channel configurator to allow http instead of https.
         .setChannelConfigurator(ManagedChannelBuilder::usePlaintext)
-        .disableDirectPath()
+        .setEnableDirectAccess(false)
         .setHost("http://" + endpoint)
         // Set static credentials that will return the static OAuth test token.
         .setCredentials(STATIC_CREDENTIALS)

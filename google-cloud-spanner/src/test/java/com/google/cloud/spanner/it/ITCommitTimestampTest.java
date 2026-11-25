@@ -16,8 +16,10 @@
 
 package com.google.cloud.spanner.it;
 
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Database;
@@ -36,6 +38,8 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.spanner.connection.ConnectionOptions;
 import com.google.cloud.spanner.testing.RemoteSpannerHelper;
 import com.google.common.collect.ImmutableList;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
@@ -47,8 +51,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.threeten.bp.Duration;
-import org.threeten.bp.Instant;
 
 /** Integration test for commit timestamp of Cloud Spanner. */
 @Category(ParallelIntegrationTest.class)
@@ -227,6 +229,9 @@ public class ITCommitTimestampTest {
 
   @Test
   public void invalidColumnType() throws Exception {
+    assumeFalse(
+        "Validation currently not available in experimental host mode - tracked via b/442339325",
+        isExperimentalHost());
     // error_catalog error OptionErrorList
     String statement = "ALTER TABLE T ADD COLUMN T4 INT64 OPTIONS (allow_commit_timestamp=true)";
     try {

@@ -38,6 +38,7 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Function;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -48,13 +49,15 @@ abstract class AbstractResultSet<R> extends AbstractStructReader implements Resu
   interface Listener {
     /**
      * Called when transaction metadata is seen. This method may be invoked at most once. If the
-     * method is invoked, it will precede {@link #onError(SpannerException)} or {@link #onDone()}.
+     * method is invoked, it will precede {@link #onError(SpannerException,boolean)} or {@link
+     * #onDone(boolean)}.
      */
     void onTransactionMetadata(Transaction transaction, boolean shouldIncludeId)
         throws SpannerException;
 
     /** Called when the read finishes with an error. Returns the error that should be thrown. */
-    SpannerException onError(SpannerException e, boolean withBeginTransaction);
+    SpannerException onError(
+        SpannerException e, boolean withBeginTransaction, boolean lastStatement);
 
     /** Called when the read finishes normally. */
     void onDone(boolean withBeginTransaction);
@@ -151,6 +154,8 @@ abstract class AbstractResultSet<R> extends AbstractStructReader implements Resu
 
     boolean isWithBeginTransaction();
 
+    boolean isLastStatement();
+
     /**
      * @param streamMessageListener A class object which implements StreamMessageListener
      * @return true if streaming is supported by the iterator, otherwise false
@@ -158,6 +163,9 @@ abstract class AbstractResultSet<R> extends AbstractStructReader implements Resu
     default boolean initiateStreaming(AsyncResultSet.StreamMessageListener streamMessageListener) {
       return false;
     }
+
+    /** it requests the initial prefetch chunks from gRPC stream */
+    default void requestPrefetchChunks() {}
   }
 
   static double valueProtoToFloat64(com.google.protobuf.Value proto) {
@@ -431,6 +439,16 @@ abstract class AbstractResultSet<R> extends AbstractStructReader implements Resu
   }
 
   @Override
+  protected UUID getUuidInternal(int columnIndex) {
+    return currRow().getUuidInternal(columnIndex);
+  }
+
+  @Override
+  protected Interval getIntervalInternal(int columnIndex) {
+    return currRow().getIntervalInternal(columnIndex);
+  }
+
+  @Override
   protected Value getValueInternal(int columnIndex) {
     return currRow().getValueInternal(columnIndex);
   }
@@ -520,6 +538,16 @@ abstract class AbstractResultSet<R> extends AbstractStructReader implements Resu
   @Override
   protected List<Date> getDateListInternal(int columnIndex) {
     return currRow().getDateListInternal(columnIndex);
+  }
+
+  @Override
+  protected List<UUID> getUuidListInternal(int columnIndex) {
+    return currRow().getUuidListInternal(columnIndex);
+  }
+
+  @Override
+  protected List<Interval> getIntervalListInternal(int columnIndex) {
+    return currRow().getIntervalListInternal(columnIndex);
   }
 
   @Override

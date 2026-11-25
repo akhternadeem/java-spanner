@@ -45,13 +45,13 @@ import com.google.spanner.v1.CommitRequest;
 import com.google.spanner.v1.RequestOptions;
 import com.google.spanner.v1.Transaction;
 import com.google.spanner.v1.TransactionOptions;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
-import org.threeten.bp.Instant;
 
 /**
  * Implementation of {@link Session}. Sessions are managed internally by the client library, and
@@ -76,12 +76,15 @@ class SessionImpl implements Session {
       transactionOptions.setExcludeTxnFromChangeStreams(true);
     }
     TransactionOptions.ReadWrite.Builder readWrite = TransactionOptions.ReadWrite.newBuilder();
-    if (options.withOptimisticLock() == Boolean.TRUE) {
-      readWrite.setReadLockMode(TransactionOptions.ReadWrite.ReadLockMode.OPTIMISTIC);
-    }
     if (previousTransactionId != null
         && previousTransactionId != com.google.protobuf.ByteString.EMPTY) {
       readWrite.setMultiplexedSessionPreviousTransactionId(previousTransactionId);
+    }
+    if (options.isolationLevel() != null) {
+      transactionOptions.setIsolationLevel(options.isolationLevel());
+    }
+    if (options.readLockMode() != null) {
+      readWrite.setReadLockMode(options.readLockMode());
     }
     transactionOptions.setReadWrite(readWrite);
     return transactionOptions.build();
@@ -117,7 +120,7 @@ class SessionImpl implements Session {
   static final int NO_CHANNEL_HINT = -1;
 
   private final SpannerImpl spanner;
-  private final SessionReference sessionReference;
+  private SessionReference sessionReference;
   private SessionTransaction activeTransaction;
   private ISpan currentSpan;
   private final Clock clock;
@@ -157,12 +160,29 @@ class SessionImpl implements Session {
     return sessionReference.getName();
   }
 
+  @Override
+  public String getDatabaseRole() {
+    return sessionReference.getDatabaseRole();
+  }
+
+  /**
+   * Updates the session reference with the fallback session. This should only be used for updating
+   * session reference with regular session in case of unimplemented error in multiplexed session.
+   */
+  void setFallbackSessionReference(SessionReference sessionReference) {
+    this.sessionReference = sessionReference;
+  }
+
   Map<SpannerRpc.Option, ?> getOptions() {
     return options;
   }
 
   ErrorHandler getErrorHandler() {
     return this.errorHandler;
+  }
+
+  SpannerImpl getSpanner() {
+    return spanner;
   }
 
   void setCurrentSpan(ISpan span) {
@@ -193,6 +213,10 @@ class SessionImpl implements Session {
     sessionReference.markUsed(instant);
   }
 
+  TransactionOptions defaultTransactionOptions() {
+    return this.spanner.getOptions().getDefaultTransactionOptions();
+  }
+
   public DatabaseId getDatabaseId() {
     return sessionReference.getDatabaseId();
   }
@@ -203,7 +227,7 @@ class SessionImpl implements Session {
     PartitionedDmlTransaction txn =
         new PartitionedDmlTransaction(this, spanner.getRpc(), Ticker.systemTicker());
     return txn.executeStreamingPartitionedUpdate(
-        stmt, spanner.getOptions().getPartitionedDmlTimeout(), options);
+        stmt, spanner.getOptions().getPartitionedDmlTimeoutDuration(), options);
   }
 
   @Override
@@ -252,7 +276,14 @@ class SessionImpl implements Session {
     if (options.withExcludeTxnFromChangeStreams() == Boolean.TRUE) {
       transactionOptionsBuilder.setExcludeTxnFromChangeStreams(true);
     }
-    requestBuilder.setSingleUseTransaction(transactionOptionsBuilder);
+    if (options.isolationLevel() != null) {
+      transactionOptionsBuilder.setIsolationLevel(options.isolationLevel());
+    }
+    if (options.readLockMode() != null) {
+      transactionOptionsBuilder.getReadWriteBuilder().setReadLockMode(options.readLockMode());
+    }
+    requestBuilder.setSingleUseTransaction(
+        defaultTransactionOptions().toBuilder().mergeFrom(transactionOptionsBuilder.build()));
 
     if (options.hasMaxCommitDelay()) {
       requestBuilder.setMaxCommitDelay(
@@ -268,6 +299,7 @@ class SessionImpl implements Session {
     }
     CommitRequest request = requestBuilder.build();
     ISpan span = tracer.spanBuilder(SpannerImpl.COMMIT);
+
     try (IScope s = tracer.withSpan(span)) {
       return SpannerRetryHelper.runTxWithRetriesOnAborted(
           () -> new CommitResponse(spanner.getRpc().commit(request, getOptions())));
@@ -306,11 +338,11 @@ class SessionImpl implements Session {
             .setSession(getName())
             .addAllMutationGroups(mutationGroupsProto);
     RequestOptions batchWriteRequestOptions = getRequestOptions(transactionOptions);
+    Options allOptions = Options.fromTransactionOptions(transactionOptions);
     if (batchWriteRequestOptions != null) {
       requestBuilder.setRequestOptions(batchWriteRequestOptions);
     }
-    if (Options.fromTransactionOptions(transactionOptions).withExcludeTxnFromChangeStreams()
-        == Boolean.TRUE) {
+    if (allOptions.withExcludeTxnFromChangeStreams() == Boolean.TRUE) {
       requestBuilder.setExcludeTxnFromChangeStreams(true);
     }
     ISpan span = tracer.spanBuilder(SpannerImpl.BATCH_WRITE);
@@ -321,6 +353,7 @@ class SessionImpl implements Session {
       throw SpannerExceptionFactory.newSpannerException(e);
     } finally {
       span.end();
+      onTransactionDone();
     }
   }
 
@@ -415,11 +448,17 @@ class SessionImpl implements Session {
 
   @Override
   public ApiFuture<Empty> asyncClose() {
+    if (getIsMultiplexed()) {
+      return com.google.api.core.ApiFutures.immediateFuture(Empty.getDefaultInstance());
+    }
     return spanner.getRpc().asyncDeleteSession(getName(), getOptions());
   }
 
   @Override
   public void close() {
+    if (getIsMultiplexed()) {
+      return;
+    }
     ISpan span = tracer.spanBuilder(SpannerImpl.DELETE_SESSION);
     try (IScope s = tracer.withSpan(span)) {
       spanner.getRpc().deleteSession(getName(), getOptions());
@@ -443,9 +482,29 @@ class SessionImpl implements Session {
         BeginTransactionRequest.newBuilder()
             .setSession(getName())
             .setOptions(
-                createReadWriteTransactionOptions(transactionOptions, previousTransactionId));
+                defaultTransactionOptions().toBuilder()
+                    .mergeFrom(
+                        createReadWriteTransactionOptions(
+                            transactionOptions, previousTransactionId)));
     if (sessionReference.getIsMultiplexed() && mutation != null) {
       requestBuilder.setMutationKey(mutation);
+    }
+    RequestOptions.Builder optionsBuilder =
+        transactionOptions.toRequestOptionsProto(true).toBuilder();
+    RequestOptions.ClientContext defaultClientContext = spanner.getOptions().getClientContext();
+    if (defaultClientContext != null) {
+      RequestOptions.ClientContext.Builder builder = defaultClientContext.toBuilder();
+      if (optionsBuilder.hasClientContext()) {
+        builder.mergeFrom(optionsBuilder.getClientContext());
+      }
+      optionsBuilder.setClientContext(builder.build());
+    }
+    if (!sessionReference.getIsMultiplexed()) {
+      optionsBuilder.clearTransactionTag();
+    }
+    RequestOptions requestOptions = optionsBuilder.build();
+    if (!requestOptions.equals(RequestOptions.getDefaultInstance())) {
+      requestBuilder.setRequestOptions(requestOptions);
     }
     final BeginTransactionRequest request = requestBuilder.build();
     final ApiFuture<Transaction> requestFuture;
@@ -488,7 +547,6 @@ class SessionImpl implements Session {
         .setOptions(options)
         .setTransactionId(null)
         .setPreviousTransactionId(previousTransactionId)
-        .setOptions(options)
         .setTrackTransactionStarter(spanner.getOptions().isTrackTransactionStarter())
         .setRpc(spanner.getRpc())
         .setDefaultQueryOptions(spanner.getDefaultQueryOptions(getDatabaseId()))
@@ -528,5 +586,24 @@ class SessionImpl implements Session {
 
   TraceWrapper getTracer() {
     return tracer;
+  }
+
+  public XGoogSpannerRequestId.RequestIdCreator getRequestIdCreator() {
+    return this.spanner.getRpc().getRequestIdCreator();
+  }
+
+  int getChannel() {
+    if (getIsMultiplexed()) {
+      return 0;
+    }
+    Map<SpannerRpc.Option, ?> options = this.getOptions();
+    if (options == null) {
+      return 0;
+    }
+    Long channelHint = (Long) options.get(SpannerRpc.Option.CHANNEL_HINT);
+    if (channelHint == null) {
+      return 0;
+    }
+    return (int) (channelHint % this.spanner.getOptions().getNumChannels());
   }
 }

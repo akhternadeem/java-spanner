@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ import com.google.longrunning.Operation;
 import com.google.protobuf.Empty;
 import com.google.protobuf.FieldMask;
 import com.google.protobuf.Timestamp;
+import com.google.spanner.admin.database.v1.AddSplitPointsRequest;
+import com.google.spanner.admin.database.v1.AddSplitPointsResponse;
 import com.google.spanner.admin.database.v1.Backup;
 import com.google.spanner.admin.database.v1.BackupName;
 import com.google.spanner.admin.database.v1.BackupSchedule;
@@ -64,6 +66,8 @@ import com.google.spanner.admin.database.v1.GetDatabaseDdlRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
 import com.google.spanner.admin.database.v1.GetDatabaseRequest;
 import com.google.spanner.admin.database.v1.InstanceName;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationResponse;
 import com.google.spanner.admin.database.v1.ListBackupOperationsRequest;
 import com.google.spanner.admin.database.v1.ListBackupOperationsResponse;
 import com.google.spanner.admin.database.v1.ListBackupSchedulesRequest;
@@ -78,6 +82,7 @@ import com.google.spanner.admin.database.v1.ListDatabasesRequest;
 import com.google.spanner.admin.database.v1.ListDatabasesResponse;
 import com.google.spanner.admin.database.v1.RestoreDatabaseMetadata;
 import com.google.spanner.admin.database.v1.RestoreDatabaseRequest;
+import com.google.spanner.admin.database.v1.SplitPoints;
 import com.google.spanner.admin.database.v1.UpdateBackupRequest;
 import com.google.spanner.admin.database.v1.UpdateBackupScheduleRequest;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
@@ -524,6 +529,25 @@ import javax.annotation.Generated;
  *       </td>
  *    </tr>
  *    <tr>
+ *      <td><p> AddSplitPoints</td>
+ *      <td><p> Adds split points to specified tables, indexes of a database.</td>
+ *      <td>
+ *      <p>Request object method variants only take one parameter, a request object, which must be constructed before the call.</p>
+ *      <ul>
+ *           <li><p> addSplitPoints(AddSplitPointsRequest request)
+ *      </ul>
+ *      <p>"Flattened" method variants have converted the fields of the request object into function parameters to enable multiple ways to call the same method.</p>
+ *      <ul>
+ *           <li><p> addSplitPoints(DatabaseName database, List&lt;SplitPoints&gt; splitPoints)
+ *           <li><p> addSplitPoints(String database, List&lt;SplitPoints&gt; splitPoints)
+ *      </ul>
+ *      <p>Callable method variants take no parameters and return an immutable API callable object, which can be used to initiate calls to the service.</p>
+ *      <ul>
+ *           <li><p> addSplitPointsCallable()
+ *      </ul>
+ *       </td>
+ *    </tr>
+ *    <tr>
  *      <td><p> CreateBackupSchedule</td>
  *      <td><p> Creates a new backup schedule.</td>
  *      <td>
@@ -615,6 +639,25 @@ import javax.annotation.Generated;
  *      <ul>
  *           <li><p> listBackupSchedulesPagedCallable()
  *           <li><p> listBackupSchedulesCallable()
+ *      </ul>
+ *       </td>
+ *    </tr>
+ *    <tr>
+ *      <td><p> InternalUpdateGraphOperation</td>
+ *      <td><p> This is an internal API called by Spanner Graph jobs. You should never need to call this API directly.</td>
+ *      <td>
+ *      <p>Request object method variants only take one parameter, a request object, which must be constructed before the call.</p>
+ *      <ul>
+ *           <li><p> internalUpdateGraphOperation(InternalUpdateGraphOperationRequest request)
+ *      </ul>
+ *      <p>"Flattened" method variants have converted the fields of the request object into function parameters to enable multiple ways to call the same method.</p>
+ *      <ul>
+ *           <li><p> internalUpdateGraphOperation(DatabaseName database, String operationId)
+ *           <li><p> internalUpdateGraphOperation(String database, String operationId)
+ *      </ul>
+ *      <p>Callable method variants take no parameters and return an immutable API callable object, which can be used to initiate calls to the service.</p>
+ *      <ul>
+ *           <li><p> internalUpdateGraphOperationCallable()
  *      </ul>
  *       </td>
  *    </tr>
@@ -1561,6 +1604,7 @@ public class DatabaseAdminClient implements BackgroundResource {
    *           .addAllStatements(new ArrayList<String>())
    *           .setOperationId("operationId129704162")
    *           .setProtoDescriptors(ByteString.EMPTY)
+   *           .setThroughputMode(true)
    *           .build();
    *   databaseAdminClient.updateDatabaseDdlAsync(request).get();
    * }
@@ -1599,6 +1643,7 @@ public class DatabaseAdminClient implements BackgroundResource {
    *           .addAllStatements(new ArrayList<String>())
    *           .setOperationId("operationId129704162")
    *           .setProtoDescriptors(ByteString.EMPTY)
+   *           .setThroughputMode(true)
    *           .build();
    *   OperationFuture<Empty, UpdateDatabaseDdlMetadata> future =
    *       databaseAdminClient.updateDatabaseDdlOperationCallable().futureCall(request);
@@ -1637,6 +1682,7 @@ public class DatabaseAdminClient implements BackgroundResource {
    *           .addAllStatements(new ArrayList<String>())
    *           .setOperationId("operationId129704162")
    *           .setProtoDescriptors(ByteString.EMPTY)
+   *           .setThroughputMode(true)
    *           .build();
    *   ApiFuture<Operation> future =
    *       databaseAdminClient.updateDatabaseDdlCallable().futureCall(request);
@@ -4320,6 +4366,137 @@ public class DatabaseAdminClient implements BackgroundResource {
 
   // AUTO-GENERATED DOCUMENTATION AND METHOD.
   /**
+   * Adds split points to specified tables, indexes of a database.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   DatabaseName database = DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]");
+   *   List<SplitPoints> splitPoints = new ArrayList<>();
+   *   AddSplitPointsResponse response = databaseAdminClient.addSplitPoints(database, splitPoints);
+   * }
+   * }</pre>
+   *
+   * @param database Required. The database on whose tables/indexes split points are to be added.
+   *     Values are of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/databases/&lt;database&gt;`.
+   * @param splitPoints Required. The split points to add.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final AddSplitPointsResponse addSplitPoints(
+      DatabaseName database, List<SplitPoints> splitPoints) {
+    AddSplitPointsRequest request =
+        AddSplitPointsRequest.newBuilder()
+            .setDatabase(database == null ? null : database.toString())
+            .addAllSplitPoints(splitPoints)
+            .build();
+    return addSplitPoints(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Adds split points to specified tables, indexes of a database.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   String database = DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString();
+   *   List<SplitPoints> splitPoints = new ArrayList<>();
+   *   AddSplitPointsResponse response = databaseAdminClient.addSplitPoints(database, splitPoints);
+   * }
+   * }</pre>
+   *
+   * @param database Required. The database on whose tables/indexes split points are to be added.
+   *     Values are of the form
+   *     `projects/&lt;project&gt;/instances/&lt;instance&gt;/databases/&lt;database&gt;`.
+   * @param splitPoints Required. The split points to add.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final AddSplitPointsResponse addSplitPoints(
+      String database, List<SplitPoints> splitPoints) {
+    AddSplitPointsRequest request =
+        AddSplitPointsRequest.newBuilder()
+            .setDatabase(database)
+            .addAllSplitPoints(splitPoints)
+            .build();
+    return addSplitPoints(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Adds split points to specified tables, indexes of a database.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   AddSplitPointsRequest request =
+   *       AddSplitPointsRequest.newBuilder()
+   *           .setDatabase(DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString())
+   *           .addAllSplitPoints(new ArrayList<SplitPoints>())
+   *           .setInitiator("initiator-248987089")
+   *           .build();
+   *   AddSplitPointsResponse response = databaseAdminClient.addSplitPoints(request);
+   * }
+   * }</pre>
+   *
+   * @param request The request object containing all of the parameters for the API call.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final AddSplitPointsResponse addSplitPoints(AddSplitPointsRequest request) {
+    return addSplitPointsCallable().call(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * Adds split points to specified tables, indexes of a database.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   AddSplitPointsRequest request =
+   *       AddSplitPointsRequest.newBuilder()
+   *           .setDatabase(DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString())
+   *           .addAllSplitPoints(new ArrayList<SplitPoints>())
+   *           .setInitiator("initiator-248987089")
+   *           .build();
+   *   ApiFuture<AddSplitPointsResponse> future =
+   *       databaseAdminClient.addSplitPointsCallable().futureCall(request);
+   *   // Do something.
+   *   AddSplitPointsResponse response = future.get();
+   * }
+   * }</pre>
+   */
+  public final UnaryCallable<AddSplitPointsRequest, AddSplitPointsResponse>
+      addSplitPointsCallable() {
+    return stub.addSplitPointsCallable();
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
    * Creates a new backup schedule.
    *
    * <p>Sample code:
@@ -4961,6 +5138,146 @@ public class DatabaseAdminClient implements BackgroundResource {
   public final UnaryCallable<ListBackupSchedulesRequest, ListBackupSchedulesResponse>
       listBackupSchedulesCallable() {
     return stub.listBackupSchedulesCallable();
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * This is an internal API called by Spanner Graph jobs. You should never need to call this API
+   * directly.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   DatabaseName database = DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]");
+   *   String operationId = "operationId129704162";
+   *   InternalUpdateGraphOperationResponse response =
+   *       databaseAdminClient.internalUpdateGraphOperation(database, operationId);
+   * }
+   * }</pre>
+   *
+   * @param database Internal field, do not use directly.
+   * @param operationId Internal field, do not use directly.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final InternalUpdateGraphOperationResponse internalUpdateGraphOperation(
+      DatabaseName database, String operationId) {
+    InternalUpdateGraphOperationRequest request =
+        InternalUpdateGraphOperationRequest.newBuilder()
+            .setDatabase(database == null ? null : database.toString())
+            .setOperationId(operationId)
+            .build();
+    return internalUpdateGraphOperation(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * This is an internal API called by Spanner Graph jobs. You should never need to call this API
+   * directly.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   String database = DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString();
+   *   String operationId = "operationId129704162";
+   *   InternalUpdateGraphOperationResponse response =
+   *       databaseAdminClient.internalUpdateGraphOperation(database, operationId);
+   * }
+   * }</pre>
+   *
+   * @param database Internal field, do not use directly.
+   * @param operationId Internal field, do not use directly.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final InternalUpdateGraphOperationResponse internalUpdateGraphOperation(
+      String database, String operationId) {
+    InternalUpdateGraphOperationRequest request =
+        InternalUpdateGraphOperationRequest.newBuilder()
+            .setDatabase(database)
+            .setOperationId(operationId)
+            .build();
+    return internalUpdateGraphOperation(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * This is an internal API called by Spanner Graph jobs. You should never need to call this API
+   * directly.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   InternalUpdateGraphOperationRequest request =
+   *       InternalUpdateGraphOperationRequest.newBuilder()
+   *           .setDatabase(DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString())
+   *           .setOperationId("operationId129704162")
+   *           .setVmIdentityToken("vmIdentityToken-417652124")
+   *           .setProgress(-1001078227)
+   *           .setStatus(Status.newBuilder().build())
+   *           .build();
+   *   InternalUpdateGraphOperationResponse response =
+   *       databaseAdminClient.internalUpdateGraphOperation(request);
+   * }
+   * }</pre>
+   *
+   * @param request The request object containing all of the parameters for the API call.
+   * @throws com.google.api.gax.rpc.ApiException if the remote call fails
+   */
+  public final InternalUpdateGraphOperationResponse internalUpdateGraphOperation(
+      InternalUpdateGraphOperationRequest request) {
+    return internalUpdateGraphOperationCallable().call(request);
+  }
+
+  // AUTO-GENERATED DOCUMENTATION AND METHOD.
+  /**
+   * This is an internal API called by Spanner Graph jobs. You should never need to call this API
+   * directly.
+   *
+   * <p>Sample code:
+   *
+   * <pre>{@code
+   * // This snippet has been automatically generated and should be regarded as a code template only.
+   * // It will require modifications to work:
+   * // - It may require correct/in-range values for request initialization.
+   * // - It may require specifying regional endpoints when creating the service client as shown in
+   * // https://cloud.google.com/java/docs/setup#configure_endpoints_for_the_client_library
+   * try (DatabaseAdminClient databaseAdminClient = DatabaseAdminClient.create()) {
+   *   InternalUpdateGraphOperationRequest request =
+   *       InternalUpdateGraphOperationRequest.newBuilder()
+   *           .setDatabase(DatabaseName.of("[PROJECT]", "[INSTANCE]", "[DATABASE]").toString())
+   *           .setOperationId("operationId129704162")
+   *           .setVmIdentityToken("vmIdentityToken-417652124")
+   *           .setProgress(-1001078227)
+   *           .setStatus(Status.newBuilder().build())
+   *           .build();
+   *   ApiFuture<InternalUpdateGraphOperationResponse> future =
+   *       databaseAdminClient.internalUpdateGraphOperationCallable().futureCall(request);
+   *   // Do something.
+   *   InternalUpdateGraphOperationResponse response = future.get();
+   * }
+   * }</pre>
+   */
+  public final UnaryCallable<
+          InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationCallable() {
+    return stub.internalUpdateGraphOperationCallable();
   }
 
   @Override

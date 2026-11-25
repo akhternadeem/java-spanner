@@ -74,6 +74,7 @@ import javax.annotation.concurrent.GuardedBy;
 /** Default implementation of {@link TransactionRunner}. */
 class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
   private static final Logger txnLogger = Logger.getLogger(TransactionRunner.class.getName());
+
   /**
    * (Part of) the error message that is returned by Cloud Spanner if a transaction is cancelled
    * because it was invalidated by a later transaction in the same session.
@@ -280,7 +281,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
       try {
         ensureTxnAsync().get();
       } catch (ExecutionException e) {
-        throw SpannerExceptionFactory.newSpannerException(e.getCause() == null ? e : e.getCause());
+        throw SpannerExceptionFactory.asSpannerException(e.getCause() == null ? e : e.getCause());
       } catch (InterruptedException e) {
         throw SpannerExceptionFactory.propagateInterrupt(e);
       }
@@ -326,6 +327,19 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
               }
               res.set(null);
             } catch (ExecutionException e) {
+              SpannerException spannerException = SpannerExceptionFactory.asSpannerException(e);
+              if (spannerException.getErrorCode() == ErrorCode.ABORTED
+                  && session.getIsMultiplexed()
+                  && mutation != null) {
+                // Begin transaction can return ABORTED errors. This can only happen if it included
+                // a mutation key, which again means that this is a mutation-only transaction on a
+                // multiplexed session.
+                span.addAnnotation(
+                    "Transaction Creation Failed with ABORT. Retrying",
+                    e.getCause() == null ? e : e.getCause());
+                createTxnAsync(res, mutation);
+                return;
+              }
               span.addAnnotation(
                   "Transaction Creation Failed", e.getCause() == null ? e : e.getCause());
               res.setException(e.getCause() == null ? e : e.getCause());
@@ -356,7 +370,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
           throw SpannerExceptionFactory.propagateTimeout((TimeoutException) e);
         }
       } catch (ExecutionException e) {
-        throw SpannerExceptionFactory.newSpannerException(e.getCause() == null ? e : e.getCause());
+        throw SpannerExceptionFactory.asSpannerException(e.getCause() == null ? e : e.getCause());
       }
     }
 
@@ -410,7 +424,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
       builder.addAllMutations(mutationsProto);
       finishOps.addListener(
           new CommitRunnable(
-              res, finishOps, builder, /* retryAttemptDueToCommitProtocolExtension = */ false),
+              res, finishOps, builder, /* retryAttemptDueToCommitProtocolExtension= */ false),
           MoreExecutors.directExecutor());
       return res;
     }
@@ -450,15 +464,9 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                         waitForTransactionTimeoutMillis, TimeUnit.MILLISECONDS)
                     : transactionId);
           }
-          if (options.hasPriority() || getTransactionTag() != null) {
-            RequestOptions.Builder requestOptionsBuilder = RequestOptions.newBuilder();
-            if (options.hasPriority()) {
-              requestOptionsBuilder.setPriority(options.priority());
-            }
-            if (getTransactionTag() != null) {
-              requestOptionsBuilder.setTransactionTag(getTransactionTag());
-            }
-            requestBuilder.setRequestOptions(requestOptionsBuilder.build());
+          RequestOptions requestOptions = options.toRequestOptionsProto(true);
+          if (!requestOptions.equals(RequestOptions.getDefaultInstance())) {
+            requestBuilder.setRequestOptions(requestOptions);
           }
           if (session.getIsMultiplexed() && getLatestPrecommitToken() != null) {
             // Set the precommit token in the CommitRequest for multiplexed sessions.
@@ -469,7 +477,8 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
             // they were already buffered in SpanFE during the previous attempt.
             requestBuilder.clearMutations();
             span.addAnnotation(
-                "Retrying commit operation with a new precommit token obtained from the previous CommitResponse");
+                "Retrying commit operation with a new precommit token obtained from the previous"
+                    + " CommitResponse");
           }
           final CommitRequest commitRequest = requestBuilder.build();
           span.addAnnotation("Starting Commit");
@@ -500,7 +509,8 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                     // track the latest pre commit token
                     onPrecommitToken(proto.getPrecommitToken());
                     span.addAnnotation(
-                        "Commit operation will be retried with new precommit token as the CommitResponse includes a MultiplexedSessionRetry field");
+                        "Commit operation will be retried with new precommit token as the"
+                            + " CommitResponse includes a MultiplexedSessionRetry field");
                     opSpan.end();
 
                     // Retry the commit RPC with the latest precommit token from CommitResponse.
@@ -508,7 +518,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                             res,
                             prev,
                             requestBuilder,
-                            /* retryAttemptDueToCommitProtocolExtension = */ true)
+                            /* retryAttemptDueToCommitProtocolExtension= */ true)
                         .run();
 
                     // Exit to prevent further processing in this attempt.
@@ -538,7 +548,11 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                     span.addAnnotation("Commit Failed", resultException);
                     opSpan.setStatus(resultException);
                     opSpan.end();
-                    res.setException(onError(resultException, false));
+                    res.setException(
+                        onError(
+                            resultException,
+                            /* withBeginTransaction= */ false,
+                            /* lastStatement= */ true));
                   } catch (Throwable unexpectedError) {
                     // This is a safety precaution to make sure that a result is always returned.
                     res.setException(unexpectedError);
@@ -600,6 +614,25 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                 getTransactionChannelHint());
         session.markUsed(clock.instant());
         return apiFuture;
+      } else if (transactionIdFuture != null) {
+        ApiFuture<ByteString> transactionIdOrEmptyFuture =
+            ApiFutures.catching(
+                transactionIdFuture,
+                Throwable.class,
+                input -> ByteString.empty(),
+                MoreExecutors.directExecutor());
+        return ApiFutures.transformAsync(
+            transactionIdOrEmptyFuture,
+            transactionId ->
+                transactionId.isEmpty()
+                    ? ApiFutures.immediateFuture(Empty.getDefaultInstance())
+                    : rpc.rollbackAsync(
+                        RollbackRequest.newBuilder()
+                            .setSession(session.getName())
+                            .setTransactionId(transactionId)
+                            .build(),
+                        getTransactionChannelHint()),
+            MoreExecutors.directExecutor());
       } else {
         return ApiFutures.immediateFuture(Empty.getDefaultInstance());
       }
@@ -630,8 +663,10 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
           if (tx == null) {
             return TransactionSelector.newBuilder()
                 .setBegin(
-                    SessionImpl.createReadWriteTransactionOptions(
-                        options, getPreviousTransactionId()))
+                    this.session.defaultTransactionOptions().toBuilder()
+                        .mergeFrom(
+                            SessionImpl.createReadWriteTransactionOptions(
+                                options, getPreviousTransactionId())))
                 .build();
           } else {
             // Wait for the transaction to come available. The tx.get() call will fail with an
@@ -651,7 +686,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
               aborted = true;
             }
           }
-          throw SpannerExceptionFactory.newSpannerException(e.getCause());
+          throw SpannerExceptionFactory.asSpannerException(e.getCause());
         } catch (TimeoutException e) {
           // Throw an ABORTED exception to force a retry of the transaction if no transaction
           // has been returned by the first statement.
@@ -660,7 +695,8 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                   ErrorCode.ABORTED,
                   "Timeout while waiting for a transaction to be returned by another statement."
                       + (trackTransactionStarter
-                          ? " See the suppressed exception for the stacktrace of the caller that should return a transaction"
+                          ? " See the suppressed exception for the stacktrace of the caller that"
+                              + " should return a transaction"
                           : ""),
                   e);
           if (transactionStarter != null) {
@@ -733,8 +769,9 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
     }
 
     @Override
-    public SpannerException onError(SpannerException e, boolean withBeginTransaction) {
-      e = super.onError(e, withBeginTransaction);
+    public SpannerException onError(
+        SpannerException e, boolean withBeginTransaction, boolean lastStatement) {
+      e = super.onError(e, withBeginTransaction, lastStatement);
 
       // If the statement that caused an error was the statement that included a BeginTransaction
       // option, we simulate an aborted transaction to force a retry of the entire transaction. This
@@ -744,13 +781,17 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
       // statement are included in the transaction, even if the statement again causes an error
       // during the retry.
       if (withBeginTransaction) {
-        // Simulate an aborted transaction to force a retry with a new transaction.
-        this.transactionIdFuture.setException(
-            SpannerExceptionFactory.newSpannerException(
-                ErrorCode.ABORTED,
-                "Aborted due to failed initial statement",
-                SpannerExceptionFactory.createAbortedExceptionWithRetryDelay(
-                    "Aborted due to failed initial statement", e, 0, 1)));
+        if (lastStatement) {
+          this.transactionIdFuture.setException(e);
+        } else {
+          // Simulate an aborted transaction to force a retry with a new transaction.
+          this.transactionIdFuture.setException(
+              SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.ABORTED,
+                  "Aborted due to failed initial statement",
+                  SpannerExceptionFactory.createAbortedExceptionWithRetryDelay(
+                      "Aborted due to failed initial statement", e, 0, 1)));
+        }
       }
       SpannerException exceptionToThrow;
       if (withBeginTransaction
@@ -775,6 +816,11 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
         long delay = -1L;
         if (exceptionToThrow instanceof AbortedException) {
           delay = exceptionToThrow.getRetryDelayInMillis();
+          ((AbortedException) exceptionToThrow)
+              .setTransactionID(
+                  this.transactionId != null
+                      ? this.transactionId
+                      : this.getPreviousTransactionId());
         }
         if (delay == -1L) {
           txnLogger.log(
@@ -897,7 +943,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
       }
       final ExecuteSqlRequest.Builder builder =
           getExecuteSqlRequestBuilder(
-              statement, queryMode, options, /* withTransactionSelector = */ true);
+              statement, queryMode, options, /* withTransactionSelector= */ true);
       try {
         com.google.spanner.v1.ResultSet resultSet =
             rpc.executeQuery(builder.build(), getTransactionChannelHint(), isRouteToLeader());
@@ -916,7 +962,9 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
         return resultSet;
       } catch (Throwable t) {
         throw onError(
-            SpannerExceptionFactory.asSpannerException(t), builder.getTransaction().hasBegin());
+            SpannerExceptionFactory.asSpannerException(t),
+            builder.getTransaction().hasBegin(),
+            builder.getLastStatement());
       }
     }
 
@@ -934,7 +982,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
         }
         final ExecuteSqlRequest.Builder builder =
             getExecuteSqlRequestBuilder(
-                statement, QueryMode.NORMAL, options, /* withTransactionSelector = */ true);
+                statement, QueryMode.NORMAL, options, /* withTransactionSelector= */ true);
         final ApiFuture<com.google.spanner.v1.ResultSet> resultSet;
         try {
           // Register the update as an async operation that must finish before the transaction may
@@ -974,7 +1022,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                 input -> {
                   SpannerException e = SpannerExceptionFactory.asSpannerException(input);
                   SpannerException exceptionToThrow =
-                      onError(e, builder.getTransaction().hasBegin());
+                      onError(e, builder.getTransaction().hasBegin(), builder.getLastStatement());
                   span.setStatus(exceptionToThrow);
                   throw exceptionToThrow;
                 },
@@ -1010,9 +1058,9 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
           response.getStatus().getMessage(),
           SpannerExceptionFactory.createAbortedExceptionWithRetryDelay(
               response.getStatus().getMessage(),
-              /* cause = */ null,
-              /* retryDelaySeconds = */ 0,
-              /* retryDelayNanos = */ (int) TimeUnit.MILLISECONDS.toNanos(10L)));
+              /* cause= */ null,
+              /* retryDelaySeconds= */ 0,
+              /* retryDelayNanos= */ (int) TimeUnit.MILLISECONDS.toNanos(10L)));
     }
 
     @Override
@@ -1053,7 +1101,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
           // In all other cases, we should throw a BatchUpdateException.
           if (response.getStatus().getCode() == Code.ABORTED_VALUE) {
             throw createAbortedExceptionForBatchDml(response);
-          } else if (response.getStatus().getCode() != 0) {
+          } else if (response.getStatus().getCode() != Code.OK_VALUE) {
             throw newSpannerBatchUpdateException(
                 ErrorCode.fromRpcStatus(response.getStatus()),
                 response.getStatus().getMessage(),
@@ -1062,7 +1110,9 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
           return results;
         } catch (Throwable e) {
           throw onError(
-              SpannerExceptionFactory.asSpannerException(e), builder.getTransaction().hasBegin());
+              SpannerExceptionFactory.asSpannerException(e),
+              builder.getTransaction().hasBegin(),
+              builder.getLastStatements());
         }
       } catch (Throwable throwable) {
         span.setStatus(throwable);
@@ -1120,7 +1170,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                   // In all other cases, we should throw a BatchUpdateException.
                   if (batchDmlResponse.getStatus().getCode() == Code.ABORTED_VALUE) {
                     throw createAbortedExceptionForBatchDml(batchDmlResponse);
-                  } else if (batchDmlResponse.getStatus().getCode() != 0) {
+                  } else if (batchDmlResponse.getStatus().getCode() != Code.OK_VALUE) {
                     throw newSpannerBatchUpdateException(
                         ErrorCode.fromRpcStatus(batchDmlResponse.getStatus()),
                         batchDmlResponse.getStatus().getMessage(),
@@ -1136,7 +1186,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
                 input -> {
                   SpannerException e = SpannerExceptionFactory.asSpannerException(input);
                   SpannerException exceptionToThrow =
-                      onError(e, builder.getTransaction().hasBegin());
+                      onError(e, builder.getTransaction().hasBegin(), builder.getLastStatements());
                   span.setStatus(exceptionToThrow);
                   throw exceptionToThrow;
                 },
@@ -1178,7 +1228,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
   private final SessionImpl session;
   private final Options options;
   private ISpan span;
-  private TraceWrapper tracer;
+  private final TraceWrapper tracer;
   private TransactionContextImpl txn;
   private volatile boolean isValid = true;
 
@@ -1191,7 +1241,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
   TransactionRunnerImpl(SessionImpl session, TransactionOption... options) {
     this.session = session;
     this.options = Options.fromTransactionOptions(options);
-    this.txn = session.newTransaction(this.options, /* previousTransactionId = */ ByteString.EMPTY);
+    this.txn = session.newTransaction(this.options, /* previousTransactionId= */ ByteString.EMPTY);
     this.tracer = session.getTracer();
   }
 
@@ -1242,7 +1292,7 @@ class TransactionRunnerImpl implements SessionTransaction, TransactionRunner {
 
             txn =
                 session.newTransaction(
-                    options, /* previousTransactionId = */ multiplexedSessionPreviousTransactionId);
+                    options, /* previousTransactionId= */ multiplexedSessionPreviousTransactionId);
           }
           checkState(
               isValid, "TransactionRunner has been invalidated by a new operation on the session");

@@ -37,6 +37,8 @@ import com.google.api.gax.rpc.UnaryCallSettings;
 import com.google.cloud.NoCredentials;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.TransportOptions;
+import com.google.cloud.grpc.GcpManagedChannelOptions.GcpChannelPoolOptions;
+import com.google.cloud.spanner.SpannerOptions.Builder.DefaultReadWriteTransactionOptions;
 import com.google.cloud.spanner.SpannerOptions.FixedCloseableExecutorProvider;
 import com.google.cloud.spanner.SpannerOptions.SpannerCallContextTimeoutConfigurator;
 import com.google.cloud.spanner.admin.database.v1.stub.DatabaseAdminStubSettings;
@@ -61,11 +63,13 @@ import com.google.spanner.v1.PartitionReadRequest;
 import com.google.spanner.v1.ReadRequest;
 import com.google.spanner.v1.RollbackRequest;
 import com.google.spanner.v1.SpannerGrpc;
+import com.google.spanner.v1.TransactionOptions.IsolationLevel;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -82,7 +86,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
-import org.threeten.bp.Duration;
 
 /** Unit tests for {@link com.google.cloud.spanner.SpannerOptions}. */
 @RunWith(JUnit4.class)
@@ -151,40 +154,40 @@ public class SpannerOptionsTest {
   public void testSpannerDefaultRetrySettings() {
     RetrySettings witRetryPolicy1 =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofMillis(250L))
+            .setInitialRetryDelayDuration(Duration.ofMillis(250L))
             .setRetryDelayMultiplier(1.3)
-            .setMaxRetryDelay(Duration.ofMillis(32000L))
-            .setInitialRpcTimeout(Duration.ofMillis(3600000L))
+            .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(3600000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(3600000L))
-            .setTotalTimeout(Duration.ofMillis(3600000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(3600000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(3600000L))
             .build();
     RetrySettings witRetryPolicy2 =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofMillis(250L))
+            .setInitialRetryDelayDuration(Duration.ofMillis(250L))
             .setRetryDelayMultiplier(1.3)
-            .setMaxRetryDelay(Duration.ofMillis(32000L))
-            .setInitialRpcTimeout(Duration.ofMillis(60000L))
+            .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(60000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(60000L))
-            .setTotalTimeout(Duration.ofMillis(60000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(60000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(60000L))
             .build();
     RetrySettings witRetryPolicy3 =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofMillis(250L))
+            .setInitialRetryDelayDuration(Duration.ofMillis(250L))
             .setRetryDelayMultiplier(1.3)
-            .setMaxRetryDelay(Duration.ofMillis(32000L))
-            .setInitialRpcTimeout(Duration.ofMillis(30000L))
+            .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(30000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(30000L))
-            .setTotalTimeout(Duration.ofMillis(30000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(30000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(30000L))
             .build();
     RetrySettings noRetry1 =
         RetrySettings.newBuilder()
-            .setInitialRpcTimeout(Duration.ofMillis(3600000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(3600000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(3600000L))
-            .setTotalTimeout(Duration.ofMillis(3600000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(3600000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(3600000L))
             .build();
     SpannerOptions options = SpannerOptions.newBuilder().setProjectId("test-project").build();
     SpannerStubSettings stubSettings = options.getSpannerStubSettings();
@@ -226,13 +229,13 @@ public class SpannerOptionsTest {
   public void testSpannerCustomRetrySettings() {
     RetrySettings retrySettings =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofSeconds(9999L))
+            .setInitialRetryDelayDuration(Duration.ofSeconds(9999L))
             .setRetryDelayMultiplier(9999.99D)
-            .setMaxRetryDelay(Duration.ofSeconds(9999L))
-            .setInitialRpcTimeout(Duration.ofSeconds(9999L))
+            .setMaxRetryDelayDuration(Duration.ofSeconds(9999L))
+            .setInitialRpcTimeoutDuration(Duration.ofSeconds(9999L))
             .setRpcTimeoutMultiplier(9999.99D)
-            .setMaxRpcTimeout(Duration.ofSeconds(9999L))
-            .setTotalTimeout(Duration.ofSeconds(9999L))
+            .setMaxRpcTimeoutDuration(Duration.ofSeconds(9999L))
+            .setTotalTimeoutDuration(Duration.ofSeconds(9999L))
             .build();
     SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId("test-project");
     SpannerStubSettings.Builder stubSettingsBuilder = builder.getSpannerStubSettingsBuilder();
@@ -294,30 +297,30 @@ public class SpannerOptionsTest {
   public void testDatabaseAdminDefaultRetrySettings() {
     RetrySettings withRetryPolicy1 =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofMillis(1000L))
+            .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
             .setRetryDelayMultiplier(1.3)
-            .setMaxRetryDelay(Duration.ofMillis(32000L))
-            .setInitialRpcTimeout(Duration.ofMillis(3600000L))
+            .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(3600000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(3600000L))
-            .setTotalTimeout(Duration.ofMillis(3600000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(3600000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(3600000L))
             .build();
     RetrySettings withRetryPolicy2 =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofMillis(1000L))
+            .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
             .setRetryDelayMultiplier(1.3)
-            .setMaxRetryDelay(Duration.ofMillis(32000L))
-            .setInitialRpcTimeout(Duration.ofMillis(30000L))
+            .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(30000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(30000L))
-            .setTotalTimeout(Duration.ofMillis(30000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(30000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(30000L))
             .build();
     RetrySettings noRetryPolicy2 =
         RetrySettings.newBuilder()
-            .setInitialRpcTimeout(Duration.ofMillis(30000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(30000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(30000L))
-            .setTotalTimeout(Duration.ofMillis(30000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(30000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(30000L))
             .build();
     SpannerOptions options = SpannerOptions.newBuilder().setProjectId("test-project").build();
     DatabaseAdminStubSettings stubSettings = options.getDatabaseAdminStubSettings();
@@ -347,13 +350,13 @@ public class SpannerOptionsTest {
   public void testDatabaseAdminCustomRetrySettings() {
     RetrySettings retrySettings =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofSeconds(9999L))
+            .setInitialRetryDelayDuration(Duration.ofSeconds(9999L))
             .setRetryDelayMultiplier(9999.99D)
-            .setMaxRetryDelay(Duration.ofSeconds(9999L))
-            .setInitialRpcTimeout(Duration.ofSeconds(9999L))
+            .setMaxRetryDelayDuration(Duration.ofSeconds(9999L))
+            .setInitialRpcTimeoutDuration(Duration.ofSeconds(9999L))
             .setRpcTimeoutMultiplier(9999.99D)
-            .setMaxRpcTimeout(Duration.ofSeconds(9999L))
-            .setTotalTimeout(Duration.ofSeconds(9999L))
+            .setMaxRpcTimeoutDuration(Duration.ofSeconds(9999L))
+            .setTotalTimeoutDuration(Duration.ofSeconds(9999L))
             .build();
     SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId("test-project");
     DatabaseAdminStubSettings.Builder stubSettingsBuilder =
@@ -384,37 +387,37 @@ public class SpannerOptionsTest {
   public void testInstanceAdminDefaultRetrySettings() {
     RetrySettings withRetryPolicy1 =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofMillis(1000L))
+            .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
             .setRetryDelayMultiplier(1.3)
-            .setMaxRetryDelay(Duration.ofMillis(32000L))
-            .setInitialRpcTimeout(Duration.ofMillis(3600000L))
+            .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(3600000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(3600000L))
-            .setTotalTimeout(Duration.ofMillis(3600000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(3600000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(3600000L))
             .build();
     RetrySettings withRetryPolicy2 =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofMillis(1000L))
+            .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
             .setRetryDelayMultiplier(1.3)
-            .setMaxRetryDelay(Duration.ofMillis(32000L))
-            .setInitialRpcTimeout(Duration.ofMillis(30000L))
+            .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(30000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(30000L))
-            .setTotalTimeout(Duration.ofMillis(30000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(30000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(30000L))
             .build();
     RetrySettings noRetryPolicy1 =
         RetrySettings.newBuilder()
-            .setInitialRpcTimeout(Duration.ofMillis(3600000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(3600000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(3600000L))
-            .setTotalTimeout(Duration.ofMillis(3600000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(3600000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(3600000L))
             .build();
     RetrySettings noRetryPolicy2 =
         RetrySettings.newBuilder()
-            .setInitialRpcTimeout(Duration.ofMillis(30000L))
+            .setInitialRpcTimeoutDuration(Duration.ofMillis(30000L))
             .setRpcTimeoutMultiplier(1.0)
-            .setMaxRpcTimeout(Duration.ofMillis(30000L))
-            .setTotalTimeout(Duration.ofMillis(30000L))
+            .setMaxRpcTimeoutDuration(Duration.ofMillis(30000L))
+            .setTotalTimeoutDuration(Duration.ofMillis(30000L))
             .build();
     SpannerOptions options = SpannerOptions.newBuilder().setProjectId("test-project").build();
     InstanceAdminStubSettings stubSettings = options.getInstanceAdminStubSettings();
@@ -451,13 +454,13 @@ public class SpannerOptionsTest {
   public void testInstanceAdminCustomRetrySettings() {
     RetrySettings retrySettings =
         RetrySettings.newBuilder()
-            .setInitialRetryDelay(Duration.ofSeconds(9999L))
+            .setInitialRetryDelayDuration(Duration.ofSeconds(9999L))
             .setRetryDelayMultiplier(9999.99D)
-            .setMaxRetryDelay(Duration.ofSeconds(9999L))
-            .setInitialRpcTimeout(Duration.ofSeconds(9999L))
+            .setMaxRetryDelayDuration(Duration.ofSeconds(9999L))
+            .setInitialRpcTimeoutDuration(Duration.ofSeconds(9999L))
             .setRpcTimeoutMultiplier(9999.99D)
-            .setMaxRpcTimeout(Duration.ofSeconds(9999L))
-            .setTotalTimeout(Duration.ofSeconds(9999L))
+            .setMaxRpcTimeoutDuration(Duration.ofSeconds(9999L))
+            .setTotalTimeoutDuration(Duration.ofSeconds(9999L))
             .build();
     SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId("test-project");
     InstanceAdminStubSettings.Builder stubSettingsBuilder =
@@ -738,7 +741,7 @@ public class SpannerOptionsTest {
 
   @Test
   public void testEndToEndTracingEnablement() {
-    // Test that end to end tracing is disabled by default.
+    // Test that end-to-end tracing is disabled by default.
     assertFalse(SpannerOptions.newBuilder().setProjectId("p").build().isEndToEndTracingEnabled());
     assertTrue(
         SpannerOptions.newBuilder()
@@ -752,6 +755,37 @@ public class SpannerOptionsTest {
             .setEnableEndToEndTracing(false)
             .build()
             .isEndToEndTracingEnabled());
+  }
+
+  @Test
+  public void testMonitoringHost() {
+    String metricsEndpoint = "test-endpoint:443";
+    assertNull(SpannerOptions.newBuilder().setProjectId("p").build().getMonitoringHost());
+    assertThat(
+            SpannerOptions.newBuilder()
+                .setProjectId("p")
+                .setMonitoringHost(metricsEndpoint)
+                .build()
+                .getMonitoringHost())
+        .isEqualTo(metricsEndpoint);
+  }
+
+  @Test
+  public void testTransactionOptions() {
+    DefaultReadWriteTransactionOptions transactionOptions =
+        DefaultReadWriteTransactionOptions.newBuilder()
+            .setIsolationLevel(IsolationLevel.SERIALIZABLE)
+            .build();
+    assertNotNull(
+        SpannerOptions.newBuilder().setProjectId("p").build().getDefaultTransactionOptions());
+    assertThat(
+            SpannerOptions.newBuilder()
+                .setProjectId("p")
+                .setDefaultTransactionOptions(transactionOptions)
+                .build()
+                .getDefaultTransactionOptions()
+                .getIsolationLevel())
+        .isEqualTo(IsolationLevel.SERIALIZABLE);
   }
 
   @Test
@@ -866,14 +900,14 @@ public class SpannerOptionsTest {
   public void testSpannerCallContextTimeoutConfigurator_WithTimeouts() {
     SpannerCallContextTimeoutConfigurator configurator =
         SpannerCallContextTimeoutConfigurator.create();
-    configurator.withBatchUpdateTimeout(Duration.ofSeconds(1L));
-    configurator.withCommitTimeout(Duration.ofSeconds(2L));
-    configurator.withExecuteQueryTimeout(Duration.ofSeconds(3L));
-    configurator.withExecuteUpdateTimeout(Duration.ofSeconds(4L));
-    configurator.withPartitionQueryTimeout(Duration.ofSeconds(5L));
-    configurator.withPartitionReadTimeout(Duration.ofSeconds(6L));
-    configurator.withReadTimeout(Duration.ofSeconds(7L));
-    configurator.withRollbackTimeout(Duration.ofSeconds(8L));
+    configurator.withBatchUpdateTimeoutDuration(Duration.ofSeconds(1L));
+    configurator.withCommitTimeoutDuration(Duration.ofSeconds(2L));
+    configurator.withExecuteQueryTimeoutDuration(Duration.ofSeconds(3L));
+    configurator.withExecuteUpdateTimeoutDuration(Duration.ofSeconds(4L));
+    configurator.withPartitionQueryTimeoutDuration(Duration.ofSeconds(5L));
+    configurator.withPartitionReadTimeoutDuration(Duration.ofSeconds(6L));
+    configurator.withReadTimeoutDuration(Duration.ofSeconds(7L));
+    configurator.withRollbackTimeoutDuration(Duration.ofSeconds(8L));
 
     ApiCallContext inputCallContext = GrpcCallContext.createDefault();
 
@@ -919,7 +953,7 @@ public class SpannerOptionsTest {
                     inputCallContext,
                     CommitRequest.getDefaultInstance(),
                     SpannerGrpc.getCommitMethod())
-                .getTimeout())
+                .getTimeoutDuration())
         .isEqualTo(Duration.ofSeconds(2L));
     assertThat(
             configurator
@@ -927,7 +961,7 @@ public class SpannerOptionsTest {
                     inputCallContext,
                     RollbackRequest.getDefaultInstance(),
                     SpannerGrpc.getRollbackMethod())
-                .getTimeout())
+                .getTimeoutDuration())
         .isEqualTo(Duration.ofSeconds(8L));
 
     assertNull(
@@ -941,7 +975,7 @@ public class SpannerOptionsTest {
                     inputCallContext,
                     ExecuteSqlRequest.getDefaultInstance(),
                     SpannerGrpc.getExecuteStreamingSqlMethod())
-                .getTimeout())
+                .getTimeoutDuration())
         .isEqualTo(Duration.ofSeconds(3L));
     assertThat(
             configurator
@@ -949,7 +983,7 @@ public class SpannerOptionsTest {
                     inputCallContext,
                     ExecuteBatchDmlRequest.getDefaultInstance(),
                     SpannerGrpc.getExecuteBatchDmlMethod())
-                .getTimeout())
+                .getTimeoutDuration())
         .isEqualTo(Duration.ofSeconds(1L));
     assertNull(
         configurator.configure(
@@ -960,7 +994,7 @@ public class SpannerOptionsTest {
                     inputCallContext,
                     ReadRequest.getDefaultInstance(),
                     SpannerGrpc.getStreamingReadMethod())
-                .getTimeout())
+                .getTimeoutDuration())
         .isEqualTo(Duration.ofSeconds(7L));
 
     assertThat(
@@ -969,7 +1003,7 @@ public class SpannerOptionsTest {
                     inputCallContext,
                     PartitionQueryRequest.getDefaultInstance(),
                     SpannerGrpc.getPartitionQueryMethod())
-                .getTimeout())
+                .getTimeoutDuration())
         .isEqualTo(Duration.ofSeconds(5L));
     assertThat(
             configurator
@@ -977,7 +1011,7 @@ public class SpannerOptionsTest {
                     inputCallContext,
                     PartitionReadRequest.getDefaultInstance(),
                     SpannerGrpc.getPartitionReadMethod())
-                .getTimeout())
+                .getTimeoutDuration())
         .isEqualTo(Duration.ofSeconds(6L));
   }
 
@@ -1067,6 +1101,7 @@ public class SpannerOptionsTest {
         SpannerOptions.newBuilder()
             .setProjectId("test-project")
             .setCredentials(NoCredentials.getInstance())
+            .disableGrpcGcpExtension()
             .build();
 
     assertEquals(SpannerOptions.DEFAULT_CHANNELS, options.getNumChannels());
@@ -1102,7 +1137,8 @@ public class SpannerOptionsTest {
 
   @Test
   public void checkCreatedInstanceWhenGrpcGcpExtensionDisabled() {
-    SpannerOptions options = SpannerOptions.newBuilder().setProjectId("test-project").build();
+    SpannerOptions options =
+        SpannerOptions.newBuilder().setProjectId("test-project").disableGrpcGcpExtension().build();
     SpannerOptions options1 = options.toBuilder().build();
     assertEquals(false, options.isGrpcGcpExtensionEnabled());
     assertEquals(options.isGrpcGcpExtensionEnabled(), options1.isGrpcGcpExtensionEnabled());
@@ -1150,5 +1186,201 @@ public class SpannerOptionsTest {
             .setCredentials(NoCredentials.getInstance())
             .build();
     assertEquals(GlobalOpenTelemetry.get(), options.getOpenTelemetry());
+  }
+
+  @Test
+  public void testExperimentalHostOptions() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setExperimentalHost("localhost:8080")
+            .setCredentials(NoCredentials.getInstance())
+            .build();
+    assertEquals("default", options.getProjectId());
+    assertEquals(0, options.getSessionPoolOptions().getMinSessions());
+    assertEquals(0, options.getSessionPoolOptions().getMaxSessions());
+    assertTrue(options.getSessionPoolOptions().getUseMultiplexedSession());
+    assertTrue(options.getSessionPoolOptions().getUseMultiplexedSessionForRW());
+    assertTrue(options.getSessionPoolOptions().getUseMultiplexedSessionPartitionedOps());
+  }
+
+  @Test
+  public void testDynamicChannelPoolingDisabledByDefault() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .build();
+    assertFalse(options.isDynamicChannelPoolEnabled());
+  }
+
+  @Test
+  public void testDynamicChannelPoolingEnabledExplicitly() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .enableDynamicChannelPool()
+            .build();
+    assertTrue(options.isDynamicChannelPoolEnabled());
+
+    // Verify Spanner-specific defaults are applied
+    GcpChannelPoolOptions poolOptions = options.getGcpChannelPoolOptions();
+    assertNotNull(poolOptions);
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_INITIAL_SIZE, poolOptions.getInitSize());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MAX_CHANNELS, poolOptions.getMaxSize());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MIN_CHANNELS, poolOptions.getMinSize());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MAX_RPC, poolOptions.getMaxRpcPerChannel());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MIN_RPC, poolOptions.getMinRpcPerChannel());
+    assertEquals(
+        SpannerOptions.DEFAULT_DYNAMIC_POOL_SCALE_DOWN_INTERVAL,
+        poolOptions.getScaleDownInterval());
+  }
+
+  @Test
+  public void testDynamicChannelPoolingDisabledWhenNumChannelsSet() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .enableDynamicChannelPool()
+            .setNumChannels(5) // Explicitly setting numChannels should disable DCP.
+            .build();
+    assertFalse(options.isDynamicChannelPoolEnabled());
+    assertEquals(5, options.getNumChannels());
+  }
+
+  @Test
+  public void testDynamicChannelPoolingDisabledExplicitly() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .enableDynamicChannelPool()
+            .disableDynamicChannelPool()
+            .build();
+    assertFalse(options.isDynamicChannelPoolEnabled());
+  }
+
+  @Test
+  public void testDynamicChannelPoolingCustomSettings() {
+    Duration scaleDownInterval = Duration.ofMinutes(5);
+    GcpChannelPoolOptions customPoolOptions =
+        GcpChannelPoolOptions.newBuilder()
+            .setInitSize(6)
+            .setMaxSize(15)
+            .setMinSize(3)
+            .setDynamicScaling(10, 50, scaleDownInterval)
+            .build();
+
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .enableDynamicChannelPool()
+            .setGcpChannelPoolOptions(customPoolOptions)
+            .build();
+
+    assertTrue(options.isDynamicChannelPoolEnabled());
+    GcpChannelPoolOptions poolOptions = options.getGcpChannelPoolOptions();
+    assertEquals(6, poolOptions.getInitSize());
+    assertEquals(15, poolOptions.getMaxSize());
+    assertEquals(3, poolOptions.getMinSize());
+    assertEquals(50, poolOptions.getMaxRpcPerChannel());
+    assertEquals(10, poolOptions.getMinRpcPerChannel());
+    assertEquals(scaleDownInterval, poolOptions.getScaleDownInterval());
+  }
+
+  @Test
+  public void testAffinityKeySettings() {
+    Duration affinityKeyLifetime = Duration.ofMinutes(10);
+    Duration cleanupInterval = Duration.ofMinutes(5);
+    GcpChannelPoolOptions poolOptions =
+        GcpChannelPoolOptions.newBuilder()
+            .setAffinityKeyLifetime(affinityKeyLifetime)
+            .setCleanupInterval(cleanupInterval)
+            .build();
+
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .enableGrpcGcpExtension()
+            .setGcpChannelPoolOptions(poolOptions)
+            .build();
+
+    assertEquals(affinityKeyLifetime, options.getGcpChannelPoolOptions().getAffinityKeyLifetime());
+    assertEquals(cleanupInterval, options.getGcpChannelPoolOptions().getCleanupInterval());
+  }
+
+  @Test
+  public void testAffinityKeySettingsDefaults() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .enableGrpcGcpExtension()
+            .build();
+
+    // Verify default affinity key settings from Spanner defaults
+    GcpChannelPoolOptions poolOptions = options.getGcpChannelPoolOptions();
+    assertEquals(
+        SpannerOptions.DEFAULT_DYNAMIC_POOL_AFFINITY_KEY_LIFETIME,
+        poolOptions.getAffinityKeyLifetime());
+    assertEquals(
+        SpannerOptions.DEFAULT_DYNAMIC_POOL_CLEANUP_INTERVAL, poolOptions.getCleanupInterval());
+  }
+
+  @Test
+  public void testDynamicChannelPoolingDisabledWhenGrpcGcpDisabled() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder()
+            .setProjectId("test-project")
+            .setCredentials(NoCredentials.getInstance())
+            .disableGrpcGcpExtension()
+            .build();
+    // DCP should be disabled when grpc-gcp is disabled.
+    assertFalse(options.isDynamicChannelPoolEnabled());
+  }
+
+  @Test
+  public void testCreateDefaultDynamicChannelPoolOptions() {
+    // Test the static factory method for creating default options
+    GcpChannelPoolOptions defaults = SpannerOptions.createDefaultDynamicChannelPoolOptions();
+    assertNotNull(defaults);
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MAX_CHANNELS, defaults.getMaxSize());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MIN_CHANNELS, defaults.getMinSize());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_INITIAL_SIZE, defaults.getInitSize());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MAX_RPC, defaults.getMaxRpcPerChannel());
+    assertEquals(SpannerOptions.DEFAULT_DYNAMIC_POOL_MIN_RPC, defaults.getMinRpcPerChannel());
+    assertEquals(
+        SpannerOptions.DEFAULT_DYNAMIC_POOL_SCALE_DOWN_INTERVAL, defaults.getScaleDownInterval());
+    assertEquals(
+        SpannerOptions.DEFAULT_DYNAMIC_POOL_AFFINITY_KEY_LIFETIME,
+        defaults.getAffinityKeyLifetime());
+    assertEquals(
+        SpannerOptions.DEFAULT_DYNAMIC_POOL_CLEANUP_INTERVAL, defaults.getCleanupInterval());
+  }
+
+  @Test
+  public void testPlainTextOptions() {
+    SpannerOptions options =
+        SpannerOptions.newBuilder().setExperimentalHost("localhost:8080").usePlainText().build();
+    assertEquals("http://localhost:8080", options.getHost());
+    assertEquals(NoCredentials.getInstance(), options.getCredentials());
+    options =
+        SpannerOptions.newBuilder()
+            .setExperimentalHost("http://localhost:8080")
+            .usePlainText()
+            .build();
+    assertEquals("http://localhost:8080", options.getHost());
+    options =
+        SpannerOptions.newBuilder().usePlainText().setExperimentalHost("localhost:8080").build();
+    assertEquals("http://localhost:8080", options.getHost());
+    options =
+        SpannerOptions.newBuilder()
+            .usePlainText()
+            .setExperimentalHost("http://localhost:8080")
+            .build();
+    assertEquals("http://localhost:8080", options.getHost());
   }
 }

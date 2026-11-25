@@ -58,6 +58,7 @@ import com.google.spanner.v1.TransactionSelector;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
@@ -67,6 +68,7 @@ import javax.annotation.concurrent.GuardedBy;
  */
 abstract class AbstractReadContext
     implements ReadContext, AbstractResultSet.Listener, SessionTransaction {
+  private static final Logger logger = Logger.getLogger(AbstractReadContext.class.getName());
 
   abstract static class Builder<B extends Builder<?, T>, T extends AbstractReadContext> {
     private SessionImpl session;
@@ -402,6 +404,41 @@ abstract class AbstractReadContext
       }
     }
 
+    @Override
+    public void close() {
+      ByteString id = getTransactionId();
+      if (id != null && !id.isEmpty()) {
+        rpc.clearTransactionAffinity(id);
+      }
+      super.close();
+    }
+
+    /**
+     * Initializes the transaction with the timestamp specified within MultiUseReadOnlyTransaction.
+     * This is used only for fallback of PartitionQueryRequest and PartitionReadRequest with
+     * Multiplexed Session.
+     */
+    void initFallbackTransaction() {
+      synchronized (txnLock) {
+        span.addAnnotation("Creating Transaction");
+        TransactionOptions.Builder options = TransactionOptions.newBuilder();
+        if (timestamp != null) {
+          options
+              .getReadOnlyBuilder()
+              .setReadTimestamp(timestamp.toProto())
+              .setReturnReadTimestamp(true);
+        } else {
+          bound.applyToBuilder(options.getReadOnlyBuilder()).setReturnReadTimestamp(true);
+        }
+        final BeginTransactionRequest request =
+            BeginTransactionRequest.newBuilder()
+                .setSession(session.getName())
+                .setOptions(options)
+                .build();
+        initTransactionInternal(request);
+      }
+    }
+
     void initTransaction() {
       SessionImpl.throwIfTransactionsPending();
 
@@ -417,40 +454,43 @@ abstract class AbstractReadContext
           return;
         }
         span.addAnnotation("Creating Transaction");
-        try {
-          TransactionOptions.Builder options = TransactionOptions.newBuilder();
-          bound.applyToBuilder(options.getReadOnlyBuilder()).setReturnReadTimestamp(true);
-          final BeginTransactionRequest request =
-              BeginTransactionRequest.newBuilder()
-                  .setSession(session.getName())
-                  .setOptions(options)
-                  .build();
-          Transaction transaction =
-              rpc.beginTransaction(request, getTransactionChannelHint(), isRouteToLeader());
-          if (!transaction.hasReadTimestamp()) {
-            throw SpannerExceptionFactory.newSpannerException(
-                ErrorCode.INTERNAL, "Missing expected transaction.read_timestamp metadata field");
-          }
-          if (transaction.getId().isEmpty()) {
-            throw SpannerExceptionFactory.newSpannerException(
-                ErrorCode.INTERNAL, "Missing expected transaction.id metadata field");
-          }
-          try {
-            timestamp = Timestamp.fromProto(transaction.getReadTimestamp());
-          } catch (IllegalArgumentException e) {
-            throw SpannerExceptionFactory.newSpannerException(
-                ErrorCode.INTERNAL, "Bad value in transaction.read_timestamp metadata field", e);
-          }
-          transactionId = transaction.getId();
-          span.addAnnotation(
-              "Transaction Creation Done",
-              ImmutableMap.of(
-                  "Id", transaction.getId().toStringUtf8(), "Timestamp", timestamp.toString()));
+        TransactionOptions.Builder options = TransactionOptions.newBuilder();
+        bound.applyToBuilder(options.getReadOnlyBuilder()).setReturnReadTimestamp(true);
+        final BeginTransactionRequest request =
+            BeginTransactionRequest.newBuilder()
+                .setSession(session.getName())
+                .setOptions(options)
+                .build();
+        initTransactionInternal(request);
+      }
+    }
 
-        } catch (SpannerException e) {
-          span.addAnnotation("Transaction Creation Failed", e);
-          throw e;
+    private void initTransactionInternal(BeginTransactionRequest request) {
+      try {
+        Transaction transaction =
+            rpc.beginTransaction(request, getTransactionChannelHint(), isRouteToLeader());
+        if (!transaction.hasReadTimestamp()) {
+          throw SpannerExceptionFactory.newSpannerException(
+              ErrorCode.INTERNAL, "Missing expected transaction.read_timestamp metadata field");
         }
+        if (transaction.getId().isEmpty()) {
+          throw SpannerExceptionFactory.newSpannerException(
+              ErrorCode.INTERNAL, "Missing expected transaction.id metadata field");
+        }
+        try {
+          timestamp = Timestamp.fromProto(transaction.getReadTimestamp());
+        } catch (IllegalArgumentException e) {
+          throw SpannerExceptionFactory.newSpannerException(
+              ErrorCode.INTERNAL, "Bad value in transaction.read_timestamp metadata field", e);
+        }
+        transactionId = transaction.getId();
+        span.addAnnotation(
+            "Transaction Creation Done",
+            ImmutableMap.of(
+                "Id", transaction.getId().toStringUtf8(), "Timestamp", timestamp.toString()));
+      } catch (SpannerException e) {
+        span.addAnnotation("Transaction Creation Failed", e);
+        throw e;
       }
     }
   }
@@ -639,8 +679,8 @@ abstract class AbstractReadContext
    *   <li>Specific {@link QueryOptions} passed in for this query.
    *   <li>Any value specified in a valid environment variable when the {@link SpannerOptions}
    *       instance was created.
-   *   <li>The default {@link SpannerOptions#getDefaultQueryOptions()} specified for the database
-   *       where the query is executed.
+   *   <li>The default {@link SpannerOptions#getDefaultQueryOptions(DatabaseId)} ()} specified for
+   *       the database where the query is executed.
    * </ol>
    */
   @VisibleForTesting
@@ -653,17 +693,15 @@ abstract class AbstractReadContext
   }
 
   RequestOptions buildRequestOptions(Options options) {
-    // Shortcut for the most common return value.
-    if (!(options.hasPriority() || options.hasTag() || getTransactionTag() != null)) {
-      return RequestOptions.getDefaultInstance();
-    }
-
-    RequestOptions.Builder builder = RequestOptions.newBuilder();
-    if (options.hasPriority()) {
-      builder.setPriority(options.priority());
-    }
-    if (options.hasTag()) {
-      builder.setRequestTag(options.tag());
+    RequestOptions.Builder builder = options.toRequestOptionsProto(false).toBuilder();
+    RequestOptions.ClientContext defaultClientContext =
+        session.getSpanner().getOptions().getClientContext();
+    if (defaultClientContext != null) {
+      RequestOptions.ClientContext.Builder clientContextBuilder = defaultClientContext.toBuilder();
+      if (builder.hasClientContext()) {
+        clientContextBuilder.mergeFrom(builder.getClientContext());
+      }
+      builder.setClientContext(clientContextBuilder.build());
     }
     if (getTransactionTag() != null) {
       builder.setTransactionTag(getTransactionTag());
@@ -695,6 +733,9 @@ abstract class AbstractReadContext
     }
     if (!isReadOnly()) {
       builder.setSeqno(getSeqNo());
+    }
+    if (options.hasLastStatement()) {
+      builder.setLastStatement(options.isLastStatement());
     }
     builder.setQueryOptions(buildQueryOptions(statement.getQueryOptions()));
     builder.setRequestOptions(buildRequestOptions(options));
@@ -741,6 +782,9 @@ abstract class AbstractReadContext
     if (selector != null) {
       builder.setTransaction(selector);
     }
+    if (options.hasLastStatement()) {
+      builder.setLastStatements(options.isLastStatement());
+    }
     builder.setSeqno(getSeqNo());
     builder.setRequestOptions(buildRequestOptions(options));
     return builder;
@@ -756,7 +800,7 @@ abstract class AbstractReadContext
         options.hasPrefetchChunks() ? options.prefetchChunks() : defaultPrefetchChunks;
     final ExecuteSqlRequest.Builder request =
         getExecuteSqlRequestBuilder(
-            statement, queryMode, options, /* withTransactionSelector = */ false);
+            statement, queryMode, options, /* withTransactionSelector= */ false);
     ResumableStreamIterator stream =
         new ResumableStreamIterator(
             MAX_BUFFERED_CHUNKS,
@@ -766,13 +810,19 @@ abstract class AbstractReadContext
             tracer.createStatementAttributes(statement, options),
             session.getErrorHandler(),
             rpc.getExecuteQueryRetrySettings(),
-            rpc.getExecuteQueryRetryableCodes()) {
+            rpc.getExecuteQueryRetryableCodes(),
+            session.getRequestIdCreator()) {
           @Override
           CloseableIterator<PartialResultSet> startStream(
               @Nullable ByteString resumeToken,
-              AsyncResultSet.StreamMessageListener streamListener) {
+              AsyncResultSet.StreamMessageListener streamListener,
+              XGoogSpannerRequestId requestId) {
             GrpcStreamIterator stream =
-                new GrpcStreamIterator(statement, prefetchChunks, cancelQueryWhenClientIsClosed);
+                new GrpcStreamIterator(
+                    statement,
+                    request.getLastStatement(),
+                    prefetchChunks,
+                    cancelQueryWhenClientIsClosed);
             if (streamListener != null) {
               stream.registerListener(streamListener);
             }
@@ -794,10 +844,10 @@ abstract class AbstractReadContext
                     request.build(),
                     stream.consumer(),
                     getTransactionChannelHint(),
+                    requestId,
                     isRouteToLeader());
             session.markUsed(clock.instant());
             stream.setCall(call, request.getTransaction().hasBegin());
-            call.request(prefetchChunks);
             return stream;
           }
 
@@ -810,7 +860,7 @@ abstract class AbstractReadContext
         stream, this, options.hasDecodeMode() ? options.decodeMode() : defaultDecodeMode);
   }
 
-  Map<SpannerRpc.Option, ?> getChannelHintOptions(
+  static Map<SpannerRpc.Option, ?> getChannelHintOptions(
       Map<SpannerRpc.Option, ?> channelHintForSession, Long channelHintForTransaction) {
     if (channelHintForSession != null) {
       return channelHintForSession;
@@ -889,7 +939,8 @@ abstract class AbstractReadContext
   public void onTransactionMetadata(Transaction transaction, boolean shouldIncludeId) {}
 
   @Override
-  public SpannerException onError(SpannerException e, boolean withBeginTransaction) {
+  public SpannerException onError(
+      SpannerException e, boolean withBeginTransaction, boolean lastStatement) {
     this.session.onError(e);
     return e;
   }
@@ -952,23 +1003,38 @@ abstract class AbstractReadContext
     } else if (defaultDirectedReadOptions != null) {
       builder.setDirectedReadOptions(defaultDirectedReadOptions);
     }
+    if (readOptions.hasLockHint()) {
+      if (isReadOnly()) {
+        logger.warning(
+            "Lock hint is only supported for ReadWrite transactions. "
+                + "Overriding lock hint to default unspecified.");
+      } else {
+        builder.setLockHint(readOptions.lockHint());
+      }
+    }
     final int prefetchChunks =
         readOptions.hasPrefetchChunks() ? readOptions.prefetchChunks() : defaultPrefetchChunks;
+    final boolean lastStatement =
+        readOptions.hasLastStatement() ? readOptions.isLastStatement() : false;
     ResumableStreamIterator stream =
         new ResumableStreamIterator(
             MAX_BUFFERED_CHUNKS,
             SpannerImpl.READ,
             span,
             tracer,
+            tracer.createTableAttributes(table, readOptions),
             session.getErrorHandler(),
             rpc.getReadRetrySettings(),
-            rpc.getReadRetryableCodes()) {
+            rpc.getReadRetryableCodes(),
+            session.getRequestIdCreator()) {
           @Override
           CloseableIterator<PartialResultSet> startStream(
               @Nullable ByteString resumeToken,
-              AsyncResultSet.StreamMessageListener streamListener) {
+              AsyncResultSet.StreamMessageListener streamListener,
+              XGoogSpannerRequestId requestId) {
             GrpcStreamIterator stream =
-                new GrpcStreamIterator(prefetchChunks, cancelQueryWhenClientIsClosed);
+                new GrpcStreamIterator(
+                    lastStatement, prefetchChunks, cancelQueryWhenClientIsClosed);
             if (streamListener != null) {
               stream.registerListener(streamListener);
             }
@@ -988,10 +1054,10 @@ abstract class AbstractReadContext
                     builder.build(),
                     stream.consumer(),
                     getTransactionChannelHint(),
+                    requestId,
                     isRouteToLeader());
             session.markUsed(clock.instant());
-            stream.setCall(call, /* withBeginTransaction = */ builder.getTransaction().hasBegin());
-            call.request(prefetchChunks);
+            stream.setCall(call, /* withBeginTransaction= */ builder.getTransaction().hasBegin());
             return stream;
           }
 

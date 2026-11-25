@@ -17,14 +17,15 @@
 package com.google.cloud.spanner.connection;
 
 import com.google.cloud.NoCredentials;
+import com.google.cloud.grpc.GcpManagedChannelOptions.GcpChannelPoolOptions;
 import com.google.cloud.spanner.DecodeMode;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.SessionPoolOptions;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerExceptionFactory;
+import com.google.cloud.spanner.SpannerOptions;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Ticker;
@@ -40,6 +41,7 @@ import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -54,7 +56,7 @@ import javax.annotation.concurrent.GuardedBy;
  * opened and closed, and which {@link Spanner} objects could be closed.
  *
  * <p>Call the method {@link SpannerPool#closeSpannerPool()} at the end of your application to
- * gracefully shutdown all instances in the pool.
+ * gracefully shut down all instances in the pool.
  */
 public class SpannerPool {
   // TODO: create separate Client Lib Token for the Connection API.
@@ -152,6 +154,10 @@ public class SpannerPool {
     private final CredentialsKey credentialsKey;
     private final SessionPoolOptions sessionPoolOptions;
     private final Integer numChannels;
+    private final Boolean enableDynamicChannelPool;
+    private final Integer dcpMinChannels;
+    private final Integer dcpMaxChannels;
+    private final Integer dcpInitialChannels;
     private final boolean usePlainText;
     private final String userAgent;
     private final String databaseRole;
@@ -161,6 +167,12 @@ public class SpannerPool {
     private final Boolean enableExtendedTracing;
     private final Boolean enableApiTracing;
     private final boolean enableEndToEndTracing;
+    private final String clientCertificate;
+    private final String clientCertificateKey;
+    private final boolean isExperimentalHost;
+    private final Boolean enableDirectAccess;
+    private final String universeDomain;
+    private final String grpcInterceptorProvider;
 
     @VisibleForTesting
     static SpannerPoolKey of(ConnectionOptions options) {
@@ -184,6 +196,10 @@ public class SpannerPool {
               ? SessionPoolOptions.newBuilder().build()
               : options.getSessionPoolOptions();
       this.numChannels = options.getNumChannels();
+      this.enableDynamicChannelPool = options.isEnableDynamicChannelPool();
+      this.dcpMinChannels = options.getDcpMinChannels();
+      this.dcpMaxChannels = options.getDcpMaxChannels();
+      this.dcpInitialChannels = options.getDcpInitialChannels();
       this.usePlainText = options.isUsePlainText();
       this.userAgent = options.getUserAgent();
       this.routeToLeader = options.isRouteToLeader();
@@ -192,6 +208,12 @@ public class SpannerPool {
       this.enableExtendedTracing = options.isEnableExtendedTracing();
       this.enableApiTracing = options.isEnableApiTracing();
       this.enableEndToEndTracing = options.isEndToEndTracingEnabled();
+      this.clientCertificate = options.getClientCertificate();
+      this.clientCertificateKey = options.getClientCertificateKey();
+      this.isExperimentalHost = options.isExperimentalHost();
+      this.enableDirectAccess = options.isEnableDirectAccess();
+      this.universeDomain = options.getUniverseDomain();
+      this.grpcInterceptorProvider = options.getGrpcInterceptorProviderName();
     }
 
     @Override
@@ -205,6 +227,10 @@ public class SpannerPool {
           && Objects.equals(this.credentialsKey, other.credentialsKey)
           && Objects.equals(this.sessionPoolOptions, other.sessionPoolOptions)
           && Objects.equals(this.numChannels, other.numChannels)
+          && Objects.equals(this.enableDynamicChannelPool, other.enableDynamicChannelPool)
+          && Objects.equals(this.dcpMinChannels, other.dcpMinChannels)
+          && Objects.equals(this.dcpMaxChannels, other.dcpMaxChannels)
+          && Objects.equals(this.dcpInitialChannels, other.dcpInitialChannels)
           && Objects.equals(this.databaseRole, other.databaseRole)
           && Objects.equals(this.usePlainText, other.usePlainText)
           && Objects.equals(this.userAgent, other.userAgent)
@@ -214,7 +240,13 @@ public class SpannerPool {
           && Objects.equals(this.openTelemetry, other.openTelemetry)
           && Objects.equals(this.enableExtendedTracing, other.enableExtendedTracing)
           && Objects.equals(this.enableApiTracing, other.enableApiTracing)
-          && Objects.equals(this.enableEndToEndTracing, other.enableEndToEndTracing);
+          && Objects.equals(this.enableEndToEndTracing, other.enableEndToEndTracing)
+          && Objects.equals(this.clientCertificate, other.clientCertificate)
+          && Objects.equals(this.clientCertificateKey, other.clientCertificateKey)
+          && Objects.equals(this.isExperimentalHost, other.isExperimentalHost)
+          && Objects.equals(this.enableDirectAccess, other.enableDirectAccess)
+          && Objects.equals(this.universeDomain, other.universeDomain)
+          && Objects.equals(this.grpcInterceptorProvider, other.grpcInterceptorProvider);
     }
 
     @Override
@@ -225,6 +257,10 @@ public class SpannerPool {
           this.credentialsKey,
           this.sessionPoolOptions,
           this.numChannels,
+          this.enableDynamicChannelPool,
+          this.dcpMinChannels,
+          this.dcpMaxChannels,
+          this.dcpInitialChannels,
           this.usePlainText,
           this.databaseRole,
           this.userAgent,
@@ -233,7 +269,13 @@ public class SpannerPool {
           this.openTelemetry,
           this.enableExtendedTracing,
           this.enableApiTracing,
-          this.enableEndToEndTracing);
+          this.enableEndToEndTracing,
+          this.clientCertificate,
+          this.clientCertificateKey,
+          this.isExperimentalHost,
+          this.enableDirectAccess,
+          this.universeDomain,
+          this.grpcInterceptorProvider);
     }
   }
 
@@ -242,6 +284,7 @@ public class SpannerPool {
    * threads to be created when the connection API is not used.
    */
   private boolean initialized = false;
+
   /**
    * Thread that will be run as a shutdown hook on closing the application. This thread will close
    * any Spanner instances opened by the Connection API that are still open.
@@ -378,6 +421,50 @@ public class SpannerPool {
     if (key.numChannels != null) {
       builder.setNumChannels(key.numChannels);
     }
+    // Configure Dynamic Channel Pooling (DCP) based on explicit user setting.
+    // Note: Setting numChannels disables DCP even if enableDynamicChannelPool is true.
+    if (key.enableDynamicChannelPool != null && key.numChannels == null) {
+      if (Boolean.TRUE.equals(key.enableDynamicChannelPool)) {
+        builder.enableDynamicChannelPool();
+        // Build custom GcpChannelPoolOptions if any DCP-specific options are set.
+        if (key.dcpMinChannels != null
+            || key.dcpMaxChannels != null
+            || key.dcpInitialChannels != null) {
+          // Build GcpChannelPoolOptions from scratch with custom values or Spanner defaults.
+          // Note: GcpChannelPoolOptions does not have a toBuilder() method, so we must
+          // construct from scratch using SpannerOptions defaults for unspecified values.
+          int minChannels =
+              key.dcpMinChannels != null
+                  ? key.dcpMinChannels
+                  : SpannerOptions.DEFAULT_DYNAMIC_POOL_MIN_CHANNELS;
+          int maxChannels =
+              key.dcpMaxChannels != null
+                  ? key.dcpMaxChannels
+                  : SpannerOptions.DEFAULT_DYNAMIC_POOL_MAX_CHANNELS;
+          int initChannels =
+              key.dcpInitialChannels != null
+                  ? key.dcpInitialChannels
+                  : SpannerOptions.DEFAULT_DYNAMIC_POOL_INITIAL_SIZE;
+          GcpChannelPoolOptions poolOptions =
+              GcpChannelPoolOptions.newBuilder()
+                  .setMinSize(minChannels)
+                  .setMaxSize(maxChannels)
+                  .setInitSize(initChannels)
+                  .setDynamicScaling(
+                      SpannerOptions.DEFAULT_DYNAMIC_POOL_MIN_RPC,
+                      SpannerOptions.DEFAULT_DYNAMIC_POOL_MAX_RPC,
+                      SpannerOptions.DEFAULT_DYNAMIC_POOL_SCALE_DOWN_INTERVAL)
+                  .setAffinityKeyLifetime(SpannerOptions.DEFAULT_DYNAMIC_POOL_AFFINITY_KEY_LIFETIME)
+                  .setCleanupInterval(SpannerOptions.DEFAULT_DYNAMIC_POOL_CLEANUP_INTERVAL)
+                  .build();
+          builder.setGcpChannelPoolOptions(poolOptions);
+        }
+      } else {
+        // Explicitly disable DCP when enableDynamicChannelPool=false.
+        // This ensures consistent behavior even if the default changes in the future.
+        builder.disableDynamicChannelPool();
+      }
+    }
     if (options.getChannelProvider() != null) {
       builder.setChannelProvider(options.getChannelProvider());
     }
@@ -392,6 +479,21 @@ public class SpannerPool {
       builder.setCredentials(NoCredentials.getInstance());
       // Set a custom channel configurator to allow http instead of https.
       builder.setChannelConfigurator(ManagedChannelBuilder::usePlaintext);
+    }
+    if (key.clientCertificate != null && key.clientCertificateKey != null) {
+      builder.useClientCert(key.clientCertificate, key.clientCertificateKey);
+    }
+    if (key.isExperimentalHost) {
+      builder.setExperimentalHost(key.host);
+    }
+    if (key.enableDirectAccess != null) {
+      builder.setEnableDirectAccess(key.enableDirectAccess);
+    }
+    if (key.universeDomain != null) {
+      builder.setUniverseDomain(key.universeDomain);
+    }
+    if (key.grpcInterceptorProvider != null) {
+      builder.setInterceptorProvider(options.getGrpcInterceptorProvider());
     }
     if (options.getConfigurator() != null) {
       options.getConfigurator().configure(builder);
@@ -481,7 +583,8 @@ public class SpannerPool {
               ErrorCode.FAILED_PRECONDITION,
               "There is/are "
                   + keysStillInUse.size()
-                  + " connection(s) still open. Close all connections before calling closeSpanner()");
+                  + " connection(s) still open. Close all connections before calling"
+                  + " closeSpanner()");
         }
       } finally {
         if (closerService != null) {

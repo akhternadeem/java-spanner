@@ -16,12 +16,16 @@
 
 package com.google.cloud.spanner.connection;
 
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.appendExperimentalHost;
+import static com.google.cloud.spanner.testing.ExperimentalHostHelper.isExperimentalHost;
+
 import com.google.cloud.NoCredentials;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.GceTestEnvConfig;
 import com.google.cloud.spanner.IntegrationTestEnv;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
@@ -64,7 +68,7 @@ public abstract class ITAbstractSpannerTest {
     }
   }
 
-  protected interface ITConnection extends Connection {}
+  public interface ITConnection extends Connection {}
 
   private ITConnection createITConnection(ConnectionOptions options) {
     return new ITConnectionImpl(options);
@@ -95,6 +99,8 @@ public abstract class ITAbstractSpannerTest {
     private boolean onlyInjectOnce = false;
     private final Random random = new Random();
 
+    private boolean usingMultiplexedsession = false;
+
     public AbortInterceptor(double probability) {
       Preconditions.checkArgument(probability >= 0.0D && probability <= 1.0D);
       this.probability = probability;
@@ -110,6 +116,14 @@ public abstract class ITAbstractSpannerTest {
       this.onlyInjectOnce = value;
     }
 
+    /**
+     * Set this value to true if a multiplexed session is being used. Determining this directly from
+     * TransactionManagerImpl is challenging as it is a private class.
+     */
+    public void setUsingMultiplexedSession(boolean value) {
+      this.usingMultiplexedsession = value;
+    }
+
     protected boolean shouldAbort(String statement, ExecutionStep step) {
       return probability > random.nextDouble();
     }
@@ -117,7 +131,7 @@ public abstract class ITAbstractSpannerTest {
     @Override
     public void intercept(
         ParsedStatement statement, StatementExecutionStep step, UnitOfWork transaction) {
-      if (shouldAbort(statement.getSqlWithoutComments(), ExecutionStep.of(step))) {
+      if (shouldAbort(statement.getSql(), ExecutionStep.of(step))) {
         // ugly hack warning: inject the aborted state into the transaction manager to simulate an
         // abort
         if (transaction instanceof ReadWriteTransaction) {
@@ -133,27 +147,38 @@ public abstract class ITAbstractSpannerTest {
               return;
             }
             Class<?> cls = Class.forName("com.google.cloud.spanner.TransactionManagerImpl");
-            Class<?> cls2 =
-                Class.forName("com.google.cloud.spanner.SessionPool$AutoClosingTransactionManager");
-            Field delegateField = cls2.getDeclaredField("delegate");
-            delegateField.setAccessible(true);
-            watch = watch.reset().start();
-            while (delegateField.get(tx) == null && watch.elapsed(TimeUnit.MILLISECONDS) < 100) {
-              Thread.sleep(1L);
-            }
-            TransactionManager delegate = (TransactionManager) delegateField.get(tx);
-            if (delegate == null) {
-              return;
-            }
-            Field stateField = cls.getDeclaredField("txnState");
-            stateField.setAccessible(true);
+            if (usingMultiplexedsession) {
+              Field stateField = cls.getDeclaredField("txnState");
+              stateField.setAccessible(true);
+              if (tx.getState() == null) {
+                return;
+              }
+              tx.rollback();
+              stateField.set(tx, TransactionState.ABORTED);
+            } else {
+              Class<?> cls2 =
+                  Class.forName(
+                      "com.google.cloud.spanner.SessionPool$AutoClosingTransactionManager");
+              Field delegateField = cls2.getDeclaredField("delegate");
+              delegateField.setAccessible(true);
+              watch = watch.reset().start();
+              while (delegateField.get(tx) == null && watch.elapsed(TimeUnit.MILLISECONDS) < 100) {
+                Thread.sleep(1L);
+              }
+              TransactionManager delegate = (TransactionManager) delegateField.get(tx);
+              if (delegate == null) {
+                return;
+              }
+              Field stateField = cls.getDeclaredField("txnState");
+              stateField.setAccessible(true);
 
-            // First rollback the delegate, and then pretend it aborted.
-            // We should call rollback on the delegate and not the wrapping
-            // AutoClosingTransactionManager, as the latter would cause the session to be returned
-            // to the session pool.
-            delegate.rollback();
-            stateField.set(delegate, TransactionState.ABORTED);
+              // First rollback the delegate, and then pretend it aborted.
+              // We should call rollback on the delegate and not the wrapping
+              // AutoClosingTransactionManager, as the latter would cause the session to be returned
+              // to the session pool.
+              delegate.rollback();
+              stateField.set(delegate, TransactionState.ABORTED);
+            }
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -213,6 +238,9 @@ public abstract class ITAbstractSpannerTest {
     url.append("/").append(database.getId().getName());
     if (options.getCredentials() == NoCredentials.getInstance()) {
       url.append(";usePlainText=true");
+    }
+    if (isExperimentalHost()) {
+      appendExperimentalHost(url);
     }
     return url;
   }
@@ -310,7 +338,8 @@ public abstract class ITAbstractSpannerTest {
           connection.startBatchDdl();
           connection.execute(
               Statement.of(
-                  "CREATE TABLE TEST (ID INT64 NOT NULL, NAME STRING(100) NOT NULL) PRIMARY KEY (ID)"));
+                  "CREATE TABLE TEST (ID INT64 NOT NULL, NAME STRING(100) NOT NULL) PRIMARY KEY"
+                      + " (ID)"));
           connection.runBatch();
         }
       }
@@ -323,7 +352,8 @@ public abstract class ITAbstractSpannerTest {
         connection.executeQuery(
             Statement.newBuilder(
                     String.format(
-                        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE UPPER(TABLE_NAME)=UPPER(\'%s\')",
+                        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE"
+                            + " UPPER(TABLE_NAME)=UPPER(\'%s\')",
                         table))
                 .build())) {
       while (rs.next()) {
@@ -338,7 +368,8 @@ public abstract class ITAbstractSpannerTest {
     try (ResultSet rs =
         connection.executeQuery(
             Statement.newBuilder(
-                    "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.INDEXES WHERE UPPER(TABLE_NAME)=@table_name AND UPPER(INDEX_NAME)=@index_name")
+                    "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.INDEXES WHERE"
+                        + " UPPER(TABLE_NAME)=@table_name AND UPPER(INDEX_NAME)=@index_name")
                 .bind("table_name")
                 .to(table)
                 .bind("index_name")
@@ -349,5 +380,12 @@ public abstract class ITAbstractSpannerTest {
       }
     }
     return false;
+  }
+
+  protected boolean isMultiplexedSessionsEnabledForRW(Spanner spanner) {
+    if (spanner.getOptions() == null || spanner.getOptions().getSessionPoolOptions() == null) {
+      return false;
+    }
+    return spanner.getOptions().getSessionPoolOptions().getUseMultiplexedSessionForRW();
   }
 }

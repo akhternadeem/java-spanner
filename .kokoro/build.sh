@@ -82,7 +82,7 @@ test)
     RETURN_CODE=$?
     ;;
 lint)
-    mvn com.coveo:fmt-maven-plugin:check
+    mvn com.spotify.fmt:fmt-maven-plugin:check
     RETURN_CODE=$?
     ;;
 javadoc)
@@ -119,21 +119,6 @@ integration-directpath-enabled)
       verify
     RETURN_CODE=$?
     ;;
-integration-multiplexed-sessions-enabled)
-    mvn -B ${INTEGRATION_TEST_ARGS} \
-      -ntp \
-      -Penable-integration-tests \
-      -Djava.net.preferIPv4Stack=true \
-      -DtrimStackTrace=false \
-      -Dclirr.skip=true \
-      -Denforcer.skip=true \
-      -Dmaven.main.skip=true \
-      -Dspanner.gce.config.project_id=gcloud-devel \
-      -Dspanner.testenv.instance=projects/gcloud-devel/instances/java-client-integration-tests-multiplexed-sessions \
-      -fae \
-      verify
-    RETURN_CODE=$?
-    ;;
 integration-cloud-devel)
     mvn -B ${INTEGRATION_TEST_ARGS} \
       -ntp \
@@ -160,7 +145,7 @@ integration-cloud-devel-directpath-enabled)
       -Denforcer.skip=true \
       -Dmaven.main.skip=true \
       -Dspanner.gce.config.server_url=https://staging-wrenchworks.sandbox.googleapis.com \
-      -Dspanner.testenv.instance=projects/span-cloud-testing/instances/spanner-java-client-directpath \
+      -Dspanner.testenv.instance=projects/span-cloud-testing/instances/cloud-spanner-java-directpath \
       -Dspanner.gce.config.project_id=span-cloud-testing \
       -fae \
       verify
@@ -184,12 +169,14 @@ integration-cloud-staging|integration-cloud-staging-directpath-enabled)
     ;;
 graalvm)
     # Run Unit and Integration Tests with Native Image
-    mvn test -Pnative -Penable-integration-tests -Dspanner.gce.config.project_id=gcloud-devel -Dspanner.testenv.instance=projects/gcloud-devel/instances/java-client-integration-tests
+    # NOTE: These integration tests run on the Emulator.
+    mvn test -Pnative -Penable-integration-tests -Dspanner.gce.config.project_id=gcloud-devel -Dspanner.testenv.instance=projects/gcloud-devel/instances/java-client-integration-tests-graalvm
     RETURN_CODE=$?
     ;;
 graalvm17)
     # Run Unit and Integration Tests with Native Image
-    mvn test -Pnative -Penable-integration-tests -Dspanner.gce.config.project_id=gcloud-devel -Dspanner.testenv.instance=projects/gcloud-devel/instances/java-client-integration-tests
+    # NOTE: These integration tests run on the Emulator.
+    mvn test -Pnative -Penable-integration-tests -Dspanner.gce.config.project_id=gcloud-devel -Dspanner.testenv.instance=projects/gcloud-devel/instances/java-client-integration-tests-graalvm
     RETURN_CODE=$?
     ;;
 slowtests)
@@ -206,12 +193,17 @@ slowtests)
     verify
   RETURN_CODE=$?
   ;;
-samples)
+samples|samples-slow-tests)
     SAMPLES_DIR=samples
+    PROFILES=''
     # only run ITs in snapshot/ on presubmit PRs. run ITs in all 3 samples/ subdirectories otherwise.
     if [[ ! -z ${KOKORO_GITHUB_PULL_REQUEST_NUMBER} ]]
     then
       SAMPLES_DIR=samples/snapshot
+    elif [[ ${JOB_TYPE} = 'samples-slow-tests' ]]
+    then
+      SAMPLES_DIR=samples/snippets
+      PROFILES='-Pslow-tests,!integration-tests'
     fi
 
     if [[ -f ${SAMPLES_DIR}/pom.xml ]]
@@ -227,6 +219,7 @@ samples)
           -DtrimStackTrace=false \
           -Dclirr.skip=true \
           -Denforcer.skip=true \
+          ${PROFILES} \
           -fae \
           verify
         RETURN_CODE=$?

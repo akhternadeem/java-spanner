@@ -31,7 +31,6 @@ import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -49,7 +48,7 @@ abstract class AbstractMockServerTest {
   protected Spanner spanner;
 
   @BeforeClass
-  public static void startMockServer() throws IOException {
+  public static void startMockServer() throws Exception {
     mockSpanner = new MockSpannerServiceImpl();
     mockSpanner.setAbortProbability(0.0D); // We don't want any unpredictable aborted transactions.
     mockInstanceAdmin = new MockInstanceAdminImpl();

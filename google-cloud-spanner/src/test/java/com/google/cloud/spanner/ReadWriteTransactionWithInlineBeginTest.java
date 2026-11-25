@@ -38,7 +38,6 @@ import com.google.spanner.v1.TypeCode;
 import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.inprocess.InProcessServerBuilder;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -101,7 +100,7 @@ public class ReadWriteTransactionWithInlineBeginTest {
   private DatabaseClient client;
 
   @BeforeClass
-  public static void startStaticServer() throws IOException {
+  public static void startStaticServer() throws Exception {
     mockSpanner = new MockSpannerServiceImpl();
     mockSpanner.setAbortProbability(0.0D); // We don't want any unpredictable aborted transactions.
     mockSpanner.putStatementResult(StatementResult.update(UPDATE_STATEMENT, UPDATE_COUNT));
@@ -180,18 +179,7 @@ public class ReadWriteTransactionWithInlineBeginTest {
 
   @Test
   public void singleQuery() {
-    Long value =
-        client
-            .readWriteTransaction()
-            .run(
-                transaction -> {
-                  try (ResultSet rs = transaction.executeQuery(SELECT1)) {
-                    while (rs.next()) {
-                      return rs.getLong(0);
-                    }
-                  }
-                  return 0L;
-                });
+    Long value = MockSpannerTestActions.executeSelect1(client);
     assertThat(value).isEqualTo(1L);
     assertThat(countRequests(BeginTransactionRequest.class)).isEqualTo(0);
     assertThat(countTransactionsStarted()).isEqualTo(1);
@@ -406,17 +394,7 @@ public class ReadWriteTransactionWithInlineBeginTest {
 
   @Test
   public void executeSqlWithOptimisticConcurrencyControl() {
-    client
-        .readWriteTransaction(Options.optimisticLock())
-        .run(
-            transaction -> {
-              try (ResultSet rs = transaction.executeQuery(SELECT1)) {
-                while (rs.next()) {
-                  assertEquals(rs.getLong(0), 1);
-                }
-              }
-              return null;
-            });
+    MockSpannerTestActions.executeSelect1(client, Options.optimisticLock());
     Collection<AbstractMessage> requests =
         mockSpanner.getRequests().stream()
             .filter(msg -> msg.getClass().equals(ExecuteSqlRequest.class))
@@ -428,18 +406,8 @@ public class ReadWriteTransactionWithInlineBeginTest {
 
   @Test
   public void readWithOptimisticConcurrencyControl() {
-    client
-        .readWriteTransaction(Options.optimisticLock())
-        .run(
-            transaction -> {
-              try (ResultSet rs =
-                  transaction.read("FOO", KeySet.all(), Collections.singletonList("ID"))) {
-                while (rs.next()) {
-                  assertEquals(rs.getLong(0), 1);
-                }
-              }
-              return null;
-            });
+    Long updateCount = MockSpannerTestActions.executeReadFoo(client, Options.optimisticLock());
+    assertThat(updateCount).isEqualTo(1L);
     Collection<AbstractMessage> requests =
         mockSpanner.getRequests().stream()
             .filter(msg -> msg.getClass().equals(ReadRequest.class))
@@ -451,20 +419,7 @@ public class ReadWriteTransactionWithInlineBeginTest {
 
   @Test
   public void beginTransactionWithOptimisticConcurrencyControl() {
-    client
-        .readWriteTransaction(Options.optimisticLock())
-        .run(
-            transaction -> {
-              // Instead of adding the BeginTransaction option to the next statement, the client
-              // library will force a complete retry of the entire transaction, and use an explicit
-              // BeginTransaction RPC invocation for that transaction in order to include the failed
-              // statement in the transaction as well.
-              try (ResultSet rs = transaction.executeQuery(INVALID_SELECT_STATEMENT)) {
-                SpannerException e = assertThrows(SpannerException.class, () -> rs.next());
-                assertEquals(ErrorCode.INVALID_ARGUMENT, e.getErrorCode());
-              }
-              return transaction.executeUpdate(UPDATE_STATEMENT);
-            });
+    MockSpannerTestActions.executeInvalidAndValidSql(client, Options.optimisticLock());
     Collection<AbstractMessage> requests =
         mockSpanner.getRequests().stream()
             .filter(msg -> msg.getClass().equals(BeginTransactionRequest.class))
@@ -476,19 +431,7 @@ public class ReadWriteTransactionWithInlineBeginTest {
 
   @Test
   public void failedQueryAndThenUpdate() {
-    Long updateCount =
-        client
-            .readWriteTransaction()
-            .run(
-                transaction -> {
-                  // This query carries the BeginTransaction, but fails. The BeginTransaction will
-                  // then be carried by the subsequent statement.
-                  try (ResultSet rs = transaction.executeQuery(INVALID_SELECT_STATEMENT)) {
-                    SpannerException e = assertThrows(SpannerException.class, () -> rs.next());
-                    assertEquals(ErrorCode.INVALID_ARGUMENT, e.getErrorCode());
-                  }
-                  return transaction.executeUpdate(UPDATE_STATEMENT);
-                });
+    Long updateCount = MockSpannerTestActions.executeInvalidAndValidSql(client);
     assertThat(updateCount).isEqualTo(1L);
     assertThat(countRequests(BeginTransactionRequest.class)).isEqualTo(1);
     assertThat(countTransactionsStarted()).isEqualTo(2);

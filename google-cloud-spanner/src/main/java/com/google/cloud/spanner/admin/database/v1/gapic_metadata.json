@@ -10,6 +10,9 @@
         "grpc": {
           "libraryClient": "DatabaseAdminClient",
           "rpcs": {
+            "AddSplitPoints": {
+              "methods": ["addSplitPoints", "addSplitPoints", "addSplitPoints", "addSplitPointsCallable"]
+            },
             "CopyBackup": {
               "methods": ["copyBackupAsync", "copyBackupAsync", "copyBackupAsync", "copyBackupAsync", "copyBackupAsync", "copyBackupOperationCallable", "copyBackupCallable"]
             },
@@ -45,6 +48,9 @@
             },
             "GetIamPolicy": {
               "methods": ["getIamPolicy", "getIamPolicy", "getIamPolicy", "getIamPolicyCallable"]
+            },
+            "InternalUpdateGraphOperation": {
+              "methods": ["internalUpdateGraphOperation", "internalUpdateGraphOperation", "internalUpdateGraphOperation", "internalUpdateGraphOperationCallable"]
             },
             "ListBackupOperations": {
               "methods": ["listBackupOperations", "listBackupOperations", "listBackupOperations", "listBackupOperationsPagedCallable", "listBackupOperationsCallable"]

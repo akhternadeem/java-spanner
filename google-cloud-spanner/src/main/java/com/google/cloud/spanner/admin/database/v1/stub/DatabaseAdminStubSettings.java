@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.ApiClientHeaderProvider;
 import com.google.api.gax.rpc.ClientContext;
+import com.google.api.gax.rpc.LibraryMetadata;
 import com.google.api.gax.rpc.OperationCallSettings;
 import com.google.api.gax.rpc.PageContext;
 import com.google.api.gax.rpc.PagedCallSettings;
@@ -64,6 +65,8 @@ import com.google.iam.v1.TestIamPermissionsRequest;
 import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
 import com.google.protobuf.Empty;
+import com.google.spanner.admin.database.v1.AddSplitPointsRequest;
+import com.google.spanner.admin.database.v1.AddSplitPointsResponse;
 import com.google.spanner.admin.database.v1.Backup;
 import com.google.spanner.admin.database.v1.BackupSchedule;
 import com.google.spanner.admin.database.v1.CopyBackupMetadata;
@@ -83,6 +86,8 @@ import com.google.spanner.admin.database.v1.GetBackupScheduleRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
 import com.google.spanner.admin.database.v1.GetDatabaseRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationResponse;
 import com.google.spanner.admin.database.v1.ListBackupOperationsRequest;
 import com.google.spanner.admin.database.v1.ListBackupOperationsResponse;
 import com.google.spanner.admin.database.v1.ListBackupSchedulesRequest;
@@ -104,9 +109,9 @@ import com.google.spanner.admin.database.v1.UpdateDatabaseDdlRequest;
 import com.google.spanner.admin.database.v1.UpdateDatabaseMetadata;
 import com.google.spanner.admin.database.v1.UpdateDatabaseRequest;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import javax.annotation.Generated;
-import org.threeten.bp.Duration;
 
 // AUTO-GENERATED DOCUMENTATION AND CLASS.
 /**
@@ -155,8 +160,8 @@ import org.threeten.bp.Duration;
  * }</pre>
  *
  * Please refer to the [Client Side Retry
- * Guide](https://github.com/googleapis/google-cloud-java/blob/main/docs/client_retries.md) for
- * additional support in setting retries.
+ * Guide](https://docs.cloud.google.com/java/docs/client-retries) for additional support in setting
+ * retries.
  *
  * <p>To configure the RetrySettings of a Long Running Operation method, create an
  * OperationTimedPollAlgorithm object and update the RPC's polling algorithm. For example, to
@@ -175,7 +180,7 @@ import org.threeten.bp.Duration;
  *         RetrySettings.newBuilder()
  *             .setInitialRetryDelayDuration(Duration.ofMillis(500))
  *             .setRetryDelayMultiplier(1.5)
- *             .setMaxRetryDelay(Duration.ofMillis(5000))
+ *             .setMaxRetryDelayDuration(Duration.ofMillis(5000))
  *             .setTotalTimeoutDuration(Duration.ofHours(24))
  *             .build());
  * databaseAdminSettingsBuilder
@@ -185,6 +190,7 @@ import org.threeten.bp.Duration;
  * }</pre>
  */
 @Generated("by gapic-generator-java")
+@SuppressWarnings("CanonicalDuration")
 public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSettings> {
   /** The default scopes of the service. */
   private static final ImmutableList<String> DEFAULT_SERVICE_SCOPES =
@@ -240,6 +246,8 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
   private final PagedCallSettings<
           ListDatabaseRolesRequest, ListDatabaseRolesResponse, ListDatabaseRolesPagedResponse>
       listDatabaseRolesSettings;
+  private final UnaryCallSettings<AddSplitPointsRequest, AddSplitPointsResponse>
+      addSplitPointsSettings;
   private final UnaryCallSettings<CreateBackupScheduleRequest, BackupSchedule>
       createBackupScheduleSettings;
   private final UnaryCallSettings<GetBackupScheduleRequest, BackupSchedule>
@@ -250,6 +258,9 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
   private final PagedCallSettings<
           ListBackupSchedulesRequest, ListBackupSchedulesResponse, ListBackupSchedulesPagedResponse>
       listBackupSchedulesSettings;
+  private final UnaryCallSettings<
+          InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationSettings;
 
   private static final PagedListDescriptor<ListDatabasesRequest, ListDatabasesResponse, Database>
       LIST_DATABASES_PAGE_STR_DESC =
@@ -745,6 +756,11 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
     return listDatabaseRolesSettings;
   }
 
+  /** Returns the object with the settings used for calls to addSplitPoints. */
+  public UnaryCallSettings<AddSplitPointsRequest, AddSplitPointsResponse> addSplitPointsSettings() {
+    return addSplitPointsSettings;
+  }
+
   /** Returns the object with the settings used for calls to createBackupSchedule. */
   public UnaryCallSettings<CreateBackupScheduleRequest, BackupSchedule>
       createBackupScheduleSettings() {
@@ -772,6 +788,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           ListBackupSchedulesRequest, ListBackupSchedulesResponse, ListBackupSchedulesPagedResponse>
       listBackupSchedulesSettings() {
     return listBackupSchedulesSettings;
+  }
+
+  /** Returns the object with the settings used for calls to internalUpdateGraph. */
+  public UnaryCallSettings<
+          InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationSettings() {
+    return internalUpdateGraphOperationSettings;
   }
 
   public DatabaseAdminStub createStub() throws IOException {
@@ -912,11 +935,22 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
     listDatabaseOperationsSettings = settingsBuilder.listDatabaseOperationsSettings().build();
     listBackupOperationsSettings = settingsBuilder.listBackupOperationsSettings().build();
     listDatabaseRolesSettings = settingsBuilder.listDatabaseRolesSettings().build();
+    addSplitPointsSettings = settingsBuilder.addSplitPointsSettings().build();
     createBackupScheduleSettings = settingsBuilder.createBackupScheduleSettings().build();
     getBackupScheduleSettings = settingsBuilder.getBackupScheduleSettings().build();
     updateBackupScheduleSettings = settingsBuilder.updateBackupScheduleSettings().build();
     deleteBackupScheduleSettings = settingsBuilder.deleteBackupScheduleSettings().build();
     listBackupSchedulesSettings = settingsBuilder.listBackupSchedulesSettings().build();
+    internalUpdateGraphOperationSettings =
+        settingsBuilder.internalUpdateGraphOperationSettings().build();
+  }
+
+  @Override
+  protected LibraryMetadata getLibraryMetadata() {
+    return LibraryMetadata.newBuilder()
+        .setArtifactName("com.google.cloud:google-cloud-spanner")
+        .setRepository("googleapis/java-spanner")
+        .build();
   }
 
   /** Builder for DatabaseAdminStubSettings. */
@@ -978,6 +1012,8 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
     private final PagedCallSettings.Builder<
             ListDatabaseRolesRequest, ListDatabaseRolesResponse, ListDatabaseRolesPagedResponse>
         listDatabaseRolesSettings;
+    private final UnaryCallSettings.Builder<AddSplitPointsRequest, AddSplitPointsResponse>
+        addSplitPointsSettings;
     private final UnaryCallSettings.Builder<CreateBackupScheduleRequest, BackupSchedule>
         createBackupScheduleSettings;
     private final UnaryCallSettings.Builder<GetBackupScheduleRequest, BackupSchedule>
@@ -991,6 +1027,9 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
             ListBackupSchedulesResponse,
             ListBackupSchedulesPagedResponse>
         listBackupSchedulesSettings;
+    private final UnaryCallSettings.Builder<
+            InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+        internalUpdateGraphOperationSettings;
     private static final ImmutableMap<String, ImmutableSet<StatusCode.Code>>
         RETRYABLE_CODE_DEFINITIONS;
 
@@ -1011,6 +1050,7 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           ImmutableSet.copyOf(
               Lists.<StatusCode.Code>newArrayList(
                   StatusCode.Code.UNAVAILABLE, StatusCode.Code.DEADLINE_EXCEEDED)));
+      definitions.put("no_retry_codes", ImmutableSet.copyOf(Lists.<StatusCode.Code>newArrayList()));
       RETRYABLE_CODE_DEFINITIONS = definitions.build();
     }
 
@@ -1021,42 +1061,44 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
       RetrySettings settings = null;
       settings =
           RetrySettings.newBuilder()
-              .setInitialRetryDelay(Duration.ofMillis(1000L))
+              .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
               .setRetryDelayMultiplier(1.3)
-              .setMaxRetryDelay(Duration.ofMillis(32000L))
-              .setInitialRpcTimeout(Duration.ofMillis(3600000L))
+              .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+              .setInitialRpcTimeoutDuration(Duration.ofMillis(3600000L))
               .setRpcTimeoutMultiplier(1.0)
-              .setMaxRpcTimeout(Duration.ofMillis(3600000L))
-              .setTotalTimeout(Duration.ofMillis(3600000L))
+              .setMaxRpcTimeoutDuration(Duration.ofMillis(3600000L))
+              .setTotalTimeoutDuration(Duration.ofMillis(3600000L))
               .build();
       definitions.put("retry_policy_0_params", settings);
       settings =
           RetrySettings.newBuilder()
-              .setInitialRpcTimeout(Duration.ofMillis(3600000L))
+              .setInitialRpcTimeoutDuration(Duration.ofMillis(3600000L))
               .setRpcTimeoutMultiplier(1.0)
-              .setMaxRpcTimeout(Duration.ofMillis(3600000L))
-              .setTotalTimeout(Duration.ofMillis(3600000L))
+              .setMaxRpcTimeoutDuration(Duration.ofMillis(3600000L))
+              .setTotalTimeoutDuration(Duration.ofMillis(3600000L))
               .build();
       definitions.put("no_retry_2_params", settings);
       settings =
           RetrySettings.newBuilder()
-              .setInitialRpcTimeout(Duration.ofMillis(30000L))
+              .setInitialRpcTimeoutDuration(Duration.ofMillis(30000L))
               .setRpcTimeoutMultiplier(1.0)
-              .setMaxRpcTimeout(Duration.ofMillis(30000L))
-              .setTotalTimeout(Duration.ofMillis(30000L))
+              .setMaxRpcTimeoutDuration(Duration.ofMillis(30000L))
+              .setTotalTimeoutDuration(Duration.ofMillis(30000L))
               .build();
       definitions.put("no_retry_3_params", settings);
       settings =
           RetrySettings.newBuilder()
-              .setInitialRetryDelay(Duration.ofMillis(1000L))
+              .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
               .setRetryDelayMultiplier(1.3)
-              .setMaxRetryDelay(Duration.ofMillis(32000L))
-              .setInitialRpcTimeout(Duration.ofMillis(30000L))
+              .setMaxRetryDelayDuration(Duration.ofMillis(32000L))
+              .setInitialRpcTimeoutDuration(Duration.ofMillis(30000L))
               .setRpcTimeoutMultiplier(1.0)
-              .setMaxRpcTimeout(Duration.ofMillis(30000L))
-              .setTotalTimeout(Duration.ofMillis(30000L))
+              .setMaxRpcTimeoutDuration(Duration.ofMillis(30000L))
+              .setTotalTimeoutDuration(Duration.ofMillis(30000L))
               .build();
       definitions.put("retry_policy_1_params", settings);
+      settings = RetrySettings.newBuilder().setRpcTimeoutMultiplier(1.0).build();
+      definitions.put("no_retry_params", settings);
       RETRY_PARAM_DEFINITIONS = definitions.build();
     }
 
@@ -1095,12 +1137,14 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
       listBackupOperationsSettings =
           PagedCallSettings.newBuilder(LIST_BACKUP_OPERATIONS_PAGE_STR_FACT);
       listDatabaseRolesSettings = PagedCallSettings.newBuilder(LIST_DATABASE_ROLES_PAGE_STR_FACT);
+      addSplitPointsSettings = UnaryCallSettings.newUnaryCallSettingsBuilder();
       createBackupScheduleSettings = UnaryCallSettings.newUnaryCallSettingsBuilder();
       getBackupScheduleSettings = UnaryCallSettings.newUnaryCallSettingsBuilder();
       updateBackupScheduleSettings = UnaryCallSettings.newUnaryCallSettingsBuilder();
       deleteBackupScheduleSettings = UnaryCallSettings.newUnaryCallSettingsBuilder();
       listBackupSchedulesSettings =
           PagedCallSettings.newBuilder(LIST_BACKUP_SCHEDULES_PAGE_STR_FACT);
+      internalUpdateGraphOperationSettings = UnaryCallSettings.newUnaryCallSettingsBuilder();
 
       unaryMethodSettingsBuilders =
           ImmutableList.<UnaryCallSettings.Builder<?, ?>>of(
@@ -1124,11 +1168,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
               listDatabaseOperationsSettings,
               listBackupOperationsSettings,
               listDatabaseRolesSettings,
+              addSplitPointsSettings,
               createBackupScheduleSettings,
               getBackupScheduleSettings,
               updateBackupScheduleSettings,
               deleteBackupScheduleSettings,
-              listBackupSchedulesSettings);
+              listBackupSchedulesSettings,
+              internalUpdateGraphOperationSettings);
       initDefaults(this);
     }
 
@@ -1161,11 +1207,14 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
       listDatabaseOperationsSettings = settings.listDatabaseOperationsSettings.toBuilder();
       listBackupOperationsSettings = settings.listBackupOperationsSettings.toBuilder();
       listDatabaseRolesSettings = settings.listDatabaseRolesSettings.toBuilder();
+      addSplitPointsSettings = settings.addSplitPointsSettings.toBuilder();
       createBackupScheduleSettings = settings.createBackupScheduleSettings.toBuilder();
       getBackupScheduleSettings = settings.getBackupScheduleSettings.toBuilder();
       updateBackupScheduleSettings = settings.updateBackupScheduleSettings.toBuilder();
       deleteBackupScheduleSettings = settings.deleteBackupScheduleSettings.toBuilder();
       listBackupSchedulesSettings = settings.listBackupSchedulesSettings.toBuilder();
+      internalUpdateGraphOperationSettings =
+          settings.internalUpdateGraphOperationSettings.toBuilder();
 
       unaryMethodSettingsBuilders =
           ImmutableList.<UnaryCallSettings.Builder<?, ?>>of(
@@ -1189,11 +1238,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
               listDatabaseOperationsSettings,
               listBackupOperationsSettings,
               listDatabaseRolesSettings,
+              addSplitPointsSettings,
               createBackupScheduleSettings,
               getBackupScheduleSettings,
               updateBackupScheduleSettings,
               deleteBackupScheduleSettings,
-              listBackupSchedulesSettings);
+              listBackupSchedulesSettings,
+              internalUpdateGraphOperationSettings);
     }
 
     private static Builder createDefault() {
@@ -1322,6 +1373,11 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setRetrySettings(RETRY_PARAM_DEFINITIONS.get("retry_policy_0_params"));
 
       builder
+          .addSplitPointsSettings()
+          .setRetryableCodes(RETRYABLE_CODE_DEFINITIONS.get("retry_policy_0_codes"))
+          .setRetrySettings(RETRY_PARAM_DEFINITIONS.get("retry_policy_0_params"));
+
+      builder
           .createBackupScheduleSettings()
           .setRetryableCodes(RETRYABLE_CODE_DEFINITIONS.get("retry_policy_0_codes"))
           .setRetrySettings(RETRY_PARAM_DEFINITIONS.get("retry_policy_0_params"));
@@ -1347,6 +1403,11 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setRetrySettings(RETRY_PARAM_DEFINITIONS.get("retry_policy_0_params"));
 
       builder
+          .internalUpdateGraphOperationSettings()
+          .setRetryableCodes(RETRYABLE_CODE_DEFINITIONS.get("no_retry_codes"))
+          .setRetrySettings(RETRY_PARAM_DEFINITIONS.get("no_retry_params"));
+
+      builder
           .createDatabaseOperationSettings()
           .setInitialCallSettings(
               UnaryCallSettings
@@ -1361,13 +1422,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setPollingAlgorithm(
               OperationTimedPollAlgorithm.create(
                   RetrySettings.newBuilder()
-                      .setInitialRetryDelay(Duration.ofMillis(20000L))
+                      .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
                       .setRetryDelayMultiplier(1.5)
-                      .setMaxRetryDelay(Duration.ofMillis(45000L))
-                      .setInitialRpcTimeout(Duration.ZERO)
+                      .setMaxRetryDelayDuration(Duration.ofMillis(45000L))
+                      .setInitialRpcTimeoutDuration(Duration.ZERO)
                       .setRpcTimeoutMultiplier(1.0)
-                      .setMaxRpcTimeout(Duration.ZERO)
-                      .setTotalTimeout(Duration.ofMillis(86400000L))
+                      .setMaxRpcTimeoutDuration(Duration.ZERO)
+                      .setTotalTimeoutDuration(Duration.ofMillis(86400000L))
                       .build()));
 
       builder
@@ -1385,13 +1446,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setPollingAlgorithm(
               OperationTimedPollAlgorithm.create(
                   RetrySettings.newBuilder()
-                      .setInitialRetryDelay(Duration.ofMillis(5000L))
+                      .setInitialRetryDelayDuration(Duration.ofMillis(5000L))
                       .setRetryDelayMultiplier(1.5)
-                      .setMaxRetryDelay(Duration.ofMillis(45000L))
-                      .setInitialRpcTimeout(Duration.ZERO)
+                      .setMaxRetryDelayDuration(Duration.ofMillis(45000L))
+                      .setInitialRpcTimeoutDuration(Duration.ZERO)
                       .setRpcTimeoutMultiplier(1.0)
-                      .setMaxRpcTimeout(Duration.ZERO)
-                      .setTotalTimeout(Duration.ofMillis(300000L))
+                      .setMaxRpcTimeoutDuration(Duration.ZERO)
+                      .setTotalTimeoutDuration(Duration.ofMillis(300000L))
                       .build()));
 
       builder
@@ -1410,13 +1471,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setPollingAlgorithm(
               OperationTimedPollAlgorithm.create(
                   RetrySettings.newBuilder()
-                      .setInitialRetryDelay(Duration.ofMillis(20000L))
+                      .setInitialRetryDelayDuration(Duration.ofMillis(1000L))
                       .setRetryDelayMultiplier(1.5)
-                      .setMaxRetryDelay(Duration.ofMillis(45000L))
-                      .setInitialRpcTimeout(Duration.ZERO)
+                      .setMaxRetryDelayDuration(Duration.ofMillis(45000L))
+                      .setInitialRpcTimeoutDuration(Duration.ZERO)
                       .setRpcTimeoutMultiplier(1.0)
-                      .setMaxRpcTimeout(Duration.ZERO)
-                      .setTotalTimeout(Duration.ofMillis(86400000L))
+                      .setMaxRpcTimeoutDuration(Duration.ZERO)
+                      .setTotalTimeoutDuration(Duration.ofMillis(86400000L))
                       .build()));
 
       builder
@@ -1434,13 +1495,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setPollingAlgorithm(
               OperationTimedPollAlgorithm.create(
                   RetrySettings.newBuilder()
-                      .setInitialRetryDelay(Duration.ofMillis(20000L))
+                      .setInitialRetryDelayDuration(Duration.ofMillis(20000L))
                       .setRetryDelayMultiplier(1.5)
-                      .setMaxRetryDelay(Duration.ofMillis(45000L))
-                      .setInitialRpcTimeout(Duration.ZERO)
+                      .setMaxRetryDelayDuration(Duration.ofMillis(45000L))
+                      .setInitialRpcTimeoutDuration(Duration.ZERO)
                       .setRpcTimeoutMultiplier(1.0)
-                      .setMaxRpcTimeout(Duration.ZERO)
-                      .setTotalTimeout(Duration.ofMillis(172800000L))
+                      .setMaxRpcTimeoutDuration(Duration.ZERO)
+                      .setTotalTimeoutDuration(Duration.ofMillis(172800000L))
                       .build()));
 
       builder
@@ -1457,13 +1518,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setPollingAlgorithm(
               OperationTimedPollAlgorithm.create(
                   RetrySettings.newBuilder()
-                      .setInitialRetryDelay(Duration.ofMillis(5000L))
+                      .setInitialRetryDelayDuration(Duration.ofMillis(5000L))
                       .setRetryDelayMultiplier(1.5)
-                      .setMaxRetryDelay(Duration.ofMillis(45000L))
-                      .setInitialRpcTimeout(Duration.ZERO)
+                      .setMaxRetryDelayDuration(Duration.ofMillis(45000L))
+                      .setInitialRpcTimeoutDuration(Duration.ZERO)
                       .setRpcTimeoutMultiplier(1.0)
-                      .setMaxRpcTimeout(Duration.ZERO)
-                      .setTotalTimeout(Duration.ofMillis(300000L))
+                      .setMaxRpcTimeoutDuration(Duration.ZERO)
+                      .setTotalTimeoutDuration(Duration.ofMillis(300000L))
                       .build()));
 
       builder
@@ -1481,13 +1542,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
           .setPollingAlgorithm(
               OperationTimedPollAlgorithm.create(
                   RetrySettings.newBuilder()
-                      .setInitialRetryDelay(Duration.ofMillis(20000L))
+                      .setInitialRetryDelayDuration(Duration.ofMillis(20000L))
                       .setRetryDelayMultiplier(1.5)
-                      .setMaxRetryDelay(Duration.ofMillis(45000L))
-                      .setInitialRpcTimeout(Duration.ZERO)
+                      .setMaxRetryDelayDuration(Duration.ofMillis(45000L))
+                      .setInitialRpcTimeoutDuration(Duration.ZERO)
                       .setRpcTimeoutMultiplier(1.0)
-                      .setMaxRpcTimeout(Duration.ZERO)
-                      .setTotalTimeout(Duration.ofMillis(86400000L))
+                      .setMaxRpcTimeoutDuration(Duration.ZERO)
+                      .setTotalTimeoutDuration(Duration.ofMillis(86400000L))
                       .build()));
 
       return builder;
@@ -1661,6 +1722,12 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
       return listDatabaseRolesSettings;
     }
 
+    /** Returns the builder for the settings used for calls to addSplitPoints. */
+    public UnaryCallSettings.Builder<AddSplitPointsRequest, AddSplitPointsResponse>
+        addSplitPointsSettings() {
+      return addSplitPointsSettings;
+    }
+
     /** Returns the builder for the settings used for calls to createBackupSchedule. */
     public UnaryCallSettings.Builder<CreateBackupScheduleRequest, BackupSchedule>
         createBackupScheduleSettings() {
@@ -1692,6 +1759,13 @@ public class DatabaseAdminStubSettings extends StubSettings<DatabaseAdminStubSet
             ListBackupSchedulesPagedResponse>
         listBackupSchedulesSettings() {
       return listBackupSchedulesSettings;
+    }
+
+    /** Returns the builder for the settings used for calls to internalUpdateGraph. */
+    public UnaryCallSettings.Builder<
+            InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+        internalUpdateGraphOperationSettings() {
+      return internalUpdateGraphOperationSettings;
     }
 
     @Override

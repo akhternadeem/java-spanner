@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Google LLC
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,8 @@ import com.google.iam.v1.TestIamPermissionsResponse;
 import com.google.longrunning.Operation;
 import com.google.longrunning.stub.OperationsStub;
 import com.google.protobuf.Empty;
+import com.google.spanner.admin.database.v1.AddSplitPointsRequest;
+import com.google.spanner.admin.database.v1.AddSplitPointsResponse;
 import com.google.spanner.admin.database.v1.Backup;
 import com.google.spanner.admin.database.v1.BackupSchedule;
 import com.google.spanner.admin.database.v1.CopyBackupMetadata;
@@ -52,6 +54,8 @@ import com.google.spanner.admin.database.v1.GetBackupScheduleRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlRequest;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
 import com.google.spanner.admin.database.v1.GetDatabaseRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationRequest;
+import com.google.spanner.admin.database.v1.InternalUpdateGraphOperationResponse;
 import com.google.spanner.admin.database.v1.ListBackupOperationsRequest;
 import com.google.spanner.admin.database.v1.ListBackupOperationsResponse;
 import com.google.spanner.admin.database.v1.ListBackupSchedulesRequest;
@@ -231,6 +235,10 @@ public abstract class DatabaseAdminStub implements BackgroundResource {
     throw new UnsupportedOperationException("Not implemented: listDatabaseRolesCallable()");
   }
 
+  public UnaryCallable<AddSplitPointsRequest, AddSplitPointsResponse> addSplitPointsCallable() {
+    throw new UnsupportedOperationException("Not implemented: addSplitPointsCallable()");
+  }
+
   public UnaryCallable<CreateBackupScheduleRequest, BackupSchedule> createBackupScheduleCallable() {
     throw new UnsupportedOperationException("Not implemented: createBackupScheduleCallable()");
   }
@@ -255,6 +263,12 @@ public abstract class DatabaseAdminStub implements BackgroundResource {
   public UnaryCallable<ListBackupSchedulesRequest, ListBackupSchedulesResponse>
       listBackupSchedulesCallable() {
     throw new UnsupportedOperationException("Not implemented: listBackupSchedulesCallable()");
+  }
+
+  public UnaryCallable<InternalUpdateGraphOperationRequest, InternalUpdateGraphOperationResponse>
+      internalUpdateGraphOperationCallable() {
+    throw new UnsupportedOperationException(
+        "Not implemented: internalUpdateGraphOperationCallable()");
   }
 
   @Override

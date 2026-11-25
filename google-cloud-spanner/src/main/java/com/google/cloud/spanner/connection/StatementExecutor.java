@@ -29,6 +29,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.Duration;
 import io.opentelemetry.context.Context;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -37,7 +38,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.threeten.bp.temporal.ChronoUnit;
 
 /**
  * {@link StatementExecutor} is responsible for executing statements on a {@link Connection}.
@@ -106,26 +106,26 @@ class StatementExecutor {
           });
     }
 
-    org.threeten.bp.Duration asDuration() {
+    java.time.Duration asDuration() {
       if (!hasTimeout()) {
-        return org.threeten.bp.Duration.ZERO;
+        return java.time.Duration.ZERO;
       }
       TimeUnit unit = getAppropriateTimeUnit();
       switch (unit) {
         case DAYS:
-          return org.threeten.bp.Duration.ofDays(getTimeoutValue(unit));
+          return java.time.Duration.ofDays(getTimeoutValue(unit));
         case HOURS:
-          return org.threeten.bp.Duration.ofHours(getTimeoutValue(unit));
+          return java.time.Duration.ofHours(getTimeoutValue(unit));
         case MICROSECONDS:
-          return org.threeten.bp.Duration.of(getTimeoutValue(unit), ChronoUnit.MICROS);
+          return java.time.Duration.of(getTimeoutValue(unit), ChronoUnit.MICROS);
         case MILLISECONDS:
-          return org.threeten.bp.Duration.ofMillis(getTimeoutValue(unit));
+          return java.time.Duration.ofMillis(getTimeoutValue(unit));
         case MINUTES:
-          return org.threeten.bp.Duration.ofMinutes(getTimeoutValue(unit));
+          return java.time.Duration.ofMinutes(getTimeoutValue(unit));
         case NANOSECONDS:
-          return org.threeten.bp.Duration.ofNanos(getTimeoutValue(unit));
+          return java.time.Duration.ofNanos(getTimeoutValue(unit));
         case SECONDS:
-          return org.threeten.bp.Duration.ofSeconds(getTimeoutValue(unit));
+          return java.time.Duration.ofSeconds(getTimeoutValue(unit));
         default:
           throw new IllegalStateException("invalid time unit: " + unit);
       }
@@ -138,6 +138,7 @@ class StatementExecutor {
    */
   private static final ThreadFactory DEFAULT_VIRTUAL_THREAD_FACTORY =
       ThreadFactoryUtil.createVirtualOrPlatformDaemonThreadFactory("connection-executor", true);
+
   /**
    * Use a {@link ThreadFactory} that produces daemon threads and sets a recognizable name on the
    * threads.
@@ -146,7 +147,10 @@ class StatementExecutor {
       ThreadFactoryUtil.createVirtualOrPlatformDaemonThreadFactory("connection-executor", false);
 
   /** Creates an {@link ExecutorService} for a {@link StatementExecutor}. */
-  private static ListeningExecutorService createExecutorService(boolean useVirtualThreads) {
+  private static ListeningExecutorService createExecutorService(StatementExecutorType type) {
+    if (type == StatementExecutorType.DIRECT_EXECUTOR) {
+      return MoreExecutors.newDirectExecutorService();
+    }
     return MoreExecutors.listeningDecorator(
         Context.taskWrapping(
             new ThreadPoolExecutor(
@@ -155,7 +159,7 @@ class StatementExecutor {
                 0L,
                 TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<>(),
-                useVirtualThreads
+                type == StatementExecutorType.VIRTUAL_THREAD
                     ? DEFAULT_VIRTUAL_THREAD_FACTORY
                     : DEFAULT_DAEMON_THREAD_FACTORY)));
   }
@@ -168,13 +172,37 @@ class StatementExecutor {
    */
   private final List<StatementExecutionInterceptor> interceptors;
 
-  @VisibleForTesting
-  StatementExecutor() {
-    this(DEFAULT_USE_VIRTUAL_THREADS, Collections.emptyList());
+  /** The executor type that is used for statements that are executed on a connection. */
+  public enum StatementExecutorType {
+    /**
+     * Use a platform thread per connection. This allows async execution of statements, but costs
+     * more resources than the other options.
+     */
+    PLATFORM_THREAD,
+    /**
+     * Use a virtual thread per connection. This allows async execution of statements. Virtual
+     * threads are only supported on Java 21 and higher.
+     */
+    VIRTUAL_THREAD,
+    /**
+     * Use the calling thread for execution. This does not support async execution of statements.
+     * This option is used by drivers that do not support async execution, such as JDBC and
+     * PGAdapter.
+     */
+    DIRECT_EXECUTOR,
   }
 
-  StatementExecutor(boolean useVirtualThreads, List<StatementExecutionInterceptor> interceptors) {
-    this.executor = createExecutorService(useVirtualThreads);
+  @VisibleForTesting
+  StatementExecutor() {
+    this(
+        DEFAULT_USE_VIRTUAL_THREADS
+            ? StatementExecutorType.VIRTUAL_THREAD
+            : StatementExecutorType.PLATFORM_THREAD,
+        Collections.emptyList());
+  }
+
+  StatementExecutor(StatementExecutorType type, List<StatementExecutionInterceptor> interceptors) {
+    this.executor = createExecutorService(type);
     this.interceptors = Collections.unmodifiableList(interceptors);
   }
 
